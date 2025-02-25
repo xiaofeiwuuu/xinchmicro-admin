@@ -6,9 +6,9 @@
                 <canvas style="border: 1px solid #ccc;" ref="canvas" @mousedown="startDrawing" @mousemove="draw"
                     @mouseup="stopDrawing"></canvas>
             </div>
-            <div style="flex: 0.95; max-height: 750px;overflow: hidden; display: flex;flex-direction: column;">
-                <div style="margin-bottom: 10px;">
-                    <a-button type="primary" v-if="selection.x" @click="addTextObject" size="small">
+            <div style="width: 400px;height: calc(100vh - 105px); overflow: hidden; display: flex;flex-direction: column;">
+                <div style="margin-bottom: 10px;" v-if="selection.x" >
+                    <a-button type="primary" @click="addTextObject" size="small">
                         添加热区
                     </a-button>
                 </div>
@@ -21,15 +21,10 @@
                             </a-button>
 
                             <div class="text-info">
-                                <!-- <div style="display: flex;justify-content: left;width: 50%;">
-                                    <label class="label-text" for="text">文字:</label>
-                                    <input type="text" id="text" placeholder="请输入描述文字" v-model="textObj.text"
-                                        @input="updateCanvasText" />
-                                </div> -->
                                 <div style="display: flex;justify-content: left;width: 50%;">
                                     <label for="url" class="label-text">跳转图片:</label>
-                                    <a-select mode="multiple" placeholder="请选择跳转后的图片(ID)" :labelInValue="true"
-                                        :value="textObj.url" @focus="focus(textObj)" style="width: 100%" size="small"
+                                    <a-select class="input-width" placeholder="请选择跳转图片(ID)" :labelInValue="true"
+                                        :value="textObj.url[0]" @focus="focus(textObj)" size="small"
                                         @change="changeIn2($event, textObj)">
                                         <a-select-option v-for="(item, i) in allData" :key="'q2' + i+ index" :value="item.id"
                                             :label="item.id">
@@ -41,7 +36,7 @@
                             <div class="text-info">
                                 <div style="display: flex;justify-content: left;width: 50%;">
                                     <label for="colorPicker" class="label-text">颜色:</label>
-                                    <input type="color" id="colorPicker" v-model="textObj.color"
+                                    <input class="input-width" type="color" id="colorPicker" v-model="textObj.color"
                                         @input="updateCanvasText" />
                                 </div>
                                 <!-- <div style="display: flex;justify-content: left;width: 50%;">
@@ -53,24 +48,24 @@
                             <div class="text-info">
                                 <div style="display: flex;justify-content: left;width: 50%;">
                                     <label for="x" class="label-text">X (%):</label>
-                                    <input type="number" placeholder="X定位" id="x" v-model="textObj.x"
+                                    <input class="input-width" type="number" placeholder="X定位" id="x" v-model="textObj.x"
                                         @input="updateCanvasText" />
                                 </div>
                                 <div style="display: flex;justify-content: left;width: 50%;">
                                     <label for="y" class="label-text">Y (%):</label>
-                                    <input type="number" placeholder="Y定位" id="y" v-model="textObj.y"
+                                    <input class="input-width" type="number" placeholder="Y定位" id="y" v-model="textObj.y"
                                         @input="updateCanvasText" />
                                 </div>
                             </div>
                             <div class="text-info">
                                 <div style="display: flex;justify-content: left;width: 50%;">
                                     <label for="width" class="label-text">宽度:</label>
-                                    <input type="number" placeholder="热区宽度(点击区域宽度)" id="width" v-model="textObj.width"
+                                    <input class="input-width" type="number" placeholder="热区宽度" id="width" v-model="textObj.width"
                                         @input="updateCanvasText" />
                                 </div>
                                 <div style="display: flex;justify-content: left;width: 50%;">
                                     <label for="height" class="label-text">高度:</label>
-                                    <input type="number" placeholder="热区高度(点击区域高度)" id="height" v-model="textObj.height"
+                                    <input class="input-width" type="number" placeholder="热区高度" id="height" v-model="textObj.height"
                                         @input="updateCanvasText" />
                                 </div>
                             </div>
@@ -82,13 +77,13 @@
             </div>
 
             <div
-                style="width: 200px; max-height: 750px;overflow: auto; display: flex;flex-wrap: wrap;justify-content: space-between;align-items: top;">
+                style="width: 180px;overflow: auto; height: calc(100vh - 105px);display: flex;flex-wrap: wrap;justify-content: space-between;align-items: top;gap: 10px;">
                 <div v-for="(item, index) in allData" :key="index+'w3'"
-                    style="width: 200px;height: 200px;position: relative;overflow: hidden;">
+                    style="width: 180px;height: 180px;position: relative;overflow: hidden;">
                     <div
                         style="position: absolute;top: 10px;left: 10px;color: red;width: 40px;height: 40px;border: 1px solid #ccc;border-radius: 50%;display: flex;justify-content: center;align-items: center;background-color: rgba(255, 255, 255, 0.5);">
                         {{ item.id }}</div>
-                    <img :src="item.image_url" style="width: 100%;height: 100%;object-fit:cover; margin-top: 10px;"
+                    <img :src="item.image_url" @click="previewImage(item.image_url)" style="width: 100%;height: 100%;object-fit:cover;cursor: pointer;"
                         :alt="item.id" />
                 </div>
             </div>
@@ -103,6 +98,11 @@
                 保 存
             </a-button>
         </div>
+
+        <!-- 图片预览模态框 -->
+        <a-modal :visible="previewVisible" :footer="null" @cancel="closePreview" :zIndex="1002">
+            <img alt="preview" style="width: 100%;max-width: 80vw;max-height: 80vh;" :src="currentPreviewImage" />
+        </a-modal>
     </div>
 </template>
 
@@ -133,6 +133,9 @@ export default {
             offsetY: 0,
             imgWidth: 0,
             imgHeight: 0,
+            // 添加预览相关的数据
+            previewVisible: false,
+            currentPreviewImage: '',
         };
     },
     props: {
@@ -180,7 +183,7 @@ export default {
     },
     methods: {
         changeIn2(value, textObj) {
-            textObj.url = value || []
+            textObj.url = value ? [value] : []
             this.selectedItems = textObj.url
             this.$forceUpdate();
         },
@@ -415,37 +418,68 @@ export default {
             ctx.clearRect(0, 0, this.canvasWidth, this.canvasHeight); // 清空画布
             this.drawImageToCanvas(this.imgWidth, this.imgHeight); // 重新绘制图片
         },
+        // 添加预览相关的方法
+        previewImage(url) {
+            this.currentPreviewImage = url;
+            this.previewVisible = true;
+        },
+        closePreview() {
+            this.previewVisible = false;
+            this.currentPreviewImage = '';
+        },
     },
 };
 </script>
 
-<style lang="scss" scoped>
+<style lang="scss">
 .selection {
     position: absolute;
     pointer-events: none;
-    /* 使选择框不干扰鼠标事件 */
+}
+
+.input-width {
+    width: 80px !important;
+}
+
+.ant-card {
+    .ant-card-head {
+        min-height: unset;
+        padding: 0 12px;
+        
+        .ant-card-head-wrapper {
+            min-height: unset;
+
+            .ant-card-extra{
+                padding: 0;
+            }
+        }
+        
+        .ant-card-head-title {
+            padding: 8px 0;
+        }
+    }
+    
+    .ant-card-body {
+        padding: 12px;
+    }
 }
 
 .text-info {
-    flex: 1;
     display: flex;
     justify-content: space-between;
     margin: 10px 0;
 
     .label-text {
         display: block;
-        // display: inline-block;
         width: 40%;
-        max-width: 100px;
+        max-width: 80px;
         padding-left: 10px;
         box-sizing: border-box;
         height: 32px;
         line-height: 32px;
-        /* margin-left: 10px; */
     }
 
     input {
-        // flex: 1;
         outline: none;
         border: none;
         background: none;

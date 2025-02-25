@@ -198,8 +198,8 @@ export default {
         fetch(params = {}) {
             this.loading = true; // 设置加载状态
             getStoreList({
-                limit: 10, // 每页大小
-                page: 1, // 当前页
+                limit: this.pagination.pageSize, // 使用分页中的pageSize
+                page: this.pagination.current, // 使用分页中的current
                 ...params, // 其他参数
             }).then(res => {
                 this.loading = false; // 取消加载状态

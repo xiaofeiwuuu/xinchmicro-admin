@@ -321,6 +321,11 @@ export default {
                 }, 100);
             } else {
                 this.title = "新增"; // 设置标题为新增
+                setTimeout(() => {
+                    this.form.setFieldsValue({
+                        image_type: 4 // 默认设置为详情图
+                    });
+                }, 100);
             }
         },
         deleteImageFn(row) {
@@ -407,8 +412,8 @@ export default {
         fetch(params = {}) {
             this.loading = true; // 设置加载状态
             getImageList({
-                limit: 10, // 每页大小
-                page: 1, // 当前页
+                limit: this.pagination.pageSize, // 使用分页中的pageSize
+                page: this.pagination.current, // 使用分页中的current
                 ...params, // 其他参数
             }).then(res => {
                 this.loading = false; // 取消加载状态

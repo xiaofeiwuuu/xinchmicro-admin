@@ -11,7 +11,7 @@
 
 			<!-- Main Sidebar -->
 			<DashboardSidebar :sidebarCollapsed="sidebarCollapsed" :sidebarColor="sidebarColor"
-				:sidebarTheme="sidebarTheme" @toggleSidebar="toggleSidebar"></DashboardSidebar>
+				:sidebarTheme="sidebarTheme" :isMainUser="isMainUser" @toggleSidebar="toggleSidebar"></DashboardSidebar>
 			<!-- / Main Sidebar -->
 
 			<!-- Layout Content -->
@@ -93,6 +93,22 @@ export default ({
 
 			// Settings drawer visiblility status.
 			showSettingsDrawer: false,
+
+			// Main user status.
+			isMainUser: true,
+		}
+	},
+	created() {
+		// 从本地存储获取当前用户信息
+		const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+		if (userInfo.userType) {
+			this.isMainUser = userInfo.userType === 'main';
+		} else {
+			// 从sessionStorage中尝试获取
+			const sessionUserInfo = JSON.parse(sessionStorage.getItem('userInfo') || '{}');
+			if (sessionUserInfo.userType) {
+				this.isMainUser = sessionUserInfo.userType === 'main';
+			}
 		}
 	},
 	methods: {

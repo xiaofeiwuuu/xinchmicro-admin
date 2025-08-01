@@ -20,4 +20,9 @@ module.exports = {
 	// 		},
 	// 	},
 	// },
+
+	publicPath: '/',
+	productionSourceMap: false,
+	assetsDir: 'static',
+	outputDir: 'dist',
 }

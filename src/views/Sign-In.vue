@@ -39,7 +39,7 @@
 						<a-switch v-model="rememberMe" /> 记住我
 					</a-form-item> -->
 					<a-form-item>
-						<a-button type="primary" block html-type="submit" class="login-form-button">
+						<a-button type="primary" block html-type="submit" class="login-form-button" :loading="loading">
 							登录
 						</a-button>
 					</a-form-item>
@@ -60,45 +60,49 @@
 </template>
 
 <script>
-	import { Login, getUserInfo } from '@/api';
-	import md5 from '@/plugins/w_md5';
-	export default ({
-		data() {
-			return {
-				// 绑定的模型属性，用于“登录表单”的“记住我”开关按钮。
-				rememberMe: true,
-			}
-		},
-		beforeCreate() {
-			// 创建表单并将其添加到组件的“form”属性中。
-			this.form = this.$form.createForm(this, { name: 'normal_login' });
-		},
-		methods: {
-			// 处理提交后的输入验证。
-			handleSubmit(e) {
-				e.preventDefault();
-				this.form.validateFields(async (err, values) => {
-					if ( !err ) {
-						try {
-							values.password = md5.hex_md5_32(values.password);
-							const res = await Login(values);
-							localStorage.setItem('token', JSON.stringify(res));
-							this.$message.success('登录成功');
-							const res2 = await getUserInfo();
-							localStorage.setItem('role', res2.role);
-							localStorage.setItem('username', res2.nick_name);
-							localStorage.setItem('rolename', res2.username);
-							// localStorage.setItem('nick_name', res2.nick_name);
-							this.$router.push('/');
-						} catch (error) {
-							this.$message.error(error.message);
-						}
-					}
-				});
-			},
-		},
-	})
+import { login } from '@/api'
 
+export default ({
+	data() {
+		return {
+			loading: false,
+		}
+	},
+	beforeCreate() {
+		this.form = this.$form.createForm(this, { name: 'normal_login' });
+	},
+	methods: {
+		async handleSubmit(e) {
+			e.preventDefault();
+			this.form.validateFields(async (err, values) => {
+				if (!err) {
+					try {
+						this.loading = true;
+						const res = await login(values);
+						
+						// 存储登录信息到localStorage
+						localStorage.setItem('token', res.data.token);
+						
+						// 存储用户信息对象
+						const userInfo = {
+							id: res.data.user.id,
+							username: res.data.user.username,
+							userType: res.data.user.userType
+						};
+						localStorage.setItem('userInfo', JSON.stringify(userInfo));
+						
+						this.$message.success(res.message || '登录成功');
+						this.$router.push('/');
+					} catch (error) {
+						this.$message.error(error.message || '登录失败');
+					} finally {
+						this.loading = false;
+					}
+				}
+			});
+		},
+	},
+})
 </script>
 
 <style lang="scss">

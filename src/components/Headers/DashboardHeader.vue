@@ -99,12 +99,15 @@
 				this.$confirm({
 					title: '退出登录',
 					content: '确定退出登录吗？',
-					okText: '是', // 确认按钮文本
-					okType: 'danger', // 确认按钮类型
-					cancelText: '否', // 取消按钮文本
+					okText: '是',
+					okType: 'danger',
+					cancelText: '否',
 					onOk: () => {
+						// 清除localStorage中的登录相关数据
 						localStorage.removeItem('token');
-						this.$router.push('/sign-in');
+						localStorage.removeItem('userInfo');
+						
+						this.$router.push('/login');
 						this.$message.success('退出成功');
 					},
 					onCancel: () => {
@@ -116,7 +119,15 @@
 		mounted: function(){
 			// 将包装器设置为适当的元素，布局包装器。
 			this.wrapper = document.getElementById('layout-dashboard') ;
-			this.username = localStorage.getItem('username');
+			
+			// 获取用户名
+			const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+			if (userInfo.username) {
+				this.username = userInfo.username;
+			} else {
+				// 兼容旧方式
+				this.username = sessionStorage.getItem('username') || '';
+			}
 		},
 		created() {
 			// 注册窗口调整大小事件监听器，以修复affix元素大小

@@ -8,7 +8,8 @@
   "private": false,
   "scripts": {
     "serve": "vue-cli-service serve --open",
-    "build": "cross-env CI=false cross-env PUBLIC_URL=/ vue-cli-service build",
+    "build": "cross-env CI=false cross-env PUBLIC_URL=/ vue-cli-service build && cd dist && zip -r ../dist.zip . && cd .. && echo '已生成 dist.zip'",
+    "build:only": "cross-env CI=false cross-env PUBLIC_URL=/ vue-cli-service build",
     "dev": "npm run serve"
   },
   "dependencies": {

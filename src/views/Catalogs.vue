@@ -32,10 +32,9 @@
         </a-button>
 
         <!-- 表格组件 -->
-        <a-table :columns="columns" :data-source="data" :loading="loading" rowKey="id"
-            @change="handleTableChange">
+        <a-table :columns="columns" :data-source="data" :loading="loading" rowKey="id">
             <template slot="paramTitles" slot-scope="text">
-                <a-tag v-for="(item, index) in text" :key="index" color="blue">{{ item }}</a-tag>
+                <a-tag v-for="(item, index) in text" :key="item.id || index" color="blue">{{ item.title || item }}</a-tag>
             </template>
             <template slot="category" slot-scope="text">
                 {{ text ? text.name : '-' }}
@@ -98,21 +97,24 @@
                     </a-select>
                 </a-form-item>
                 <a-form-item label="参数标题" :colon="false">
-                    <a-select
-                        v-decorator="[
-                            'paramTitles', 
-                            { 
-                                rules: [{ required: true, message: '请添加至少一个参数标题!' }],
-                                initialValue: currentRecord ? currentRecord.paramTitles : []
-                            }
-                        ]"
-                        mode="tags"
-                        placeholder="请输入参数标题，按回车添加"
-                        style="width: 100%"
-                    >
-                    </a-select>
+                    <div>
+                        <div v-for="(param, index) in paramTitlesList" :key="param.id || index" style="display: flex; margin-bottom: 8px;">
+                            <a-input
+                                v-model="param.title"
+                                placeholder="请输入参数标题"
+                                style="flex: 1; margin-right: 8px;"
+                            />
+                            <a-button type="danger" icon="delete" @click="removeParamTitle(index)" />
+                        </div>
+                        <a-button type="dashed" icon="plus" @click="addParamTitle" style="width: 100%;">
+                            添加参数标题
+                        </a-button>
+                        <div v-if="paramTitlesList.length === 0" style="color: #ff4d4f; font-size: 12px; margin-top: 5px;">
+                            请添加至少一个参数标题
+                        </div>
+                    </div>
                     <div style="color: #999; font-size: 12px; margin-top: 5px;">
-                        提示：输入参数标题后按回车键添加，如：型号、封装、功耗等
+                        提示：如型号、封装、功耗等
                     </div>
                 </a-form-item>
             </a-form>
@@ -172,6 +174,8 @@ export default {
             },
             // 分类列表
             categories: [],
+            // 参数标题列表（新格式：[{ id, title }]）
+            paramTitlesList: [],
         };
     },
     mounted() {
@@ -224,22 +228,37 @@ export default {
             });
         },
 
+        // 添加参数标题
+        addParamTitle() {
+            this.paramTitlesList.push({ title: '' });
+        },
+
+        // 删除参数标题
+        removeParamTitle(index) {
+            this.paramTitlesList.splice(index, 1);
+        },
+
         // 显示添加或编辑目录的模态框
         showModal(record) {
             this.form.resetFields();
             this.visible = true;
-            
+
             if (record) {
                 this.modalTitle = "编辑目录";
                 this.currentRecord = record;
                 this.form.setFieldsValue({
                     name: record.name,
                     categoryId: record.categoryId,
-                    paramTitles: record.paramTitles,
                 });
+                // 复制 paramTitles 数组（保留 id）
+                this.paramTitlesList = (record.paramTitles || []).map(p => ({
+                    id: p.id,
+                    title: p.title || p  // 兼容旧格式（纯字符串）
+                }));
             } else {
                 this.modalTitle = "新增目录";
                 this.currentRecord = null;
+                this.paramTitlesList = [];
             }
         },
 
@@ -265,24 +284,36 @@ export default {
             });
         },
 
-        // 表格变化处理
-        handleTableChange() {
-            this.fetchData();
-        },
-
         // 确认模态框操作
         handleOk() {
+            // 验证参数标题
+            const validParamTitles = this.paramTitlesList.filter(p => p.title && p.title.trim());
+            if (validParamTitles.length === 0) {
+                this.$message.error('请添加至少一个参数标题!');
+                return;
+            }
+
             this.form.validateFields(async (err, values) => {
                 if (!err) {
                     this.confirmLoading = true;
                     try {
+                        // 构建提交数据
+                        const submitData = {
+                            name: values.name,
+                            categoryId: values.categoryId,
+                            paramTitles: validParamTitles.map(p => ({
+                                id: p.id,  // 保留 id（新增时为 undefined，后端会自动生成）
+                                title: p.title.trim()
+                            }))
+                        };
+
                         if (this.currentRecord) {
                             // 编辑
-                            await updateCatalog(this.currentRecord.id, values);
+                            await updateCatalog(this.currentRecord.id, submitData);
                             this.$message.success('编辑成功');
                         } else {
                             // 新增
-                            await createCatalog(values);
+                            await createCatalog(submitData);
                             this.$message.success('新增成功');
                         }
                         this.visible = false;
@@ -301,6 +332,7 @@ export default {
             this.visible = false;
             this.form.resetFields();
             this.currentRecord = null;
+            this.paramTitlesList = [];
         },
     },
 };

@@ -1,6 +1,7 @@
 import fetchWrapper from '@/plugins/fetchWrapper'; // 确保路径正确
 
 // 定义 API 基础 URL
+// export const API_BASE_URL = 'http://localhost:80'; // 替换为实际的API地址
 export const API_BASE_URL = ''; // 替换为实际的API地址
 
 // 产品分类接口
@@ -195,6 +196,69 @@ export const uploadToCos = async (file, authData) => {
         console.error('上传到COS错误:', error);
         throw error;
     }
+}
+
+// 带进度监控的上传到 COS
+export const uploadToCosWithProgress = (file, authData, onProgress) => {
+    const formData = new FormData();
+    formData.append('key', authData.key);
+    formData.append('Signature', authData.authorization);
+    formData.append('x-cos-security-token', authData.token);
+    formData.append('x-cos-meta-fileid', authData.cos_file_id);
+    formData.append('file', file);
+
+    const xhr = new XMLHttpRequest();
+
+    const promise = new Promise((resolve, reject) => {
+        // 监听上传进度
+        xhr.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable && onProgress) {
+                const percentComplete = Math.floor((e.loaded / e.total) * 100);
+                const uploadedMB = (e.loaded / (1024 * 1024)).toFixed(2);
+                const totalMB = (e.total / (1024 * 1024)).toFixed(2);
+
+                onProgress({
+                    percent: percentComplete,
+                    loaded: e.loaded,
+                    total: e.total,
+                    uploadedMB,
+                    totalMB
+                });
+            }
+        });
+
+        // 监听上传完成
+        xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                resolve({
+                    fileID: authData.file_id,
+                    url: authData.download_url || authData.url,
+                    filename: file.name
+                });
+            } else {
+                reject(new Error(`上传失败: ${xhr.status} ${xhr.statusText}`));
+            }
+        });
+
+        // 监听上传错误
+        xhr.addEventListener('error', () => {
+            reject(new Error('上传失败，请检查网络连接'));
+        });
+
+        // 监听取消
+        xhr.addEventListener('abort', () => {
+            reject(new Error('上传已取消'));
+        });
+
+        // 发送请求
+        xhr.open('POST', authData.url);
+        xhr.send(formData);
+    });
+
+    // 将 xhr 对象附加到 Promise 上，以便外部可以取消
+    promise._xhr = xhr;
+
+    return promise;
 }
 
 // 文件上传接口

@@ -35,22 +35,22 @@ importers:
     devDependencies:
       '@vue/cli-plugin-babel':
         specifier: 4.5.13
-        version: 4.5.13(@vue/cli-service@4.5.13(@vue/compiler-sfc@3.5.13)(lodash@4.17.21)(sass-loader@10.5.2(node-sass@9.0.0)(webpack@4.47.0))(vue-template-compiler@2.6.14)(vue@2.6.14))(core-js@3.15.2)(vue@2.6.14)
+        version: 4.5.13(@vue/cli-service@4.5.13(@vue/compiler-sfc@3.5.13)(lodash@4.17.21)(sass-loader@10.5.2(node-sass@9.0.0)(sass@1.94.2)(webpack@4.47.0))(vue-template-compiler@2.6.14)(vue@2.6.14))(core-js@3.15.2)(vue@2.6.14)
       '@vue/cli-plugin-router':
         specifier: 4.5.13
-        version: 4.5.13(@vue/cli-service@4.5.13(@vue/compiler-sfc@3.5.13)(lodash@4.17.21)(sass-loader@10.5.2(node-sass@9.0.0)(webpack@4.47.0))(vue-template-compiler@2.6.14)(vue@2.6.14))
+        version: 4.5.13(@vue/cli-service@4.5.13(@vue/compiler-sfc@3.5.13)(lodash@4.17.21)(sass-loader@10.5.2(node-sass@9.0.0)(sass@1.94.2)(webpack@4.47.0))(vue-template-compiler@2.6.14)(vue@2.6.14))
       '@vue/cli-service':
         specifier: 4.5.13
-        version: 4.5.13(@vue/compiler-sfc@3.5.13)(lodash@4.17.21)(sass-loader@10.5.2(node-sass@9.0.0)(webpack@4.47.0))(vue-template-compiler@2.6.14)(vue@2.6.14)
+        version: 4.5.13(@vue/compiler-sfc@3.5.13)(lodash@4.17.21)(sass-loader@10.5.2(node-sass@9.0.0)(sass@1.94.2)(webpack@4.47.0))(vue-template-compiler@2.6.14)(vue@2.6.14)
       cross-env:
         specifier: ^7.0.3
         version: 7.0.3
-      node-sass:
-        specifier: ^9.0.0
-        version: 9.0.0
+      sass:
+        specifier: ^1.94.2
+        version: 1.94.2
       sass-loader:
         specifier: ^10
-        version: 10.5.2(node-sass@9.0.0)(webpack@4.47.0)
+        version: 10.5.2(node-sass@9.0.0)(sass@1.94.2)(webpack@4.47.0)
       vue-template-compiler:
         specifier: 2.6.14
         version: 2.6.14
@@ -673,6 +673,88 @@ packages:
     resolution: {integrity: sha512-mJd2Z5TjYWq/ttPLLGqArdtnC74J6bOzg4rMDnN+p1xTacZ2yPRCk2y0oSWQtygLR9YVQXgOcONrwtnk3JupxQ==}
     engines: {node: ^12.13.0 || ^14.15.0 || >=16.0.0}
     deprecated: This functionality has been moved to @npmcli/fs
+
+  '@parcel/watcher-android-arm64@2.5.1':
+    resolution: {integrity: sha512-KF8+j9nNbUN8vzOFDpRMsaKBHZ/mcjEjMToVMJOhTozkDonQFFrRcfdLWn6yWKCmJKmdVxSgHiYvTCef4/qcBA==}
+    engines: {node: '>= 10.0.0'}
+    cpu: [arm64]
+    os: [android]
+
+  '@parcel/watcher-darwin-arm64@2.5.1':
+    resolution: {integrity: sha512-eAzPv5osDmZyBhou8PoF4i6RQXAfeKL9tjb3QzYuccXFMQU0ruIc/POh30ePnaOyD1UXdlKguHBmsTs53tVoPw==}
+    engines: {node: '>= 10.0.0'}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@parcel/watcher-darwin-x64@2.5.1':
+    resolution: {integrity: sha512-1ZXDthrnNmwv10A0/3AJNZ9JGlzrF82i3gNQcWOzd7nJ8aj+ILyW1MTxVk35Db0u91oD5Nlk9MBiujMlwmeXZg==}
+    engines: {node: '>= 10.0.0'}
+    cpu: [x64]
+    os: [darwin]
+
+  '@parcel/watcher-freebsd-x64@2.5.1':
+    resolution: {integrity: sha512-SI4eljM7Flp9yPuKi8W0ird8TI/JK6CSxju3NojVI6BjHsTyK7zxA9urjVjEKJ5MBYC+bLmMcbAWlZ+rFkLpJQ==}
+    engines: {node: '>= 10.0.0'}
+    cpu: [x64]
+    os: [freebsd]
+
+  '@parcel/watcher-linux-arm-glibc@2.5.1':
+    resolution: {integrity: sha512-RCdZlEyTs8geyBkkcnPWvtXLY44BCeZKmGYRtSgtwwnHR4dxfHRG3gR99XdMEdQ7KeiDdasJwwvNSF5jKtDwdA==}
+    engines: {node: '>= 10.0.0'}
+    cpu: [arm]
+    os: [linux]
+
+  '@parcel/watcher-linux-arm-musl@2.5.1':
+    resolution: {integrity: sha512-6E+m/Mm1t1yhB8X412stiKFG3XykmgdIOqhjWj+VL8oHkKABfu/gjFj8DvLrYVHSBNC+/u5PeNrujiSQ1zwd1Q==}
+    engines: {node: '>= 10.0.0'}
+    cpu: [arm]
+    os: [linux]
+
+  '@parcel/watcher-linux-arm64-glibc@2.5.1':
+    resolution: {integrity: sha512-LrGp+f02yU3BN9A+DGuY3v3bmnFUggAITBGriZHUREfNEzZh/GO06FF5u2kx8x+GBEUYfyTGamol4j3m9ANe8w==}
+    engines: {node: '>= 10.0.0'}
+    cpu: [arm64]
+    os: [linux]
+
+  '@parcel/watcher-linux-arm64-musl@2.5.1':
+    resolution: {integrity: sha512-cFOjABi92pMYRXS7AcQv9/M1YuKRw8SZniCDw0ssQb/noPkRzA+HBDkwmyOJYp5wXcsTrhxO0zq1U11cK9jsFg==}
+    engines: {node: '>= 10.0.0'}
+    cpu: [arm64]
+    os: [linux]
+
+  '@parcel/watcher-linux-x64-glibc@2.5.1':
+    resolution: {integrity: sha512-GcESn8NZySmfwlTsIur+49yDqSny2IhPeZfXunQi48DMugKeZ7uy1FX83pO0X22sHntJ4Ub+9k34XQCX+oHt2A==}
+    engines: {node: '>= 10.0.0'}
+    cpu: [x64]
+    os: [linux]
+
+  '@parcel/watcher-linux-x64-musl@2.5.1':
+    resolution: {integrity: sha512-n0E2EQbatQ3bXhcH2D1XIAANAcTZkQICBPVaxMeaCVBtOpBZpWJuf7LwyWPSBDITb7In8mqQgJ7gH8CILCURXg==}
+    engines: {node: '>= 10.0.0'}
+    cpu: [x64]
+    os: [linux]
+
+  '@parcel/watcher-win32-arm64@2.5.1':
+    resolution: {integrity: sha512-RFzklRvmc3PkjKjry3hLF9wD7ppR4AKcWNzH7kXR7GUe0Igb3Nz8fyPwtZCSquGrhU5HhUNDr/mKBqj7tqA2Vw==}
+    engines: {node: '>= 10.0.0'}
+    cpu: [arm64]
+    os: [win32]
+
+  '@parcel/watcher-win32-ia32@2.5.1':
+    resolution: {integrity: sha512-c2KkcVN+NJmuA7CGlaGD1qJh1cLfDnQsHjE89E60vUEMlqduHGCdCLJCID5geFVM0dOtA3ZiIO8BoEQmzQVfpQ==}
+    engines: {node: '>= 10.0.0'}
+    cpu: [ia32]
+    os: [win32]
+
+  '@parcel/watcher-win32-x64@2.5.1':
+    resolution: {integrity: sha512-9lHBdJITeNR++EvSQVUcaZoWupyHfXe1jZvGZ06O/5MflPcuPLtEphScIBL+AiCWBO46tDSHzWyD0uDmmZqsgA==}
+    engines: {node: '>= 10.0.0'}
+    cpu: [x64]
+    os: [win32]
+
+  '@parcel/watcher@2.5.1':
+    resolution: {integrity: sha512-dfUnCxiN9H4ap84DvD2ubjw+3vUNpstxa0TneY/Paat8a3R4uQZDLSvWjmznAY/DoahqTHl9V46HF/Zs3F29pg==}
+    engines: {node: '>= 10.0.0'}
 
   '@simonwep/pickr@1.7.4':
     resolution: {integrity: sha512-fq7jgKJT21uWGC1mARBHvvd1JYlEf93o7SuVOB4Lr0x/2UPuNC9Oe9n/GzVeg4oVtqMDfh1wIEJpsdOJEZb+3g==}
@@ -1459,6 +1541,10 @@ packages:
     resolution: {integrity: sha512-7VT13fmjotKpGipCW9JEQAusEPE+Ei8nl6/g4FBAmIm0GOOLMua9NDDo/DWp0ZAxCr3cPq5ZpBqmPAQgDda2Pw==}
     engines: {node: '>= 8.10.0'}
 
+  chokidar@4.0.3:
+    resolution: {integrity: sha512-Qgzu8kfBvo+cA4962jnP1KkS6Dop5NS6g7R5LFYJr4b8Ub94PPQXUksCw9PvXoeXPRRddRNC5C1JQUR2SMGtnA==}
+    engines: {node: '>= 14.16.0'}
+
   chownr@1.1.4:
     resolution: {integrity: sha512-jJ0bqzaylmJtVnNgzTeSOs8DPavpbYgEr/b0YL8/2GO3xJEhInFmhKMUnEJQjZumK7KXGFhUy89PrsJWlakBVg==}
 
@@ -2046,6 +2132,11 @@ packages:
   destroy@1.2.0:
     resolution: {integrity: sha512-2sJGJTaXIIaR1w4iJSNoN0hnMY7Gpc/n8D4qSCJw8QqFWXf7cuAgnEHxBpweaVcPevC2l3KpjYCx3NypQQgaJg==}
     engines: {node: '>= 0.8', npm: 1.2.8000 || >= 1.4.16}
+
+  detect-libc@1.0.3:
+    resolution: {integrity: sha512-pGjwhsmsp4kL2RTz08wcOlGN83otlqHeD/Z5T8GXZB+/YcpQ/dgo+lbU8ZsGxV0HIvqqxo9l7mqYwyYMD9bKDg==}
+    engines: {node: '>=0.10'}
+    hasBin: true
 
   detect-node@2.1.0:
     resolution: {integrity: sha512-T0NIuQpnTvFDATNuHN5roPwSBG83rFsuO+MXXH9/3N1eFbn4wcPjttvjMLEPWJ0RGUYgQE7cGgS3tNxbqCGM7g==}
@@ -2794,6 +2885,9 @@ packages:
   ignore@4.0.6:
     resolution: {integrity: sha512-cyFDKrqc/YdcWFniJhzI42+AzS+gNwmUzOSFcRCQYwySuBBBy/KjuxWLZ/FHEH6Moq1NizMOBWyTcv8O4OZIMg==}
     engines: {node: '>= 4'}
+
+  immutable@5.1.4:
+    resolution: {integrity: sha512-p6u1bG3YSnINT5RQmx/yRZBpenIl30kVxkTLDyHLIMk0gict704Q9n+thfDI7lTRm9vXdDYutVzXhzcThxTnXA==}
 
   import-cwd@2.1.0:
     resolution: {integrity: sha512-Ew5AZzJQFqrOV5BTW3EIoHAnoie1LojZLXKcCQ/yTRyVZosBhK1x1ViYjHGf5pAFOq8ZyChZp6m/fSN7pJyZtg==}
@@ -3567,6 +3661,9 @@ packages:
   no-case@2.3.2:
     resolution: {integrity: sha512-rmTZ9kz+f3rCvK2TD1Ue/oZlns7OGoIWP4fc3llxxRXlOkHKoWPPWJOfFYpITabSow43QJbRIoHQXtt10VldyQ==}
 
+  node-addon-api@7.1.1:
+    resolution: {integrity: sha512-5m3bsyrjFWE1xf7nz7YXdN4udnVtXK6/Yfgn5qnahL6bCkf2yKt4k3nuTKAtT4r3IG8JNR2ncsIMdZuAzJjHQQ==}
+
   node-emoji@1.11.0:
     resolution: {integrity: sha512-wo2DpQkQp7Sjm2A0cq+sN7EHKO6Sl0ctXeBdFZrL9T9+UywORbufTcTZxom8YqpLQt/FqNMUkOpkZrJVYSKD3A==}
 
@@ -4209,6 +4306,10 @@ packages:
     resolution: {integrity: sha512-hOS089on8RduqdbhvQ5Z37A0ESjsqz6qnRcffsMU3495FuTdqSm+7bhJ29JvIOsBDEEnan5DPu9t3To9VRlMzA==}
     engines: {node: '>=8.10.0'}
 
+  readdirp@4.1.2:
+    resolution: {integrity: sha512-GDhwkLfywWL2s6vEjyhri+eXmfH6j1L7JE27WhqLeYzoh/A3DBaYGEj2H/HFZCn/kMfim73FXxEJTw06WtxQwg==}
+    engines: {node: '>= 14.18.0'}
+
   redent@3.0.0:
     resolution: {integrity: sha512-6tDA8g98We0zd0GvVeMT9arEOnTw9qM03L9cJXaCjrip1OO764RDBLBfrB4cwzNGDj5OA5ioymC9GkizgWJDUg==}
     engines: {node: '>=8'}
@@ -4383,6 +4484,11 @@ packages:
         optional: true
       sass:
         optional: true
+
+  sass@1.94.2:
+    resolution: {integrity: sha512-N+7WK20/wOr7CzA2snJcUSSNTCzeCGUTFY3OgeQP3mZ1aj9NMQ0mSTXwlrnd89j33zzQJGqIN52GIOmYrfq46A==}
+    engines: {node: '>=14.0.0'}
+    hasBin: true
 
   sax@1.2.4:
     resolution: {integrity: sha512-NqVDv9TpANUjFm0N8uM5GxL36UgKi9/atZw+x7YFnQ8ckwFGKrl4xX4yWtrey3UJm5nP1kUbnYgLopqWNSRhWw==}
@@ -6012,7 +6118,8 @@ snapshots:
       '@babel/helper-string-parser': 7.25.9
       '@babel/helper-validator-identifier': 7.25.9
 
-  '@gar/promisify@1.1.3': {}
+  '@gar/promisify@1.1.3':
+    optional: true
 
   '@hapi/address@2.1.4': {}
 
@@ -6070,21 +6177,86 @@ snapshots:
     dependencies:
       '@gar/promisify': 1.1.3
       semver: 7.7.1
+    optional: true
 
   '@npmcli/fs@2.1.2':
     dependencies:
       '@gar/promisify': 1.1.3
       semver: 7.7.1
+    optional: true
 
   '@npmcli/move-file@1.1.2':
     dependencies:
       mkdirp: 1.0.4
       rimraf: 3.0.2
+    optional: true
 
   '@npmcli/move-file@2.0.1':
     dependencies:
       mkdirp: 1.0.4
       rimraf: 3.0.2
+    optional: true
+
+  '@parcel/watcher-android-arm64@2.5.1':
+    optional: true
+
+  '@parcel/watcher-darwin-arm64@2.5.1':
+    optional: true
+
+  '@parcel/watcher-darwin-x64@2.5.1':
+    optional: true
+
+  '@parcel/watcher-freebsd-x64@2.5.1':
+    optional: true
+
+  '@parcel/watcher-linux-arm-glibc@2.5.1':
+    optional: true
+
+  '@parcel/watcher-linux-arm-musl@2.5.1':
+    optional: true
+
+  '@parcel/watcher-linux-arm64-glibc@2.5.1':
+    optional: true
+
+  '@parcel/watcher-linux-arm64-musl@2.5.1':
+    optional: true
+
+  '@parcel/watcher-linux-x64-glibc@2.5.1':
+    optional: true
+
+  '@parcel/watcher-linux-x64-musl@2.5.1':
+    optional: true
+
+  '@parcel/watcher-win32-arm64@2.5.1':
+    optional: true
+
+  '@parcel/watcher-win32-ia32@2.5.1':
+    optional: true
+
+  '@parcel/watcher-win32-x64@2.5.1':
+    optional: true
+
+  '@parcel/watcher@2.5.1':
+    dependencies:
+      detect-libc: 1.0.3
+      is-glob: 4.0.3
+      micromatch: 4.0.8
+      node-addon-api: 7.1.1
+    optionalDependencies:
+      '@parcel/watcher-android-arm64': 2.5.1
+      '@parcel/watcher-darwin-arm64': 2.5.1
+      '@parcel/watcher-darwin-x64': 2.5.1
+      '@parcel/watcher-freebsd-x64': 2.5.1
+      '@parcel/watcher-linux-arm-glibc': 2.5.1
+      '@parcel/watcher-linux-arm-musl': 2.5.1
+      '@parcel/watcher-linux-arm64-glibc': 2.5.1
+      '@parcel/watcher-linux-arm64-musl': 2.5.1
+      '@parcel/watcher-linux-x64-glibc': 2.5.1
+      '@parcel/watcher-linux-x64-musl': 2.5.1
+      '@parcel/watcher-win32-arm64': 2.5.1
+      '@parcel/watcher-win32-ia32': 2.5.1
+      '@parcel/watcher-win32-x64': 2.5.1
+    optional: true
 
   '@simonwep/pickr@1.7.4':
     dependencies:
@@ -6101,9 +6273,11 @@ snapshots:
 
   '@soda/get-current-script@1.0.2': {}
 
-  '@tootallnate/once@1.1.2': {}
+  '@tootallnate/once@1.1.2':
+    optional: true
 
-  '@tootallnate/once@2.0.0': {}
+  '@tootallnate/once@2.0.0':
+    optional: true
 
   '@types/body-parser@1.19.5':
     dependencies:
@@ -6332,11 +6506,11 @@ snapshots:
 
   '@vue/cli-overlay@4.5.19': {}
 
-  '@vue/cli-plugin-babel@4.5.13(@vue/cli-service@4.5.13(@vue/compiler-sfc@3.5.13)(lodash@4.17.21)(sass-loader@10.5.2(node-sass@9.0.0)(webpack@4.47.0))(vue-template-compiler@2.6.14)(vue@2.6.14))(core-js@3.15.2)(vue@2.6.14)':
+  '@vue/cli-plugin-babel@4.5.13(@vue/cli-service@4.5.13(@vue/compiler-sfc@3.5.13)(lodash@4.17.21)(sass-loader@10.5.2(node-sass@9.0.0)(sass@1.94.2)(webpack@4.47.0))(vue-template-compiler@2.6.14)(vue@2.6.14))(core-js@3.15.2)(vue@2.6.14)':
     dependencies:
       '@babel/core': 7.26.10
       '@vue/babel-preset-app': 4.5.19(@babel/core@7.26.10)(core-js@3.15.2)(vue@2.6.14)
-      '@vue/cli-service': 4.5.13(@vue/compiler-sfc@3.5.13)(lodash@4.17.21)(sass-loader@10.5.2(node-sass@9.0.0)(webpack@4.47.0))(vue-template-compiler@2.6.14)(vue@2.6.14)
+      '@vue/cli-service': 4.5.13(@vue/compiler-sfc@3.5.13)(lodash@4.17.21)(sass-loader@10.5.2(node-sass@9.0.0)(sass@1.94.2)(webpack@4.47.0))(vue-template-compiler@2.6.14)(vue@2.6.14)
       '@vue/cli-shared-utils': 4.5.19
       babel-loader: 8.4.1(@babel/core@7.26.10)(webpack@4.47.0)
       cache-loader: 4.1.0(webpack@4.47.0)
@@ -6349,16 +6523,16 @@ snapshots:
       - webpack-cli
       - webpack-command
 
-  '@vue/cli-plugin-router@4.5.13(@vue/cli-service@4.5.13(@vue/compiler-sfc@3.5.13)(lodash@4.17.21)(sass-loader@10.5.2(node-sass@9.0.0)(webpack@4.47.0))(vue-template-compiler@2.6.14)(vue@2.6.14))':
+  '@vue/cli-plugin-router@4.5.13(@vue/cli-service@4.5.13(@vue/compiler-sfc@3.5.13)(lodash@4.17.21)(sass-loader@10.5.2(node-sass@9.0.0)(sass@1.94.2)(webpack@4.47.0))(vue-template-compiler@2.6.14)(vue@2.6.14))':
     dependencies:
-      '@vue/cli-service': 4.5.13(@vue/compiler-sfc@3.5.13)(lodash@4.17.21)(sass-loader@10.5.2(node-sass@9.0.0)(webpack@4.47.0))(vue-template-compiler@2.6.14)(vue@2.6.14)
+      '@vue/cli-service': 4.5.13(@vue/compiler-sfc@3.5.13)(lodash@4.17.21)(sass-loader@10.5.2(node-sass@9.0.0)(sass@1.94.2)(webpack@4.47.0))(vue-template-compiler@2.6.14)(vue@2.6.14)
       '@vue/cli-shared-utils': 4.5.19
 
-  '@vue/cli-plugin-vuex@4.5.19(@vue/cli-service@4.5.13(@vue/compiler-sfc@3.5.13)(lodash@4.17.21)(sass-loader@10.5.2(node-sass@9.0.0)(webpack@4.47.0))(vue-template-compiler@2.6.14)(vue@2.6.14))':
+  '@vue/cli-plugin-vuex@4.5.19(@vue/cli-service@4.5.13(@vue/compiler-sfc@3.5.13)(lodash@4.17.21)(sass-loader@10.5.2(node-sass@9.0.0)(sass@1.94.2)(webpack@4.47.0))(vue-template-compiler@2.6.14)(vue@2.6.14))':
     dependencies:
-      '@vue/cli-service': 4.5.13(@vue/compiler-sfc@3.5.13)(lodash@4.17.21)(sass-loader@10.5.2(node-sass@9.0.0)(webpack@4.47.0))(vue-template-compiler@2.6.14)(vue@2.6.14)
+      '@vue/cli-service': 4.5.13(@vue/compiler-sfc@3.5.13)(lodash@4.17.21)(sass-loader@10.5.2(node-sass@9.0.0)(sass@1.94.2)(webpack@4.47.0))(vue-template-compiler@2.6.14)(vue@2.6.14)
 
-  '@vue/cli-service@4.5.13(@vue/compiler-sfc@3.5.13)(lodash@4.17.21)(sass-loader@10.5.2(node-sass@9.0.0)(webpack@4.47.0))(vue-template-compiler@2.6.14)(vue@2.6.14)':
+  '@vue/cli-service@4.5.13(@vue/compiler-sfc@3.5.13)(lodash@4.17.21)(sass-loader@10.5.2(node-sass@9.0.0)(sass@1.94.2)(webpack@4.47.0))(vue-template-compiler@2.6.14)(vue@2.6.14)':
     dependencies:
       '@intervolga/optimize-cssnano-plugin': 1.0.6(webpack@4.47.0)
       '@soda/friendly-errors-webpack-plugin': 1.8.1(webpack@4.47.0)
@@ -6367,8 +6541,8 @@ snapshots:
       '@types/webpack': 4.41.40
       '@types/webpack-dev-server': 3.11.6(debug@4.4.0)
       '@vue/cli-overlay': 4.5.19
-      '@vue/cli-plugin-router': 4.5.13(@vue/cli-service@4.5.13(@vue/compiler-sfc@3.5.13)(lodash@4.17.21)(sass-loader@10.5.2(node-sass@9.0.0)(webpack@4.47.0))(vue-template-compiler@2.6.14)(vue@2.6.14))
-      '@vue/cli-plugin-vuex': 4.5.19(@vue/cli-service@4.5.13(@vue/compiler-sfc@3.5.13)(lodash@4.17.21)(sass-loader@10.5.2(node-sass@9.0.0)(webpack@4.47.0))(vue-template-compiler@2.6.14)(vue@2.6.14))
+      '@vue/cli-plugin-router': 4.5.13(@vue/cli-service@4.5.13(@vue/compiler-sfc@3.5.13)(lodash@4.17.21)(sass-loader@10.5.2(node-sass@9.0.0)(sass@1.94.2)(webpack@4.47.0))(vue-template-compiler@2.6.14)(vue@2.6.14))
+      '@vue/cli-plugin-vuex': 4.5.19(@vue/cli-service@4.5.13(@vue/compiler-sfc@3.5.13)(lodash@4.17.21)(sass-loader@10.5.2(node-sass@9.0.0)(sass@1.94.2)(webpack@4.47.0))(vue-template-compiler@2.6.14)(vue@2.6.14))
       '@vue/cli-shared-utils': 4.5.19
       '@vue/component-compiler-utils': 3.3.0(lodash@4.17.21)
       '@vue/preload-webpack-plugin': 1.1.2(html-webpack-plugin@3.2.0(webpack@4.47.0))(webpack@4.47.0)
@@ -6417,7 +6591,7 @@ snapshots:
       webpack-merge: 4.2.2
     optionalDependencies:
       '@vue/compiler-sfc': 3.5.13
-      sass-loader: 10.5.2(node-sass@9.0.0)(webpack@4.47.0)
+      sass-loader: 10.5.2(node-sass@9.0.0)(sass@1.94.2)(webpack@4.47.0)
       vue-loader-v16: vue-loader@16.8.3(@vue/compiler-sfc@3.5.13)(vue@2.6.14)(webpack@4.47.0)
       vue-template-compiler: 2.6.14
     transitivePeerDependencies:
@@ -6699,7 +6873,8 @@ snapshots:
 
   '@xtuc/long@4.2.2': {}
 
-  abbrev@1.1.1: {}
+  abbrev@1.1.1:
+    optional: true
 
   accepts@1.3.8:
     dependencies:
@@ -6725,15 +6900,18 @@ snapshots:
       debug: 4.4.0(supports-color@6.1.0)
     transitivePeerDependencies:
       - supports-color
+    optional: true
 
   agentkeepalive@4.6.0:
     dependencies:
       humanize-ms: 1.2.1
+    optional: true
 
   aggregate-error@3.1.0:
     dependencies:
       clean-stack: 2.2.0
       indent-string: 4.0.0
+    optional: true
 
   ajv-errors@1.0.1(ajv@6.12.6):
     dependencies:
@@ -6821,7 +6999,8 @@ snapshots:
 
   aproba@1.2.0: {}
 
-  aproba@2.0.0: {}
+  aproba@2.0.0:
+    optional: true
 
   arch@2.2.0: {}
 
@@ -6829,6 +7008,7 @@ snapshots:
     dependencies:
       delegates: 1.0.0
       readable-stream: 3.6.2
+    optional: true
 
   argparse@1.0.10:
     dependencies:
@@ -6880,7 +7060,8 @@ snapshots:
       get-intrinsic: 1.3.0
       is-array-buffer: 3.0.5
 
-  arrify@1.0.1: {}
+  arrify@1.0.1:
+    optional: true
 
   asn1.js@4.10.1:
     dependencies:
@@ -6903,7 +7084,8 @@ snapshots:
 
   async-each@1.0.6: {}
 
-  async-foreach@0.1.3: {}
+  async-foreach@0.1.3:
+    optional: true
 
   async-function@1.0.0: {}
 
@@ -7062,6 +7244,7 @@ snapshots:
   brace-expansion@2.0.1:
     dependencies:
       balanced-match: 1.0.2
+    optional: true
 
   braces@2.3.2(supports-color@6.1.0):
     dependencies:
@@ -7194,6 +7377,7 @@ snapshots:
       unique-filename: 1.1.1
     transitivePeerDependencies:
       - bluebird
+    optional: true
 
   cacache@16.1.3:
     dependencies:
@@ -7217,6 +7401,7 @@ snapshots:
       unique-filename: 2.0.1
     transitivePeerDependencies:
       - bluebird
+    optional: true
 
   cache-base@1.0.1:
     dependencies:
@@ -7279,6 +7464,7 @@ snapshots:
       camelcase: 5.3.1
       map-obj: 4.3.0
       quick-lru: 4.0.1
+    optional: true
 
   camelcase@5.3.1: {}
 
@@ -7346,9 +7532,14 @@ snapshots:
       fsevents: 2.3.3
     optional: true
 
+  chokidar@4.0.3:
+    dependencies:
+      readdirp: 4.1.2
+
   chownr@1.1.4: {}
 
-  chownr@2.0.0: {}
+  chownr@2.0.0:
+    optional: true
 
   chrome-trace-event@1.0.4: {}
 
@@ -7370,7 +7561,8 @@ snapshots:
     dependencies:
       source-map: 0.6.1
 
-  clean-stack@2.2.0: {}
+  clean-stack@2.2.0:
+    optional: true
 
   cli-cursor@2.1.0:
     dependencies:
@@ -7416,6 +7608,7 @@ snapshots:
       string-width: 4.2.3
       strip-ansi: 6.0.1
       wrap-ansi: 7.0.0
+    optional: true
 
   clone@1.0.4: {}
 
@@ -7447,7 +7640,8 @@ snapshots:
       color-name: 1.1.4
       simple-swizzle: 0.2.2
 
-  color-support@1.1.3: {}
+  color-support@1.1.3:
+    optional: true
 
   color@3.2.1:
     dependencies:
@@ -7503,7 +7697,8 @@ snapshots:
 
   console-browserify@1.2.0: {}
 
-  console-control-strings@1.1.0: {}
+  console-control-strings@1.1.0:
+    optional: true
 
   consolidate@0.15.1(lodash@4.17.21):
     dependencies:
@@ -7785,6 +7980,7 @@ snapshots:
     dependencies:
       decamelize: 1.2.0
       map-obj: 1.0.1
+    optional: true
 
   decamelize@1.2.0: {}
 
@@ -7851,7 +8047,8 @@ snapshots:
 
   delayed-stream@1.0.0: {}
 
-  delegates@1.0.0: {}
+  delegates@1.0.0:
+    optional: true
 
   depd@1.1.2: {}
 
@@ -7863,6 +8060,9 @@ snapshots:
       minimalistic-assert: 1.0.1
 
   destroy@1.2.0: {}
+
+  detect-libc@1.0.3:
+    optional: true
 
   detect-node@2.1.0: {}
 
@@ -8012,9 +8212,11 @@ snapshots:
 
   entities@4.5.0: {}
 
-  env-paths@2.2.1: {}
+  env-paths@2.2.1:
+    optional: true
 
-  err-code@2.0.3: {}
+  err-code@2.0.3:
+    optional: true
 
   errno@0.1.8:
     dependencies:
@@ -8365,6 +8567,7 @@ snapshots:
   fs-minipass@2.1.0:
     dependencies:
       minipass: 3.3.6
+    optional: true
 
   fs-write-stream-atomic@1.0.10:
     dependencies:
@@ -8407,10 +8610,12 @@ snapshots:
       string-width: 4.2.3
       strip-ansi: 6.0.1
       wide-align: 1.1.5
+    optional: true
 
   gaze@1.1.3:
     dependencies:
       globule: 1.3.4
+    optional: true
 
   gensync@1.0.0-beta.2: {}
 
@@ -8434,7 +8639,8 @@ snapshots:
       dunder-proto: 1.0.1
       es-object-atoms: 1.1.1
 
-  get-stdin@4.0.1: {}
+  get-stdin@4.0.1:
+    optional: true
 
   get-stream@4.1.0:
     dependencies:
@@ -8476,6 +8682,7 @@ snapshots:
       minimatch: 3.0.8
       once: 1.4.0
       path-is-absolute: 1.0.1
+    optional: true
 
   glob@7.2.3:
     dependencies:
@@ -8493,6 +8700,7 @@ snapshots:
       inherits: 2.0.4
       minimatch: 5.1.6
       once: 1.4.0
+    optional: true
 
   globals@11.12.0: {}
 
@@ -8536,6 +8744,7 @@ snapshots:
       glob: 7.1.7
       lodash: 4.17.21
       minimatch: 3.0.8
+    optional: true
 
   gopd@1.2.0: {}
 
@@ -8555,7 +8764,8 @@ snapshots:
       ajv: 6.12.6
       har-schema: 2.0.0
 
-  hard-rejection@2.1.0: {}
+  hard-rejection@2.1.0:
+    optional: true
 
   has-bigints@1.1.0: {}
 
@@ -8577,7 +8787,8 @@ snapshots:
     dependencies:
       has-symbols: 1.1.0
 
-  has-unicode@2.0.1: {}
+  has-unicode@2.0.1:
+    optional: true
 
   has-value@0.3.1:
     dependencies:
@@ -8637,6 +8848,7 @@ snapshots:
   hosted-git-info@4.1.0:
     dependencies:
       lru-cache: 6.0.0
+    optional: true
 
   hpack.js@2.1.6:
     dependencies:
@@ -8681,7 +8893,8 @@ snapshots:
       domutils: 2.8.0
       entities: 2.2.0
 
-  http-cache-semantics@4.1.1: {}
+  http-cache-semantics@4.1.1:
+    optional: true
 
   http-deceiver@1.2.7: {}
 
@@ -8709,6 +8922,7 @@ snapshots:
       debug: 4.4.0(supports-color@6.1.0)
     transitivePeerDependencies:
       - supports-color
+    optional: true
 
   http-proxy-agent@5.0.0:
     dependencies:
@@ -8717,6 +8931,7 @@ snapshots:
       debug: 4.4.0(supports-color@6.1.0)
     transitivePeerDependencies:
       - supports-color
+    optional: true
 
   http-proxy-middleware@0.19.1(debug@4.4.0)(supports-color@6.1.0):
     dependencies:
@@ -8760,12 +8975,14 @@ snapshots:
       debug: 4.4.0(supports-color@6.1.0)
     transitivePeerDependencies:
       - supports-color
+    optional: true
 
   human-signals@1.1.1: {}
 
   humanize-ms@1.2.1:
     dependencies:
       ms: 2.1.3
+    optional: true
 
   iconv-lite@0.4.24:
     dependencies:
@@ -8788,6 +9005,8 @@ snapshots:
 
   ignore@4.0.6: {}
 
+  immutable@5.1.4: {}
+
   import-cwd@2.1.0:
     dependencies:
       import-from: 2.1.0
@@ -8808,7 +9027,8 @@ snapshots:
 
   imurmurhash@0.1.4: {}
 
-  indent-string@4.0.0: {}
+  indent-string@4.0.0:
+    optional: true
 
   indexes-of@1.0.1: {}
 
@@ -8840,6 +9060,7 @@ snapshots:
     dependencies:
       jsbn: 1.1.0
       sprintf-js: 1.1.3
+    optional: true
 
   ip-regex@2.1.0: {}
 
@@ -8973,7 +9194,8 @@ snapshots:
     dependencies:
       is-extglob: 2.1.1
 
-  is-lambda@1.0.1: {}
+  is-lambda@1.0.1:
+    optional: true
 
   is-map@2.0.3: {}
 
@@ -9085,7 +9307,8 @@ snapshots:
 
   javascript-stringify@2.1.0: {}
 
-  js-base64@2.6.4: {}
+  js-base64@2.6.4:
+    optional: true
 
   js-message@1.0.7: {}
 
@@ -9098,7 +9321,8 @@ snapshots:
 
   jsbn@0.1.1: {}
 
-  jsbn@1.1.0: {}
+  jsbn@1.1.0:
+    optional: true
 
   jsesc@3.0.2: {}
 
@@ -9232,8 +9456,10 @@ snapshots:
   lru-cache@6.0.0:
     dependencies:
       yallist: 4.0.0
+    optional: true
 
-  lru-cache@7.18.3: {}
+  lru-cache@7.18.3:
+    optional: true
 
   magic-string@0.30.17:
     dependencies:
@@ -9269,6 +9495,7 @@ snapshots:
     transitivePeerDependencies:
       - bluebird
       - supports-color
+    optional: true
 
   make-fetch-happen@9.1.0:
     dependencies:
@@ -9291,12 +9518,15 @@ snapshots:
     transitivePeerDependencies:
       - bluebird
       - supports-color
+    optional: true
 
   map-cache@0.2.2: {}
 
-  map-obj@1.0.1: {}
+  map-obj@1.0.1:
+    optional: true
 
-  map-obj@4.3.0: {}
+  map-obj@4.3.0:
+    optional: true
 
   map-visit@1.0.0:
     dependencies:
@@ -9340,6 +9570,7 @@ snapshots:
       trim-newlines: 3.0.1
       type-fest: 0.18.1
       yargs-parser: 20.2.9
+    optional: true
 
   merge-descriptors@1.0.3: {}
 
@@ -9397,7 +9628,8 @@ snapshots:
 
   mimic-fn@2.1.0: {}
 
-  min-indent@1.0.1: {}
+  min-indent@1.0.1:
+    optional: true
 
   mini-css-extract-plugin@0.9.0(webpack@4.47.0):
     dependencies:
@@ -9414,6 +9646,7 @@ snapshots:
   minimatch@3.0.8:
     dependencies:
       brace-expansion: 1.1.11
+    optional: true
 
   minimatch@3.1.2:
     dependencies:
@@ -9422,18 +9655,21 @@ snapshots:
   minimatch@5.1.6:
     dependencies:
       brace-expansion: 2.0.1
+    optional: true
 
   minimist-options@4.1.0:
     dependencies:
       arrify: 1.0.1
       is-plain-obj: 1.1.0
       kind-of: 6.0.3
+    optional: true
 
   minimist@1.2.8: {}
 
   minipass-collect@1.0.2:
     dependencies:
       minipass: 3.3.6
+    optional: true
 
   minipass-fetch@1.4.1:
     dependencies:
@@ -9442,6 +9678,7 @@ snapshots:
       minizlib: 2.1.2
     optionalDependencies:
       encoding: 0.1.13
+    optional: true
 
   minipass-fetch@2.1.2:
     dependencies:
@@ -9450,29 +9687,35 @@ snapshots:
       minizlib: 2.1.2
     optionalDependencies:
       encoding: 0.1.13
+    optional: true
 
   minipass-flush@1.0.5:
     dependencies:
       minipass: 3.3.6
+    optional: true
 
   minipass-pipeline@1.2.4:
     dependencies:
       minipass: 3.3.6
+    optional: true
 
   minipass-sized@1.0.3:
     dependencies:
       minipass: 3.3.6
+    optional: true
 
   minipass@3.3.6:
     dependencies:
       yallist: 4.0.0
 
-  minipass@5.0.0: {}
+  minipass@5.0.0:
+    optional: true
 
   minizlib@2.1.2:
     dependencies:
       minipass: 3.3.6
       yallist: 4.0.0
+    optional: true
 
   mississippi@3.0.0:
     dependencies:
@@ -9496,7 +9739,8 @@ snapshots:
     dependencies:
       minimist: 1.2.8
 
-  mkdirp@1.0.4: {}
+  mkdirp@1.0.4:
+    optional: true
 
   moment@2.30.1: {}
 
@@ -9528,7 +9772,8 @@ snapshots:
       object-assign: 4.1.1
       thenify-all: 1.6.0
 
-  nan@2.22.2: {}
+  nan@2.22.2:
+    optional: true
 
   nanoid@3.3.11: {}
 
@@ -9562,6 +9807,9 @@ snapshots:
     dependencies:
       lower-case: 1.1.4
 
+  node-addon-api@7.1.1:
+    optional: true
+
   node-emoji@1.11.0:
     dependencies:
       lodash: 4.17.21
@@ -9589,6 +9837,7 @@ snapshots:
     transitivePeerDependencies:
       - bluebird
       - supports-color
+    optional: true
 
   node-libs-browser@2.2.1:
     dependencies:
@@ -9637,10 +9886,12 @@ snapshots:
     transitivePeerDependencies:
       - bluebird
       - supports-color
+    optional: true
 
   nopt@5.0.0:
     dependencies:
       abbrev: 1.1.1
+    optional: true
 
   normalize-package-data@2.5.0:
     dependencies:
@@ -9655,6 +9906,7 @@ snapshots:
       is-core-module: 2.16.1
       semver: 7.7.1
       validate-npm-package-license: 3.0.4
+    optional: true
 
   normalize-path@2.1.1:
     dependencies:
@@ -9687,6 +9939,7 @@ snapshots:
       console-control-strings: 1.1.0
       gauge: 4.0.4
       set-blocking: 2.0.0
+    optional: true
 
   nth-check@1.0.2:
     dependencies:
@@ -9823,6 +10076,7 @@ snapshots:
   p-map@4.0.0:
     dependencies:
       aggregate-error: 3.1.0
+    optional: true
 
   p-retry@3.0.1:
     dependencies:
@@ -10198,6 +10452,7 @@ snapshots:
     dependencies:
       err-code: 2.0.3
       retry: 0.12.0
+    optional: true
 
   proxy-addr@2.0.7:
     dependencies:
@@ -10262,7 +10517,8 @@ snapshots:
 
   querystringify@2.2.0: {}
 
-  quick-lru@4.0.1: {}
+  quick-lru@4.0.1:
+    optional: true
 
   raf@3.4.1:
     dependencies:
@@ -10291,6 +10547,7 @@ snapshots:
       find-up: 4.1.0
       read-pkg: 5.2.0
       type-fest: 0.8.1
+    optional: true
 
   read-pkg@5.2.0:
     dependencies:
@@ -10328,10 +10585,13 @@ snapshots:
       picomatch: 2.3.1
     optional: true
 
+  readdirp@4.1.2: {}
+
   redent@3.0.0:
     dependencies:
       indent-string: 4.0.0
       strip-indent: 3.0.0
+    optional: true
 
   reflect.getprototypeof@1.0.10:
     dependencies:
@@ -10468,6 +10728,7 @@ snapshots:
   rimraf@3.0.2:
     dependencies:
       glob: 7.2.3
+    optional: true
 
   ripemd160@2.0.2:
     dependencies:
@@ -10513,8 +10774,9 @@ snapshots:
       lodash: 4.17.21
       scss-tokenizer: 0.4.3
       yargs: 17.7.2
+    optional: true
 
-  sass-loader@10.5.2(node-sass@9.0.0)(webpack@4.47.0):
+  sass-loader@10.5.2(node-sass@9.0.0)(sass@1.94.2)(webpack@4.47.0):
     dependencies:
       klona: 2.0.6
       loader-utils: 2.0.4
@@ -10524,6 +10786,15 @@ snapshots:
       webpack: 4.47.0
     optionalDependencies:
       node-sass: 9.0.0
+      sass: 1.94.2
+
+  sass@1.94.2:
+    dependencies:
+      chokidar: 4.0.3
+      immutable: 5.1.4
+      source-map-js: 1.2.1
+    optionalDependencies:
+      '@parcel/watcher': 2.5.1
 
   sax@1.2.4: {}
 
@@ -10549,6 +10820,7 @@ snapshots:
     dependencies:
       js-base64: 2.6.4
       source-map: 0.7.4
+    optional: true
 
   select-hose@2.0.0: {}
 
@@ -10703,7 +10975,8 @@ snapshots:
 
   slash@2.0.0: {}
 
-  smart-buffer@4.2.0: {}
+  smart-buffer@4.2.0:
+    optional: true
 
   snapdragon-node@2.1.1:
     dependencies:
@@ -10751,6 +11024,7 @@ snapshots:
       socks: 2.8.4
     transitivePeerDependencies:
       - supports-color
+    optional: true
 
   socks-proxy-agent@7.0.0:
     dependencies:
@@ -10759,11 +11033,13 @@ snapshots:
       socks: 2.8.4
     transitivePeerDependencies:
       - supports-color
+    optional: true
 
   socks@2.8.4:
     dependencies:
       ip-address: 9.0.5
       smart-buffer: 4.2.0
+    optional: true
 
   sort-keys@1.1.2:
     dependencies:
@@ -10835,7 +11111,8 @@ snapshots:
 
   sprintf-js@1.0.3: {}
 
-  sprintf-js@1.1.3: {}
+  sprintf-js@1.1.3:
+    optional: true
 
   sshpk@1.18.0:
     dependencies:
@@ -10860,6 +11137,7 @@ snapshots:
   ssri@9.0.1:
     dependencies:
       minipass: 3.3.6
+    optional: true
 
   stable@0.1.8: {}
 
@@ -10877,6 +11155,7 @@ snapshots:
   stdout-stream@1.4.1:
     dependencies:
       readable-stream: 2.3.8
+    optional: true
 
   stream-browserify@2.0.2:
     dependencies:
@@ -10964,6 +11243,7 @@ snapshots:
   strip-indent@3.0.0:
     dependencies:
       min-indent: 1.0.1
+    optional: true
 
   stylehacks@4.0.3:
     dependencies:
@@ -11013,6 +11293,7 @@ snapshots:
       minizlib: 2.1.2
       mkdirp: 1.0.4
       yallist: 4.0.0
+    optional: true
 
   terser-webpack-plugin@1.4.6(webpack@4.47.0):
     dependencies:
@@ -11097,9 +11378,11 @@ snapshots:
 
   tr46@0.0.3: {}
 
-  trim-newlines@3.0.1: {}
+  trim-newlines@3.0.1:
+    optional: true
 
-  true-case-path@2.2.1: {}
+  true-case-path@2.2.1:
+    optional: true
 
   tryer@1.0.1: {}
 
@@ -11115,11 +11398,13 @@ snapshots:
 
   tweetnacl@0.14.5: {}
 
-  type-fest@0.18.1: {}
+  type-fest@0.18.1:
+    optional: true
 
   type-fest@0.6.0: {}
 
-  type-fest@0.8.1: {}
+  type-fest@0.8.1:
+    optional: true
 
   type-is@1.6.18:
     dependencies:
@@ -11204,6 +11489,7 @@ snapshots:
   unique-filename@2.0.1:
     dependencies:
       unique-slug: 3.0.0
+    optional: true
 
   unique-slug@2.0.2:
     dependencies:
@@ -11212,6 +11498,7 @@ snapshots:
   unique-slug@3.0.0:
     dependencies:
       imurmurhash: 0.1.4
+    optional: true
 
   universalify@0.1.2: {}
 
@@ -11632,6 +11919,7 @@ snapshots:
   wide-align@1.1.5:
     dependencies:
       string-width: 4.2.3
+    optional: true
 
   worker-farm@1.7.0:
     dependencies:
@@ -11680,7 +11968,8 @@ snapshots:
 
   yargs-parser@20.2.9: {}
 
-  yargs-parser@21.1.1: {}
+  yargs-parser@21.1.1:
+    optional: true
 
   yargs@13.3.2:
     dependencies:
@@ -11714,3 +12003,4 @@ snapshots:
       string-width: 4.2.3
       y18n: 5.0.8
       yargs-parser: 21.1.1
+    optional: true

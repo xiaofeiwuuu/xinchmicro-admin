@@ -123,12 +123,33 @@
             :remove="handleRemove"
             :before-upload="beforeUpload"
             :customRequest="uploadFile"
+            :disabled="uploading"
           >
-            <a-button>
-              <a-icon type="upload" /> 点击上传
+            <a-button :disabled="uploading">
+              <a-icon :type="uploading ? 'loading' : 'upload'" />
+              {{ uploading ? '上传中...' : '点击上传' }}
             </a-button>
-            <div style="margin-top: 8px; color: #999;">只能上传PDF文件，且不超过10MB</div>
+            <div style="margin-top: 8px; color: #999;">支持 PDF 文件上传，不限制文件大小</div>
           </a-upload>
+
+          <!-- 上传进度条 -->
+          <div v-if="uploading" style="margin-top: 16px;">
+            <a-progress
+              :percent="uploadProgress"
+              :status="uploadProgress === 100 ? 'success' : 'active'"
+            />
+            <div style="margin-top: 8px; color: #666; font-size: 12px;">
+              {{ progressText }}
+            </div>
+            <a-button
+              type="danger"
+              size="small"
+              style="margin-top: 8px;"
+              @click="handleCancelUpload"
+            >
+              取消上传
+            </a-button>
+          </div>
         </a-form-item>
       </a-form>
     </a-modal>
@@ -156,15 +177,16 @@
 </template>
 
 <script>
-import { 
-  getManuals, 
-  getManualById, 
-  createManual, 
-  updateManual, 
+import {
+  getManuals,
+  getManualById,
+  createManual,
+  updateManual,
   deleteManual,
-  uploadPdf,
   getPdfDownloadUrl,
-  deletePdf
+  deletePdf,
+  getUploadAuth,
+  uploadToCosWithProgress
 } from '@/api';
 
 export default {
@@ -208,7 +230,12 @@ export default {
       currentId: null,
       previewVisible: false,
       previewUrl: '',
-      currentManual: null
+      currentManual: null,
+      // 上传进度相关
+      uploading: false,
+      uploadProgress: 0,
+      progressText: '',
+      currentXhr: null
     };
   },
   created() {
@@ -406,27 +433,41 @@ export default {
     
     // 上传前检查
     beforeUpload(file) {
-      const isPDF = file.type === 'application/pdf';
-      const isLt10M = file.size / 1024 / 1024 < 10;
-      
+      const isPDF = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+
       if (!isPDF) {
-        this.$message.error('只能上传PDF文件!');
+        this.$message.error('只能上传 PDF 文件!');
         return false;
       }
-      
-      if (!isLt10M) {
-        this.$message.error('文件大小不能超过10MB!');
-        return false;
-      }
-      
+
       return true;
     },
     
-    // 上传文件
+    // 上传文件（带进度显示）
     async uploadFile(options) {
       const file = options.file;
+      this.uploading = true;
+      this.uploadProgress = 0;
+      this.progressText = '准备上传...';
+
       try {
-        const res = await uploadPdf(file);
+        // 1. 获取上传授权
+        this.progressText = '获取上传授权...';
+        const authData = await getUploadAuth({ path: file.name });
+
+        // 2. 使用带进度监控的方法上传到 COS
+        this.progressText = '正在上传...';
+        const uploadPromise = uploadToCosWithProgress(file, authData, (progress) => {
+          this.uploadProgress = progress.percent;
+          this.progressText = `正在上传: ${progress.uploadedMB}MB / ${progress.totalMB}MB`;
+        });
+
+        // 保存 Promise 以便可以获取 xhr（用于取消）
+        this.currentUploadPromise = uploadPromise;
+
+        const res = await uploadPromise;
+
+        // 3. 上传成功
         this.formData.fileId = res.fileID;
         this.formData.filePath = res.filename || file.name;
         this.fileList = [{
@@ -435,16 +476,26 @@ export default {
           status: 'done',
           url: res.url
         }];
+
+        this.progressText = '上传成功！';
         this.$message.success('文件上传成功');
+
         if (options.onSuccess) {
           options.onSuccess(res);
         }
       } catch (error) {
         console.error('上传文件出错:', error);
-        this.$message.error('文件上传失败');
+        this.$message.error(error.message || '文件上传失败');
+        this.fileList = [];
+
         if (options.onError) {
           options.onError(error);
         }
+      } finally {
+        this.uploading = false;
+        this.uploadProgress = 0;
+        this.progressText = '';
+        this.currentUploadPromise = null;
       }
     },
     
@@ -454,6 +505,30 @@ export default {
       this.formData.filePath = '';
       this.fileList = [];
       return true;
+    },
+
+    // 取消上传
+    handleCancelUpload() {
+      this.$confirm({
+        title: '确定要取消上传吗？',
+        content: '取消后将停止上传',
+        okText: '确定',
+        cancelText: '取消',
+        onOk: () => {
+          // 取消当前上传
+          if (this.currentUploadPromise && this.currentUploadPromise._xhr) {
+            this.currentUploadPromise._xhr.abort();
+          }
+
+          this.$message.info('上传已取消');
+
+          this.uploading = false;
+          this.uploadProgress = 0;
+          this.progressText = '';
+          this.fileList = [];
+          this.currentUploadPromise = null;
+        }
+      });
     },
     
     // 提交表单

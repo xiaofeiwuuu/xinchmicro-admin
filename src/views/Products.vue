@@ -33,11 +33,11 @@
 
         <!-- 表格组件 -->
         <a-table :columns="columns" :data-source="data" :loading="loading" rowKey="id"
-            @change="handleTableChange">
+            :pagination="pagination" @change="handleTableChange">
             <template slot="parameters" slot-scope="text, record">
                 <div v-if="record.catalog && record.catalog.paramTitles">
-                    <div v-for="(title, index) in record.catalog.paramTitles" :key="index">
-                        <strong>{{ title }}:</strong> {{ text[title] || '-' }}
+                    <div v-for="param in record.catalog.paramTitles" :key="param.id">
+                        <strong>{{ param.title }}:</strong> {{ text[param.id] || '-' }}
                     </div>
                 </div>
             </template>
@@ -121,21 +121,21 @@
                 <!-- 动态参数表单 -->
                 <div v-if="selectedCatalog">
                     <h3 style="margin-bottom: 16px;">产品参数</h3>
-                    <a-form-item 
-                        v-for="(title, index) in selectedCatalog.paramTitles" 
-                        :key="index"
-                        :label="title"
+                    <a-form-item
+                        v-for="param in selectedCatalog.paramTitles"
+                        :key="param.id"
+                        :label="param.title"
                         :colon="false"
                     >
-                        <a-input 
+                        <a-input
                             v-decorator="[
-                                `parameters[${title}]`, 
-                                { 
-                                    rules: [{ required: true, message: `请输入${title}!` }],
-                                    initialValue: currentRecord && currentRecord.parameters ? currentRecord.parameters[title] : ''
+                                `parameters[${param.id}]`,
+                                {
+                                    rules: [{ required: true, message: `请输入${param.title}!` }],
+                                    initialValue: currentRecord && currentRecord.parameters ? currentRecord.parameters[param.id] : ''
                                 }
                             ]"
-                            :placeholder="`请输入${title}`" 
+                            :placeholder="`请输入${param.title}`"
                         />
                     </a-form-item>
                 </div>
@@ -238,6 +238,16 @@ export default {
             uploading: false,
             // 上传错误信息
             uploadError: null,
+            // 分页配置
+            pagination: {
+                current: 1,
+                pageSize: 10,
+                total: 0,
+                showSizeChanger: true,
+                showQuickJumper: true,
+                showTotal: (total) => `共 ${total} 条`,
+                pageSizeOptions: ['10', '20', '50', '100'],
+            },
         };
     },
     mounted() {
@@ -256,34 +266,54 @@ export default {
 
         // 搜索方法
         handleSearch() {
+            this.pagination.current = 1;  // 搜索时重置到第一页
             this.fetchData();
         },
-        
+
         // 重置方法
         handleReset() {
             this.searchForm = {
                 name: '',
                 catalogId: undefined,
             };
+            this.pagination.current = 1;  // 重置时回到第一页
+            this.fetchData();
+        },
+
+        // 表格变化处理（分页、排序）
+        handleTableChange(pagination) {
+            this.pagination.current = pagination.current;
+            this.pagination.pageSize = pagination.pageSize;
             this.fetchData();
         },
 
         // 获取数据方法
         fetchData() {
             this.loading = true;
-            const query = {};
-            
+            const query = {
+                page: this.pagination.current,
+                pageSize: this.pagination.pageSize,
+            };
+
             if (this.searchForm.name) {
                 query.name = this.searchForm.name;
             }
-            
+
             if (this.searchForm.catalogId) {
                 query.catalogId = this.searchForm.catalogId;
             }
 
             getProducts(query).then(res => {
                 this.loading = false;
-                this.data = res;
+                // 支持两种返回格式：{ list, total } 或直接数组
+                if (res && res.list !== undefined) {
+                    this.data = res.list;
+                    this.pagination.total = res.total || 0;
+                } else {
+                    // 兼容旧格式（直接返回数组）
+                    this.data = res || [];
+                    this.pagination.total = res ? res.length : 0;
+                }
             }).catch(error => {
                 this.loading = false;
                 this.$message.error('获取数据失败: ' + error.message);
@@ -298,15 +328,15 @@ export default {
                 // 重置参数表单
                 if (catalog.paramTitles && catalog.paramTitles.length > 0) {
                     const parameters = {};
-                    catalog.paramTitles.forEach(title => {
-                        parameters[title] = this.currentRecord && this.currentRecord.parameters ? 
-                            this.currentRecord.parameters[title] || '' : '';
+                    catalog.paramTitles.forEach(param => {
+                        parameters[param.id] = this.currentRecord && this.currentRecord.parameters ?
+                            this.currentRecord.parameters[param.id] || '' : '';
                     });
-                    
+
                     setTimeout(() => {
-                        catalog.paramTitles.forEach(title => {
+                        catalog.paramTitles.forEach(param => {
                             this.form.setFieldsValue({
-                                [`parameters[${title}]`]: parameters[title]
+                                [`parameters[${param.id}]`]: parameters[param.id]
                             });
                         });
                     }, 100);
@@ -463,8 +493,18 @@ export default {
 
         // 移除文件
         async handleRemove() {
-            // 如果是编辑模式且有fileID，则删除服务器上的文件
-            if (this.currentRecord && this.currentRecord.fileID) {
+            // 优先删除新上传的文件
+            if (this.uploadedFileInfo && this.uploadedFileInfo.fileID) {
+                try {
+                    await this.deletePdfFile(this.uploadedFileInfo.fileID);
+                    this.$message.success('PDF文件已删除');
+                } catch (error) {
+                    this.$message.error('删除PDF文件失败: ' + error.message);
+                    return false;
+                }
+            }
+            // 如果没有新上传的文件，检查是否是编辑模式的原始文件
+            else if (this.currentRecord && this.currentRecord.fileID) {
                 try {
                     await this.deletePdfFile(this.currentRecord.fileID);
                     this.$message.success('PDF文件已删除');
@@ -473,7 +513,7 @@ export default {
                     return false;
                 }
             }
-            
+
             this.uploadFile = null;
             this.fileList = [];
             this.uploadedFileInfo = null;
@@ -546,11 +586,6 @@ export default {
             });
         },
 
-        // 表格变化处理
-        handleTableChange() {
-            this.fetchData();
-        },
-
         // 确认模态框操作
         handleOk() {
             this.form.validateFields(async (err, values) => {
@@ -558,13 +593,13 @@ export default {
                     this.confirmLoading = true;
                     
                     try {
-                        // 处理参数
+                        // 处理参数（使用 param.id 作为 key）
                         const parameters = {};
                         if (this.selectedCatalog && this.selectedCatalog.paramTitles) {
-                            this.selectedCatalog.paramTitles.forEach(title => {
+                            this.selectedCatalog.paramTitles.forEach(param => {
                                 // 直接从 values.parameters 对象中获取值
-                                if (values.parameters && values.parameters[title] !== undefined) {
-                                    parameters[title] = values.parameters[title];
+                                if (values.parameters && values.parameters[param.id] !== undefined) {
+                                    parameters[param.id] = values.parameters[param.id];
                                 }
                             });
                         }

@@ -109,6 +109,21 @@ const fetchWrapper = {
     try {
       const response = await fetch(url, finalOptions);
 
+      // 401：token 失效或未提供，统一清除登录态并跳转登录页
+      if (response.status === 401) {
+        if (this.message) {
+          this.message.error('登录已过期，请重新登录');
+        }
+        localStorage.clear();
+        sessionStorage.clear();
+        if (this.router) {
+          this.router.push('/login');
+        }
+        const authError = new Error('登录已过期');
+        authError.isAuth = true;
+        throw authError;
+      }
+
       const res = await response.json();
       console.log('原始响应数据:', res);
       
@@ -129,19 +144,15 @@ const fetchWrapper = {
       throw new Error(res.errmsg || res.message || '请求失败');
     } catch (error) {
       console.error('请求错误:', error);
-      
+
+      // 401 已在 try 块内统一处理（弹消息+清登录态+跳登录），这里直接抛出避免重复弹错
+      if (error.isAuth) {
+        throw error;
+      }
+
       if (error.message.includes('413')) {
         if (this.message) {
           this.message.error('文件太大，超出服务器允许的大小限制。请尝试上传更小的文件（小于5MB）。');
-        }
-      } else if (error.message.includes('401')) {
-        if (this.message) {
-          this.message.error('登录已过期，请重新登录。');
-        }
-        localStorage.clear();
-        sessionStorage.clear();
-        if (this.router) {
-          this.router.push('/login');
         }
       } else if (this.message) {
         this.message.error(error.message);

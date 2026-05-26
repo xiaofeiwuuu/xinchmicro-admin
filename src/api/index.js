@@ -1,8 +1,8 @@
 import fetchWrapper from '@/plugins/fetchWrapper'; // 确保路径正确
 
 // 定义 API 基础 URL
-// export const API_BASE_URL = 'http://localhost:80'; // 替换为实际的API地址
-export const API_BASE_URL = ''; // 替换为实际的API地址
+export const API_BASE_URL = 'http://localhost:80'; // 替换为实际的API地址
+// export const API_BASE_URL = ''; // 替换为实际的API地址
 
 // 产品分类接口
 export const getCategories = async (query = {}) => {

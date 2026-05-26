@@ -118,6 +118,25 @@
                     </a-select>
                 </a-form-item>
                 
+                <a-form-item label="排序" :colon="false">
+                    <a-input-number
+                        v-decorator="[
+                            'sort',
+                            {
+                                rules: [{ required: true, message: '请输入排序值!' }],
+                                initialValue: currentRecord ? currentRecord.sort : 999
+                            }
+                        ]"
+                        :min="0"
+                        :precision="0"
+                        placeholder="数字越小越靠前"
+                        style="width: 100%;"
+                    />
+                    <div style="color: #999; font-size: 12px; margin-top: 5px;">
+                        提示：数字越小越靠前，相同则按创建时间倒序
+                    </div>
+                </a-form-item>
+
                 <!-- 动态参数表单 -->
                 <div v-if="selectedCatalog">
                     <h3 style="margin-bottom: 16px;">产品参数</h3>
@@ -198,8 +217,14 @@ const columns = [
     {
         title: 'PDF文档',
         dataIndex: 'pdfUrl',
-        width: '25%',
+        width: '20%',
         scopedSlots: { customRender: 'pdfUrl' },
+    },
+    {
+        title: '排序',
+        dataIndex: 'sort',
+        width: '8%',
+        sorter: (a, b) => (a.sort || 0) - (b.sort || 0),
     },
     {
         title: '操作',
@@ -536,6 +561,7 @@ export default {
                 this.form.setFieldsValue({
                     name: record.name,
                     catalogId: record.catalogId,
+                    sort: record.sort != null ? record.sort : 999,
                 });
                 
                 // 触发目录变更
@@ -617,6 +643,7 @@ export default {
                         const submitData = {
                             name: values.name,
                             catalogId: values.catalogId,
+                            sort: values.sort,
                             parameters: parameters
                         };
                         

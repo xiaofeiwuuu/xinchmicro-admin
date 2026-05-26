@@ -96,6 +96,24 @@
                         </a-select-option>
                     </a-select>
                 </a-form-item>
+                <a-form-item label="排序" :colon="false">
+                    <a-input-number
+                        v-decorator="[
+                            'sort',
+                            {
+                                rules: [{ required: true, message: '请输入排序值!' }],
+                                initialValue: currentRecord ? currentRecord.sort : 999
+                            }
+                        ]"
+                        :min="0"
+                        :precision="0"
+                        placeholder="数字越小越靠前"
+                        style="width: 100%;"
+                    />
+                    <div style="color: #999; font-size: 12px; margin-top: 5px;">
+                        提示：数字越小越靠前，相同则按创建时间倒序
+                    </div>
+                </a-form-item>
                 <a-form-item label="参数标题" :colon="false">
                     <div>
                         <div v-for="(param, index) in paramTitlesList" :key="param.id || index" style="display: flex; margin-bottom: 8px;">
@@ -146,8 +164,14 @@ const columns = [
     {
         title: '参数标题',
         dataIndex: 'paramTitles',
-        width: '35%',
+        width: '30%',
         scopedSlots: { customRender: 'paramTitles' },
+    },
+    {
+        title: '排序',
+        dataIndex: 'sort',
+        width: '8%',
+        sorter: (a, b) => (a.sort || 0) - (b.sort || 0),
     },
     {
         title: '操作',
@@ -249,6 +273,7 @@ export default {
                 this.form.setFieldsValue({
                     name: record.name,
                     categoryId: record.categoryId,
+                    sort: record.sort != null ? record.sort : 999,
                 });
                 // 复制 paramTitles 数组（保留 id）
                 this.paramTitlesList = (record.paramTitles || []).map(p => ({
@@ -301,6 +326,7 @@ export default {
                         const submitData = {
                             name: values.name,
                             categoryId: values.categoryId,
+                            sort: values.sort,
                             paramTitles: validParamTitles.map(p => ({
                                 id: p.id,  // 保留 id（新增时为 undefined，后端会自动生成）
                                 title: p.title.trim()

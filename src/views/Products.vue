@@ -164,7 +164,7 @@
                         name="pdf"
                         :fileList="fileList"
                         :beforeUpload="beforeUpload"
-                        :remove="handleRemove"
+                        :showUploadList="{ showRemoveIcon: false }"
                         accept=".pdf"
                         :disabled="uploading"
                     >
@@ -389,18 +389,7 @@ export default {
                 return false;
             }
 
-            // 如果是编辑模式且已有PDF，先删除旧文件
-            if (this.currentRecord && this.currentRecord.fileID) {
-                try {
-                    await this.deletePdfFile(this.currentRecord.fileID);
-                    this.$message.success('旧PDF文件已删除');
-                } catch (error) {
-                    this.$message.error('删除旧PDF文件失败: ' + error.message);
-                    return false;
-                }
-            }
-            
-            // 清除之前的文件信息
+            // 清除之前的文件信息（旧 PDF 的清理交由服务端 updateProduct 异步处理）
             this.uploadFile = file;
             this.uploadedFileInfo = null;
             
@@ -514,35 +503,6 @@ export default {
                 this.$message.destroy();
                 this.$message.error('下载PDF失败: ' + error.message);
             }
-        },
-
-        // 移除文件
-        async handleRemove() {
-            // 优先删除新上传的文件
-            if (this.uploadedFileInfo && this.uploadedFileInfo.fileID) {
-                try {
-                    await this.deletePdfFile(this.uploadedFileInfo.fileID);
-                    this.$message.success('PDF文件已删除');
-                } catch (error) {
-                    this.$message.error('删除PDF文件失败: ' + error.message);
-                    return false;
-                }
-            }
-            // 如果没有新上传的文件，检查是否是编辑模式的原始文件
-            else if (this.currentRecord && this.currentRecord.fileID) {
-                try {
-                    await this.deletePdfFile(this.currentRecord.fileID);
-                    this.$message.success('PDF文件已删除');
-                } catch (error) {
-                    this.$message.error('删除PDF文件失败: ' + error.message);
-                    return false;
-                }
-            }
-
-            this.uploadFile = null;
-            this.fileList = [];
-            this.uploadedFileInfo = null;
-            return true;
         },
 
         // 显示添加或编辑产品的模态框
@@ -682,7 +642,20 @@ export default {
         },
 
         // 取消模态框操作
-        handleCancel() {
+        async handleCancel() {
+            // 清理孤儿文件：本次会话刚上传但未保存的 PDF
+            // 新增场景：uploadedFileInfo 一定是新文件
+            // 编辑场景：uploadedFileInfo.fileID 与 currentRecord.fileID 不同，说明是新上传的替换文件
+            const orphanFileID = this.uploadedFileInfo && this.uploadedFileInfo.fileID;
+            const originalFileID = this.currentRecord && this.currentRecord.fileID;
+            if (orphanFileID && orphanFileID !== originalFileID) {
+                try {
+                    await this.deletePdfFile(orphanFileID);
+                } catch (error) {
+                    console.error('清理孤儿 PDF 失败:', error);
+                }
+            }
+
             this.visible = false;
             this.form.resetFields();
             this.currentRecord = null;

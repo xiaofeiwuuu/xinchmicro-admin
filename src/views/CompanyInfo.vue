@@ -140,7 +140,7 @@
 						</a-button>
 					</div>
 					<div v-if="logoFileList.length && logoFileList[0].url" style="margin-top: 8px;">
-						<img :src="logoFileList[0].url" alt="公司Logo" style="max-width: 200px; max-height: 200px;" />
+						<img :src="toDisplayUrl(logoFileList[0].url)" alt="公司Logo" style="max-width: 200px; max-height: 200px;" />
 						<div style="margin-top: 8px;">
 							<a-button type="primary" @click="handleDownloadLogo" :loading="logoDownloadLoading">
 								<a-icon type="eye" /> 查看
@@ -151,7 +151,7 @@
 						</div>
 					</div>
 					<a-modal :visible="previewVisible" :footer="null" @cancel="handleCancel">
-						<img alt="example" style="width: 100%" :src="previewImage" />
+						<img alt="example" style="width: 100%" :src="toDisplayUrl(previewImage)" />
 					</a-modal>
 				</a-form-item>
 				<!-- <a-form-item label="安全手册" :labelCol="{ span: 4 }" :wrapperCol="{ span: 14 }">
@@ -203,6 +203,7 @@
 
 <script>
 import { notifyError } from '@/utils/notify';
+import { toDisplayUrl } from '@/utils/cloudUrl';
 import { getCompanyInfo, updateCompanyInfo, uploadFile, uploadPdf, deletePdf, getPdfDownloadUrl } from '@/api'
 
 export default {
@@ -227,6 +228,7 @@ export default {
 		}
 	},
 	methods: {
+		toDisplayUrl,
 		async handleSubmit(e) {
 			e.preventDefault()
 			this.form.validateFields(async (err, values) => {

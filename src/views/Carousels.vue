@@ -15,7 +15,7 @@
 				rowKey="id"
 			>
 				<template slot="image" slot-scope="text">
-					<img :src="text" style="max-width: 100px; max-height: 60px;" />
+					<img :src="toDisplayUrl(text)" style="max-width: 100px; max-height: 60px;" />
 				</template>
 				<template slot="status" slot-scope="text">
 					<a-tag :color="text === 'active' ? 'green' : 'red'">
@@ -74,7 +74,7 @@
 						</a-button>
 					</div>
 					<div v-if="fileList.length && fileList[0].url" style="margin-top: 8px;">
-						<img :src="fileList[0].url" alt="轮播图" style="max-width: 200px; max-height: 200px;" />
+						<img :src="toDisplayUrl(fileList[0].url)" alt="轮播图" style="max-width: 200px; max-height: 200px;" />
 						<div style="margin-top: 8px;">
 							<a-button type="primary" @click="handleViewUploadedImage" :loading="viewUploadLoading">
 								<a-icon type="eye" /> 查看
@@ -110,6 +110,7 @@
 
 <script>
 import { notifyError } from '@/utils/notify';
+import { toDisplayUrl } from '@/utils/cloudUrl';
 import { getCarousels, createCarousel, updateCarousel, deleteCarousel, updateCarouselOrder, uploadFile, deletePdf, getPdfDownloadUrl } from '@/api'
 
 export default {
@@ -414,8 +415,9 @@ export default {
 				this.uploadImageFile(this.uploadFile)
 			}
 		},
+		toDisplayUrl,
 		previewImage(url) {
-			this.previewImageUrl = url
+			this.previewImageUrl = toDisplayUrl(url)
 			this.previewVisible = true
 		},
 		handlePreviewCancel() {

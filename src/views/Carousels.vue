@@ -57,12 +57,14 @@
 					<a-upload
 						name="file"
 						listType="picture-card"
+						v-show="!fileList.length || uploading"
 						:fileList="fileList"
+						:showUploadList="false"
 						:beforeUpload="beforeUpload"
 						:remove="handleRemove"
 						:disabled="uploading"
 					>
-						<div v-if="!fileList.length">
+						<div>
 							<a-icon :type="uploading ? 'loading' : 'plus'" />
 							<div class="ant-upload-text">{{ uploading ? '上传中...' : '上传' }}</div>
 						</div>
@@ -92,8 +94,9 @@
 					<a-input-number v-model="form.order" :min="0" />
 				</a-form-model-item>
 				<a-form-model-item label="状态" prop="status">
+					<!-- 开关要的是布尔值，状态字段存的是 'active' / 'inactive'：不能直接 v-model（'inactive' 也是真值，会把已禁用显示成启用） -->
 					<a-switch
-						v-model="form.status"
+						:checked="form.status === 'active'"
 						checked-children="启用"
 						un-checked-children="禁用"
 						@change="val => form.status = val ? 'active' : 'inactive'"

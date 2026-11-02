@@ -66,17 +66,6 @@ let routes = [
 		component: () => import('@/views/ProductsBulkEn.vue'),
 	},
 	{
-		path: '/orphan-files',
-		name: 'OrphanFiles',
-		layout: "dashboard",
-		meta:{
-			name:'孤儿文件清理',
-			requiresAuth: true,
-			requiresMainUser: true
-		},
-		component: () => import('@/views/OrphanFiles.vue'),
-	},
-	{
 		path: '/company',
 		name: 'CompanyInfo',
 		layout: "dashboard",

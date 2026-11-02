@@ -80,7 +80,17 @@
 					</div>
 				</a-form-model-item>
 				<a-form-model-item label="链接" prop="link">
-					<a-input v-model="form.link" placeholder="请输入链接" />
+					<a-input v-model="form.link" placeholder="例如：/pages/product/detail?id=123" />
+					<div class="link-help">
+						<div>点击轮播图后的跳转，分两种写法：</div>
+						<div>1. 跳转到小程序内页面（以 / 开头）：</div>
+						<div class="link-help-item">产品目录（某个分类下）：<code>/pages/catalog/index?categoryId=分类ID&amp;categoryName=分类名称</code></div>
+						<div class="link-help-item">产品列表（某个目录下）：<code>/pages/product/list?catalogId=目录ID&amp;catalogName=目录名称</code></div>
+						<div class="link-help-item">产品详情：<code>/pages/product/detail?id=产品ID</code></div>
+						<div class="link-help-item">ID 在「产品分类」「产品目录」「产品详情」页的 ID 列里查看；名称显示为页面标题，名称里含 &amp; # ? % 等符号时不要直接写。</div>
+						<div>2. 外部网址（以 http 开头）：小程序里不能直接打开，点击后只会复制该网址。</div>
+						<div>首页、搜索、公司是底部标签页，目前不能作为跳转目标。</div>
+					</div>
 				</a-form-model-item>
 				<a-form-model-item label="排序" prop="order">
 					<a-input-number v-model="form.order" :min="0" />
@@ -428,4 +438,7 @@ export default {
 	margin-top: 8px;
 	color: #666;
 }
+.link-help { margin-top: 4px; color: rgba(0, 0, 0, 0.45); font-size: 12px; line-height: 1.8; }
+.link-help-item { padding-left: 14px; }
+.link-help code { background: rgba(0, 0, 0, 0.04); padding: 0 4px; border-radius: 2px; word-break: break-all; }
 </style> 

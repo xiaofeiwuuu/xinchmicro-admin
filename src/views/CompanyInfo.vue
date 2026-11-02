@@ -627,9 +627,9 @@ export default {
 </script>
 
 <style scoped>
-/* 整个表单保持原来的宽度（整行的 75%），不撑满；窄屏时占满 */
+/* 整个表单的宽度（整行的 50%），不撑满；窄屏时占满 */
 .co-form {
-	max-width: 75%;
+	max-width: 50%;
 }
 @media (max-width: 992px) {
 	.co-form { max-width: 100%; }

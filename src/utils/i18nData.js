@@ -186,10 +186,10 @@ export function describeProblems(report, fileNames = [], skipped = []) {
   const nameOf = (index) => fileNames[index] || '';
   skipped.forEach((entry) => rows.push({ type: '已跳过', fileName: entry.fileName, detail: entry.reason }));
   ((report && report.notFound) || []).forEach((e) =>
-    rows.push({ type: '找不到产品', fileName: nameOf(e.index), detail: `没有名为「${e.name}」的产品${e.catalogId ? '（在所选目录内）' : ''}，请检查文件名是否与产品名一致` })
+    rows.push({ type: '找不到产品', fileName: nameOf(e.index), detail: `没有名为「${e.name}」的产品${e.catalogId ? '（在该文件夹对应的目录内）' : ''}，请检查文件名是否与产品名一致` })
   );
   ((report && report.ambiguous) || []).forEach((e) =>
-    rows.push({ type: '产品重名', fileName: nameOf(e.index), detail: `「${e.name}」在 ${e.candidates.length} 个目录里都有，请按目录名分文件夹后用「选择文件夹」上传，或在上方限定目录后重新预览` })
+    rows.push({ type: '产品重名', fileName: nameOf(e.index), detail: `「${e.name}」在 ${e.candidates.length} 个目录里都有，请按目录名分文件夹放好，再用「选择文件夹」重新选择` })
   );
   ((report && report.conflicts) || []).forEach((e) =>
     rows.push({ type: '重复指向', fileName: nameOf(e.index), detail: `与其它文件对应同一个产品（产品 ID ${e.productId}）` })

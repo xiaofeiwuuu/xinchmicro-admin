@@ -1,167 +1,48 @@
 <template>
-  <div class="bulk-en">
-    <!-- 覆盖情况 -->
-    <a-card size="small" title="英文版覆盖情况" style="margin-bottom: 16px;">
-      <a-spin :spinning="statsLoading">
-        <div v-if="stats" style="display: flex; align-items: center; flex-wrap: wrap;">
-          <a-statistic title="产品总数" :value="stats.total" style="margin-right: 40px;" />
-          <a-statistic title="已有英文版" :value="stats.withEnFile" style="margin-right: 40px;" />
-          <a-statistic title="缺英文版" :value="stats.missingEnFile" style="margin-right: 40px;" />
-          <div style="flex: 1; min-width: 240px;">
-            <a-progress :percent="coverage" />
-          </div>
-          <a-button size="small" icon="reload" style="margin-left: 16px;" @click="loadStats">刷新</a-button>
-        </div>
-        <div v-else style="color: #999;">暂无数据</div>
-      </a-spin>
-    </a-card>
+  <a-card :bordered="false" class="bulk-en">
+    <!-- 概况与说明：只用灰色小字 -->
+    <div class="be-summary" v-if="stats">产品共 {{ stats.total }} 个，已有英文版 {{ stats.withEnFile }} 个</div>
+    <div class="be-hint">
+      文件名写成「产品名_EN.pdf」，例如 XC1234_EN.pdf，按产品名匹配（不区分大小写）。
+      产品名在多个目录里重复时，请把文件按目录名分文件夹放好，再用「选择文件夹」。
+      点「确认关联」之前不会影响线上数据。
+    </div>
 
-    <!-- 第一步：选择并上传 -->
-    <a-card size="small" title="第一步：选择英文 PDF 并上传" style="margin-bottom: 16px;">
-      <a-alert
-        type="info"
-        show-icon
-        style="margin-bottom: 16px;"
-        message="文件名格式：产品名_EN.pdf，例如 XC1234_EN.pdf。系统按产品名匹配（不区分大小写）。上传的文件在第二步确认关联之前不会影响线上数据。"
-        description="约三成产品名在多个目录里重复。请把英文 PDF 按目录名分文件夹放好（根文件夹/目录名/XC1234_EN.pdf），再用「选择文件夹」上传，系统会用文件夹名识别目录，文件夹名需要与后台的目录名一致。"
-      />
+    <!-- 一个主按钮走完流程：上传并检查 → 确认关联 -->
+    <div class="be-toolbar">
+      <a-upload multiple accept=".pdf" :show-upload-list="false" :before-upload="beforeSelect" :disabled="busy">
+        <a-button :disabled="busy">选择文件</a-button>
+      </a-upload>
+      <a-upload directory accept=".pdf" :show-upload-list="false" :before-upload="beforeSelect" :disabled="busy || !catalogsLoaded">
+        <a-button :disabled="busy || !catalogsLoaded">选择文件夹</a-button>
+      </a-upload>
+      <a-button type="primary" :disabled="!mainEnabled" :loading="previewing || committing" @click="onMain">{{ mainLabel }}</a-button>
+      <a v-if="rows.length && !busy" class="be-link" @click="clearAll">清空</a>
+    </div>
 
-      <a-form layout="inline" style="margin-bottom: 12px;">
-        <a-form-item>
-          <a-upload
-            multiple
-            accept=".pdf"
-            :show-upload-list="false"
-            :before-upload="beforeSelect"
-            :disabled="busy"
-          >
-            <a-button icon="plus" :disabled="busy">选择 PDF 文件（可多选）</a-button>
-          </a-upload>
-        </a-form-item>
-        <a-form-item>
-          <a-upload
-            directory
-            accept=".pdf"
-            :show-upload-list="false"
-            :before-upload="beforeSelect"
-            :disabled="busy || !catalogsLoaded"
-          >
-            <a-button icon="folder-open" :disabled="busy || !catalogsLoaded">选择文件夹（按目录名分文件夹）</a-button>
-          </a-upload>
-        </a-form-item>
-        <a-form-item label="统一限定目录">
-          <a-select
-            v-model="catalogId"
-            placeholder="可选：没有分文件夹的文件都归到这个目录"
-            style="width: 280px;"
-            allowClear
-            :disabled="busy"
-            @change="onCatalogChange"
-          >
-            <a-select-option v-for="catalog in catalogs" :key="catalog.id" :value="catalog.id">
-              {{ catalog.name }}
-            </a-select-option>
-          </a-select>
-        </a-form-item>
-      </a-form>
+    <div class="be-status" v-if="statusLine">{{ statusLine }}</div>
 
-      <div v-if="rows.length">
-        <div style="margin-bottom: 12px;">
-          <a-button type="primary" :disabled="!uploadableCount || busy" :loading="uploading" @click="startUpload">
-            {{ uploading ? '上传中…' : `上传 ${uploadableCount} 个文件` }}
-          </a-button>
-          <a-button v-if="uploading" type="danger" style="margin-left: 8px;" @click="cancelRequested = true">
-            停止
-          </a-button>
-          <a-button style="margin-left: 8px;" :disabled="busy" @click="clearAll">清空列表</a-button>
-          <span style="margin-left: 16px; color: #666;">
-            共 {{ summary.total }} 个：已上传 {{ summary.done }}，待上传 {{ summary.pending }}，失败 {{ summary.error }}，无法识别 {{ summary.unparsable }}
-          </span>
-        </div>
-        <a-progress v-if="uploading" :percent="uploadPercent" status="active" style="margin-bottom: 12px;" />
-
-        <a-table
-          :columns="fileColumns"
-          :data-source="rows"
-          rowKey="key"
-          size="small"
-          :pagination="{ pageSize: 10, showSizeChanger: true, showTotal: (t) => `共 ${t} 个文件` }"
-        >
-          <template slot="parsed" slot-scope="text, row">
-            <span v-if="row.parseError" style="color: #f5222d;">{{ row.parseError }}</span>
-            <span v-else>{{ row.parsedName }}</span>
-          </template>
-          <template slot="catalog" slot-scope="text, row">
-            <span v-if="row.catalogName">{{ row.catalogName }}</span>
-            <span v-else-if="catalogId" style="color: #666;">{{ catalogNameOf(catalogId) }}（统一）</span>
-            <a-tooltip v-else-if="row.folderNote" :title="row.folderNote">
-              <a-tag color="orange">文件夹未匹配</a-tag>
-            </a-tooltip>
-            <span v-else style="color: #999;">-</span>
-          </template>
-          <template slot="status" slot-scope="text, row">
-            <a-tag v-if="row.parseError" color="red">无法识别</a-tag>
-            <a-tag v-else-if="row.status === 'done'" color="green">已上传</a-tag>
-            <a-tag v-else-if="row.status === 'uploading'" color="blue">上传中 {{ row.percent }}%</a-tag>
-            <a-tooltip v-else-if="row.status === 'error'" :title="row.error">
-              <a-tag color="red">失败</a-tag>
-            </a-tooltip>
-            <a-tag v-else>待上传</a-tag>
-          </template>
-          <template slot="action" slot-scope="text, row">
-            <a-button type="link" size="small" :disabled="busy" @click="removeRow(row)">移除</a-button>
-          </template>
-        </a-table>
-      </div>
-      <div v-else style="color: #999;">还没有选择文件</div>
-    </a-card>
-
-    <!-- 第二步：预览并确认 -->
-    <a-card size="small" title="第二步：预览匹配结果并确认关联">
-      <a-button :disabled="!canPreview" :loading="previewing" @click="preview">预览匹配结果</a-button>
-      <span v-if="!summary.done" style="margin-left: 12px; color: #999;">先上传文件</span>
-
-      <div v-if="report" style="margin-top: 16px;">
-        <a-alert
-          v-if="!reportFresh"
-          type="warning"
-          show-icon
-          style="margin-bottom: 12px;"
-          message="文件列表或限定目录已变化，请重新预览"
-        />
-        <div style="display: flex; flex-wrap: wrap;">
-          <a-statistic title="可关联" :value="report.matched" :value-style="{ color: '#3f8600' }" style="margin-right: 40px;" />
-          <a-statistic title="需要处理" :value="problems.length" :value-style="{ color: problems.length ? '#cf1322' : '#999' }" />
-        </div>
-
-        <div v-if="problems.length" style="margin-top: 16px;">
-          <div style="margin-bottom: 8px; font-weight: 500;">这些文件不会被关联：</div>
-          <a-table
-            :columns="problemColumns"
-            :data-source="problems"
-            :row-key="(r, i) => i"
-            size="small"
-            :pagination="{ pageSize: 10 }"
-          />
-        </div>
-
-        <div style="margin-top: 16px;">
-          <a-button type="primary" :disabled="!canCommit" :loading="committing" @click="commit">
-            确认关联 {{ report.matched }} 个产品
-          </a-button>
-          <span style="margin-left: 12px; color: #999;">已有英文版的产品会被替换，旧的英文文件会被删除。</span>
-        </div>
-      </div>
-
-      <a-alert
-        v-if="committed"
-        type="success"
-        show-icon
-        style="margin-top: 16px;"
-        :message="`已关联 ${committed.updated} 个产品的英文版`"
-      />
-    </a-card>
-  </div>
+    <a-table
+      v-if="rows.length"
+      :columns="columns"
+      :data-source="rows"
+      rowKey="key"
+      size="small"
+      :pagination="{ pageSize: 10, showTotal: (t) => `共 ${t} 个文件` }"
+    >
+      <template slot="product" slot-scope="text, row">
+        <span v-if="row.parseError" class="be-muted">-</span>
+        <span v-else>{{ row.parsedName }}<span v-if="row.catalogName" class="be-muted">（{{ row.catalogName }}）</span></span>
+      </template>
+      <template slot="status" slot-scope="text, row">
+        <span class="be-muted">{{ statusText(row) }}</span>
+      </template>
+      <template slot="action" slot-scope="text, row">
+        <a v-if="!busy" @click="removeRow(row)">移除</a>
+      </template>
+    </a-table>
+    <div v-else class="be-muted">还没有选择文件</div>
+  </a-card>
 </template>
 
 <script>
@@ -183,8 +64,7 @@ import {
   mergeBulkReports,
   describeProblems,
   unmatchedFileIDs,
-  summarizeRows,
-  coveragePercent
+  summarizeRows
 } from '@/utils/i18nData';
 
 const UPLOAD_CONCURRENCY = 3;
@@ -200,7 +80,6 @@ export default {
       statsLoading: false,
       catalogs: [],
       catalogsLoaded: false,
-      catalogId: undefined,
       rows: [],
       uploading: false,
       cancelRequested: false,
@@ -213,18 +92,13 @@ export default {
       previewItems: [],
       previewFileNames: [],
       previewSkipped: [],
+      notes: {}, // 检查后有问题的文件：路径 → 原因（只显示在状态列里）
       committed: null,
-      fileColumns: [
+      columns: [
         { title: '文件', dataIndex: 'path', key: 'path', ellipsis: true },
-        { title: '对应的产品名', key: 'parsed', scopedSlots: { customRender: 'parsed' }, width: 220 },
-        { title: '目录', key: 'catalog', scopedSlots: { customRender: 'catalog' }, width: 180 },
-        { title: '状态', key: 'status', scopedSlots: { customRender: 'status' }, width: 140 },
-        { title: '操作', key: 'action', scopedSlots: { customRender: 'action' }, width: 90 }
-      ],
-      problemColumns: [
-        { title: '问题', dataIndex: 'type', key: 'type', width: 110 },
-        { title: '文件名', dataIndex: 'fileName', key: 'fileName', ellipsis: true },
-        { title: '说明', dataIndex: 'detail', key: 'detail' }
+        { title: '对应产品', key: 'product', scopedSlots: { customRender: 'product' }, width: 260 },
+        { title: '状态', key: 'status', scopedSlots: { customRender: 'status' }, width: 300 },
+        { title: '', key: 'action', scopedSlots: { customRender: 'action' }, width: 70 }
       ]
     };
   },
@@ -235,28 +109,39 @@ export default {
     summary() {
       return summarizeRows(this.rows);
     },
-    coverage() {
-      return coveragePercent(this.stats);
-    },
-    // 可以上传的：能识别出产品名，且还没上传成功
+    // 还需要上传的：能识别出产品名，且还没上传成功
     uploadableCount() {
       return this.rows.filter((r) => !r.parseError && (r.status === 'pending' || r.status === 'error')).length;
     },
-    uploadPercent() {
-      return this.uploadTotal ? Math.floor((this.uploadDone / this.uploadTotal) * 100) : 0;
-    },
     currentSignature() {
       const uploaded = this.rows.filter((r) => r.status === 'done').map((r) => `${r.path}:${r.fileID}:${r.catalogId || ''}`);
-      return JSON.stringify([this.catalogId || null, uploaded]);
+      return JSON.stringify(uploaded);
     },
     reportFresh() {
       return !!this.report && this.reportSignature === this.currentSignature;
     },
-    canPreview() {
-      return !this.busy && this.summary.done > 0;
-    },
     canCommit() {
-      return !this.busy && this.reportFresh && this.report.matched > 0 && !this.committed;
+      return !this.busy && this.reportFresh && this.report.matched > 0;
+    },
+    // 主按钮：上传中 → 停止；检查过且有可关联的 → 确认关联；否则 → 上传并检查
+    mainLabel() {
+      if (this.uploading) return `停止上传（${this.uploadDone}/${this.uploadTotal}）`;
+      if (this.reportFresh) return this.report.matched > 0 ? `确认关联 ${this.report.matched} 个产品` : '没有可关联的文件';
+      return this.uploadableCount ? `上传并检查（${this.uploadableCount}）` : '检查';
+    },
+    mainEnabled() {
+      if (this.uploading) return true; // 点击即停止
+      if (this.busy) return false;
+      if (this.reportFresh) return this.canCommit;
+      return this.summary.done > 0 || this.uploadableCount > 0;
+    },
+    // 一行灰字：当前进度或结果
+    statusLine() {
+      if (this.uploading) return `正在上传 ${this.uploadDone}/${this.uploadTotal}…`;
+      if (this.previewing) return '正在检查…';
+      if (this.reportFresh) return `可关联 ${this.report.matched} 个，有问题 ${this.problems.length} 个${this.problems.length ? '（原因见下表，这些文件不会被关联）' : ''}`;
+      if (this.committed) return `已关联 ${this.committed.updated} 个产品的英文版`;
+      return this.rows.length ? `已选择 ${this.summary.total} 个文件` : '';
     },
     problems() {
       return this.report ? describeProblems(this.report, this.previewFileNames, this.previewSkipped) : [];
@@ -303,9 +188,31 @@ export default {
       }
     },
 
-    catalogNameOf(id) {
-      const found = this.catalogs.find((c) => c.id === id);
-      return found ? found.name : '';
+    // 每一行的状态文字（只用文字，不用彩色标签）
+    statusText(row) {
+      if (row.parseError) return `文件名无法识别：${row.parseError}`;
+      if (row.status === 'uploading') return `上传中 ${row.percent}%`;
+      if (row.status === 'error') return `上传失败：${row.error}`;
+      if (row.status === 'pending') return row.folderNote ? '待上传（文件夹名与任何目录都不一致，将只按产品名匹配）' : '待上传';
+      if (this.notes[row.path]) return this.notes[row.path];
+      return this.reportFresh ? '可关联' : '已上传，待检查';
+    },
+
+    // 主按钮：停止上传 / 上传并检查 / 确认关联
+    async onMain() {
+      if (this.uploading) {
+        this.cancelRequested = true;
+        return;
+      }
+      if (this.reportFresh) {
+        this.commit();
+        return;
+      }
+      if (this.uploadableCount) {
+        const ok = await this.startUpload();
+        if (!ok) return; // 有失败或被停止：不继续检查，可以再点一次重试
+      }
+      if (this.summary.done > 0) await this.preview();
     },
 
     // 已上传成功、还没有被关联的文件 ID
@@ -346,14 +253,10 @@ export default {
       return false;
     },
 
-    onCatalogChange() {
-      // 限定目录变化后，之前的预览不再有效（reportFresh 会自动变为 false）
-    },
-
     // 上传所有待上传的文件，最多同时 3 个；单个失败不影响其它，可以再次点击重试失败的
     async startUpload() {
       const targets = this.rows.filter((r) => !r.parseError && (r.status === 'pending' || r.status === 'error'));
-      if (!targets.length) return;
+      if (!targets.length) return true;
       this.uploading = true;
       this.cancelRequested = false;
       this.committed = null; // 又有新文件上传，之前的"已关联"结果不再代表当前状态
@@ -368,9 +271,15 @@ export default {
           shouldStop: () => this.cancelRequested
         });
         const failed = results.filter((r) => r && !r.ok).length;
-        if (this.cancelRequested) this.$message.info('已停止上传');
-        else if (failed) this.$message.warning(`${failed} 个文件上传失败，可以再次点击上传重试`);
-        else this.$message.success('全部上传完成');
+        if (this.cancelRequested) {
+          this.$message.info('已停止上传');
+          return false;
+        }
+        if (failed) {
+          this.$message.warning(`${failed} 个文件上传失败，可以再次点击重试`);
+          return false;
+        }
+        return true;
       } finally {
         this.uploading = false;
         this.cancelRequested = false;
@@ -435,7 +344,7 @@ export default {
       const entries = this.rows
         .filter((r) => r.status === 'done')
         .map((r) => ({ fileName: r.path, fileID: r.fileID, url: r.url, catalogId: r.catalogId }));
-      const { items, fileNames, skipped } = buildBulkItems(entries, { catalogId: this.catalogId });
+      const { items, fileNames, skipped } = buildBulkItems(entries);
       this.previewing = true;
       try {
         // 没有可提交的条目时不请求服务端，直接给出空报告
@@ -447,6 +356,10 @@ export default {
         this.previewFileNames = fileNames;
         this.previewSkipped = skipped;
         this.reportSignature = this.currentSignature;
+        this.notes = {};
+        describeProblems(report, fileNames, skipped).forEach((p) => {
+          if (p.fileName) this.notes[p.fileName] = `${p.type}：${p.detail}`;
+        });
         this.committed = null;
       } catch (error) {
         // 请求封装已经弹出了错误提示
@@ -474,30 +387,13 @@ export default {
             unmatched.forEach((id) => linked.delete(id));
             this.rows = this.rows.filter((r) => !(r.fileID && linked.has(r.fileID)));
             this.loadStats();
-            this.offerCleanup(unmatched);
+            // 没关联上的文件留在表里（带着原因），可以改文件名后重新选择，不用的点「清空」会一并清理云存储
+            if (unmatched.length) this.$message.info(`${unmatched.length} 个文件没有关联上，原因见表格`);
           } catch (error) {
             // 请求封装已经弹出了错误提示
           } finally {
             this.committing = false;
           }
-        }
-      });
-    },
-
-    // 没有关联上的文件已经上传到云存储，询问是否清理
-    offerCleanup(fileIDs) {
-      if (!fileIDs.length) return;
-      this.$confirm({
-        title: `${fileIDs.length} 个文件没有关联到任何产品`,
-        content: '是否从云存储中删除这些文件？也可以保留，修正文件名或目录后重新关联。',
-        okText: '删除这些文件',
-        okType: 'danger',
-        cancelText: '保留',
-        onOk: async () => {
-          await deletePdfs(fileIDs);
-          const gone = new Set(fileIDs);
-          this.rows = this.rows.filter((r) => !gone.has(r.fileID));
-          this.$message.success('已清理');
         }
       });
     }
@@ -506,7 +402,10 @@ export default {
 </script>
 
 <style scoped>
-.bulk-en {
-  padding: 4px;
-}
+.be-summary { color: rgba(0, 0, 0, 0.65); }
+.be-hint { color: rgba(0, 0, 0, 0.45); font-size: 12px; margin: 4px 0 16px; line-height: 1.8; }
+.be-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 12px; }
+.be-status { color: rgba(0, 0, 0, 0.65); font-size: 13px; margin-bottom: 12px; }
+.be-muted { color: rgba(0, 0, 0, 0.45); }
+.be-link { color: rgba(0, 0, 0, 0.45); }
 </style>

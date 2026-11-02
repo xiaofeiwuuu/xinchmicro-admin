@@ -9,7 +9,7 @@
 						:beforeUpload="beforeUpload"
 						:remove="handleRemoveLogo"
 						listType="picture-card"
-						:showUploadList="{ showPreviewIcon: true, showRemoveIcon: true }"
+						:showUploadList="false"
 						:disabled="logoUploading"
 						@preview="handlePreview"
 					>

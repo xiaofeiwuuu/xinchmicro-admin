@@ -1,54 +1,84 @@
 <template>
 	<div>
 		<a-card :bordered="false">
-			<a-form :form="form" @submit="handleSubmit">
-				<a-form-item label="公司名称" :labelCol="{ span: 4 }" :wrapperCol="{ span: 14 }">
-					<a-input
-						v-decorator="[
-							'name',
-							{
-								rules: [{ required: true, message: '请输入公司名称!' }]
-							}
-						]"
-						placeholder="请输入公司名称"
-					/>
-				</a-form-item>
-				<a-form-item label="英文名称" :labelCol="{ span: 4 }" :wrapperCol="{ span: 14 }">
-					<a-input
-						v-decorator="[
-							'nameEn',
-							{
-								rules: [{ max: 100, message: '最多 100 个字符' }]
-							}
-						]"
-						placeholder="可选；没有填写时英文界面显示公司名称"
-					/>
-				</a-form-item>
-				<a-form-item label="公司介绍" :labelCol="{ span: 4 }" :wrapperCol="{ span: 14 }">
-					<a-textarea
-						v-decorator="[
-							'description',
-							{
-								rules: [{ required: true, message: '请输入公司介绍!' }]
-							}
-						]"
-						:rows="4"
-						placeholder="请输入公司介绍"
-					/>
-				</a-form-item>
-				<a-form-item label="英文介绍" :labelCol="{ span: 4 }" :wrapperCol="{ span: 14 }">
-					<a-textarea
-						v-decorator="[
-							'descriptionEn',
-							{
-								rules: [{ max: 20000, message: '最多 20000 个字符' }]
-							}
-						]"
-						:rows="4"
-						placeholder="可选；没有填写时英文界面显示公司介绍"
-					/>
-				</a-form-item>
-				<a-form-item label="联系方式" :labelCol="{ span: 4 }" :wrapperCol="{ span: 14 }">
+			<a-form class="co-form" :form="form" @submit="handleSubmit">
+				<a-row :gutter="32">
+					<a-col :xs="24" :md="12">
+						<div class="co-col-title">中文</div>
+						<a-form-item label="公司名称" :labelCol="{ span: 6 }" :wrapperCol="{ span: 18 }">
+							<a-input
+								v-decorator="[
+									'name',
+									{
+										rules: [{ required: true, message: '请输入公司名称!' }]
+									}
+								]"
+								placeholder="请输入公司名称"
+							/>
+						</a-form-item>
+						<a-form-item label="公司介绍" :labelCol="{ span: 6 }" :wrapperCol="{ span: 18 }">
+							<a-textarea
+								v-decorator="[
+									'description',
+									{
+										rules: [{ required: true, message: '请输入公司介绍!' }]
+									}
+								]"
+								:rows="4"
+								placeholder="请输入公司介绍"
+							/>
+						</a-form-item>
+						<a-form-item label="公司地址" :labelCol="{ span: 6 }" :wrapperCol="{ span: 18 }">
+							<a-input
+								v-decorator="[
+									'address',
+									{
+										rules: [{ required: true, message: '请输入公司地址!' }]
+									}
+								]"
+								placeholder="请输入公司地址"
+							/>
+						</a-form-item>
+					</a-col>
+					<a-col :xs="24" :md="12">
+						<div class="co-col-title">English</div>
+						<a-form-item label="英文名称" :labelCol="{ span: 6 }" :wrapperCol="{ span: 18 }">
+							<a-input
+								v-decorator="[
+									'nameEn',
+									{
+										rules: [{ max: 100, message: '最多 100 个字符' }]
+									}
+								]"
+								placeholder="可选；没有填写时英文界面显示公司名称"
+							/>
+						</a-form-item>
+						<a-form-item label="英文介绍" :labelCol="{ span: 6 }" :wrapperCol="{ span: 18 }">
+							<a-textarea
+								v-decorator="[
+									'descriptionEn',
+									{
+										rules: [{ max: 20000, message: '最多 20000 个字符' }]
+									}
+								]"
+								:rows="4"
+								placeholder="可选；没有填写时英文界面显示公司介绍"
+							/>
+						</a-form-item>
+						<a-form-item label="英文地址" :labelCol="{ span: 6 }" :wrapperCol="{ span: 18 }">
+							<a-input
+								v-decorator="[
+									'addressEn',
+									{
+										rules: [{ max: 200, message: '最多 200 个字符' }]
+									}
+								]"
+								placeholder="可选；没有填写时英文界面显示公司地址"
+							/>
+						</a-form-item>
+					</a-col>
+				</a-row>
+				<a-form-item label="联系方式" :labelCol="{ span: 3 }" :wrapperCol="{ span: 9 }">
 					<a-select
 						v-decorator="[
 							'contacts',
@@ -60,7 +90,7 @@
 						placeholder="请输入联系方式"
 					/>
 				</a-form-item>
-				<a-form-item label="电子邮箱" :labelCol="{ span: 4 }" :wrapperCol="{ span: 14 }">
+				<a-form-item label="电子邮箱" :labelCol="{ span: 3 }" :wrapperCol="{ span: 9 }">
 					<a-input
 						v-decorator="[
 							'email',
@@ -74,7 +104,7 @@
 						placeholder="请输入电子邮箱"
 					/>
 				</a-form-item>
-				<a-form-item label="公司网站" :labelCol="{ span: 4 }" :wrapperCol="{ span: 14 }">
+				<a-form-item label="公司网站" :labelCol="{ span: 3 }" :wrapperCol="{ span: 9 }">
 					<a-input
 						v-decorator="[
 							'website',
@@ -88,29 +118,7 @@
 						placeholder="请输入公司网站"
 					/>
 				</a-form-item>
-				<a-form-item label="公司地址" :labelCol="{ span: 4 }" :wrapperCol="{ span: 14 }">
-					<a-input
-						v-decorator="[
-							'address',
-							{
-								rules: [{ required: true, message: '请输入公司地址!' }]
-							}
-						]"
-						placeholder="请输入公司地址"
-					/>
-				</a-form-item>
-				<a-form-item label="英文地址" :labelCol="{ span: 4 }" :wrapperCol="{ span: 14 }">
-					<a-input
-						v-decorator="[
-							'addressEn',
-							{
-								rules: [{ max: 200, message: '最多 200 个字符' }]
-							}
-						]"
-						placeholder="可选；没有填写时英文界面显示公司地址"
-					/>
-				</a-form-item>
-				<a-form-item label="公司Logo" :labelCol="{ span: 4 }" :wrapperCol="{ span: 14 }">
+				<a-form-item label="公司Logo" :labelCol="{ span: 3 }" :wrapperCol="{ span: 9 }">
 					<a-upload
 						v-decorator="[
 							'logo',
@@ -186,7 +194,7 @@
 						提示：仅支持PDF格式，文件大小不能超过20MB。
 					</div>
 				</a-form-item> -->
-				<a-form-item :wrapperCol="{ span: 14, offset: 4 }">
+				<a-form-item :wrapperCol="{ span: 18, offset: 3 }">
 					<a-button type="primary" html-type="submit" :loading="loading">
 						保存
 					</a-button>
@@ -619,6 +627,18 @@ export default {
 </script>
 
 <style scoped>
+/* 整个表单保持原来的宽度（整行的 75%），不撑满；窄屏时占满 */
+.co-form {
+	max-width: 75%;
+}
+@media (max-width: 992px) {
+	.co-form { max-width: 100%; }
+}
+.co-col-title {
+	font-weight: 500;
+	margin-bottom: 16px;
+	padding-left: 25%;
+}
 .ant-upload-text {
 	margin-top: 8px;
 	color: #666;

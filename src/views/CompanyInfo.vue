@@ -1,8 +1,8 @@
 <template>
 	<div>
 		<a-card :bordered="false">
-			<a-form class="co-form" :form="form" @submit="handleSubmit">
-				<a-form-item label="公司Logo" :labelCol="{ span: 3 }" :wrapperCol="{ span: 9 }">
+			<a-form class="co-form" layout="vertical" :form="form" @submit="handleSubmit">
+				<a-form-item label="公司Logo">
 					<a-upload
 						v-decorator="[
 							'logo',
@@ -43,7 +43,7 @@
 				</a-form-item>
 				<a-row :gutter="32">
 					<a-col :xs="24" :md="12">
-						<a-form-item label="公司名称" :labelCol="{ span: 6 }" :wrapperCol="{ span: 18 }">
+						<a-form-item label="公司名称">
 							<a-input
 								v-decorator="[
 									'name',
@@ -54,7 +54,7 @@
 								placeholder="请输入公司名称"
 							/>
 						</a-form-item>
-						<a-form-item label="公司介绍" :labelCol="{ span: 6 }" :wrapperCol="{ span: 18 }">
+						<a-form-item label="公司介绍">
 							<a-textarea
 								v-decorator="[
 									'description',
@@ -66,7 +66,7 @@
 								placeholder="请输入公司介绍"
 							/>
 						</a-form-item>
-						<a-form-item label="公司地址" :labelCol="{ span: 6 }" :wrapperCol="{ span: 18 }">
+						<a-form-item label="公司地址">
 							<a-input
 								v-decorator="[
 									'address',
@@ -79,7 +79,7 @@
 						</a-form-item>
 					</a-col>
 					<a-col :xs="24" :md="12">
-						<a-form-item label="英文名称" :labelCol="{ span: 6 }" :wrapperCol="{ span: 18 }">
+						<a-form-item label="英文名称">
 							<a-input
 								v-decorator="[
 									'nameEn',
@@ -90,7 +90,7 @@
 								placeholder="可选；没有填写时英文界面显示公司名称"
 							/>
 						</a-form-item>
-						<a-form-item label="英文介绍" :labelCol="{ span: 6 }" :wrapperCol="{ span: 18 }">
+						<a-form-item label="英文介绍">
 							<a-textarea
 								v-decorator="[
 									'descriptionEn',
@@ -102,7 +102,7 @@
 								placeholder="可选；没有填写时英文界面显示公司介绍"
 							/>
 						</a-form-item>
-						<a-form-item label="英文地址" :labelCol="{ span: 6 }" :wrapperCol="{ span: 18 }">
+						<a-form-item label="英文地址">
 							<a-input
 								v-decorator="[
 									'addressEn',
@@ -115,7 +115,7 @@
 						</a-form-item>
 					</a-col>
 				</a-row>
-				<a-form-item label="联系方式" :labelCol="{ span: 3 }" :wrapperCol="{ span: 9 }">
+				<a-form-item label="联系方式">
 					<a-select
 						v-decorator="[
 							'contacts',
@@ -130,7 +130,7 @@
 						输入后按回车添加，可以添加多个联系方式
 					</div>
 				</a-form-item>
-				<a-form-item label="电子邮箱" :labelCol="{ span: 3 }" :wrapperCol="{ span: 9 }">
+				<a-form-item label="电子邮箱">
 					<a-input
 						v-decorator="[
 							'email',
@@ -144,7 +144,7 @@
 						placeholder="请输入电子邮箱"
 					/>
 				</a-form-item>
-				<a-form-item label="公司网站" :labelCol="{ span: 3 }" :wrapperCol="{ span: 9 }">
+				<a-form-item label="公司网站">
 					<a-input
 						v-decorator="[
 							'website',
@@ -158,7 +158,7 @@
 						placeholder="请输入公司网站"
 					/>
 				</a-form-item>
-				<!-- <a-form-item label="安全手册" :labelCol="{ span: 4 }" :wrapperCol="{ span: 14 }">
+				<!-- <a-form-item label="安全手册">
 					<a-upload
 						v-decorator="[
 							'safetyManual',
@@ -195,7 +195,7 @@
 						提示：仅支持PDF格式，文件大小不能超过20MB。
 					</div>
 				</a-form-item> -->
-				<a-form-item :wrapperCol="{ span: 18, offset: 3 }">
+				<a-form-item>
 					<a-button type="primary" html-type="submit" :loading="loading">
 						保存
 					</a-button>

@@ -172,7 +172,7 @@ export const uploadFile = async (file) => {
     try {
         
         // 1. 获取上传授权
-        const authData = await getUploadAuth({ path: file.name });
+        const authData = await getUploadAuth({ path: file.name, size: file.size });
 
         // 2. 上传到腾讯云COS
         const result = await uploadToCos(file, authData);
@@ -205,6 +205,25 @@ export const deletePdf = async (fileID) => {
   return fetchWrapper.post(`${API_BASE_URL}/api/files/delete`, {
     fileid_list: [fileID]
   });
+};
+
+// 文件管理（文件登记表，仅主账号）
+// 列表：{ list, total, summary }，每个文件带 inUse / usedBy / deletable
+export const getUploadedFiles = async (query = {}) => {
+  const queryParams = new URLSearchParams(query).toString();
+  return fetchWrapper.get(`${API_BASE_URL}/api/uploaded-files${queryParams ? `?${queryParams}` : ''}`, {
+    returnFullResponse: true
+  });
+};
+
+// 导入历史文件：[{ fileID, name, size(字节), time }]，只新增
+export const importUploadedFiles = async (files) => {
+  return fetchWrapper.post(`${API_BASE_URL}/api/uploaded-files/import`, { files }, { returnFullResponse: true });
+};
+
+// 删除文件（云存储删除成功后才移除记录；使用中、上传不足 24 小时的会被服务端拒绝）
+export const deleteUploadedFiles = async (ids) => {
+  return fetchWrapper.post(`${API_BASE_URL}/api/uploaded-files/delete`, { ids }, { returnFullResponse: true });
 };
 
 // 获取PDF下载链接

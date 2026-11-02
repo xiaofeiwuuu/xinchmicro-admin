@@ -66,6 +66,17 @@ let routes = [
 		component: () => import('@/views/ProductsBulkEn.vue'),
 	},
 	{
+		path: '/files',
+		name: 'FileManager',
+		layout: "dashboard",
+		meta:{
+			name:'文件管理',
+			requiresAuth: true,
+			requiresMainUser: true
+		},
+		component: () => import('@/views/FileManager.vue'),
+	},
+	{
 		path: '/company',
 		name: 'CompanyInfo',
 		layout: "dashboard",

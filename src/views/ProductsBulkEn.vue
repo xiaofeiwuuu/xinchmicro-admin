@@ -382,7 +382,7 @@ export default {
       row.percent = 0;
       row.error = '';
       try {
-        const authData = await getUploadAuth({ path: row.fileName });
+        const authData = await getUploadAuth({ path: row.fileName, size: row.file && row.file.size });
         const result = await uploadToCosWithProgress(row.file, authData, (progress) => {
           row.percent = progress.percent;
         });

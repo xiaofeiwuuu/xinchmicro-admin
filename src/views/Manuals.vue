@@ -483,7 +483,7 @@ export default {
       try {
         // 1. 获取上传授权
         this.progressText = '获取上传授权...';
-        const authData = await getUploadAuth({ path: file.name });
+        const authData = await getUploadAuth({ path: file.name, size: file.size });
 
         // 2. 使用带进度监控的方法上传到 COS
         this.progressText = '正在上传...';

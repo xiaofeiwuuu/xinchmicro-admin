@@ -44,8 +44,10 @@
         <a-tag v-else color="default">其他</a-tag>
       </template>
       
-      <template slot="lang" slot-scope="text">
-        <a-tag :color="text === 'en' ? 'green' : 'default'">{{ langLabel(text) }}</a-tag>
+      <!-- 文件：「中文版 / 英文版」就是文件链接，点击在新标签页直接打开 -->
+      <template slot="lang" slot-scope="text, record">
+        <a v-if="fileHref(record.fileId, '')" :href="fileHref(record.fileId, '')" target="_blank" rel="noopener noreferrer">{{ text === 'en' ? '英文版' : '中文版' }}</a>
+        <span v-else>{{ text === 'en' ? '英文版' : '中文版' }}</span>
       </template>
 
       <template slot="createdAt" slot-scope="text">
@@ -57,11 +59,7 @@
       </template>
       
       <template slot="action" slot-scope="text, record">
-        <!-- 预览按钮 -->
-        <a-button type="link" size="small" @click="handlePreview(record)">
-          <span>预览</span>
-        </a-button>
-        <a-divider type="vertical" />
+       <span style="white-space: nowrap;">
         <!-- 编辑按钮 -->
         <a-button type="link" size="small" @click="handleEdit(record)">
           <icon-edit />
@@ -73,6 +71,7 @@
           <icon-delete />
           <span class="text-danger">删除</span>
         </a-button>
+       </span>
       </template>
     </a-table>
 
@@ -169,26 +168,6 @@
         </a-form-item>
       </a-form>
     </a-modal>
-
-    <!-- 预览对话框 -->
-    <a-modal
-      title="手册预览"
-      :visible="previewVisible"
-      :footer="null"
-      width="80%"
-      @cancel="closePreview"
-    >
-      <div v-if="previewUrl" style="height: 70vh;">
-        <iframe :src="previewUrl" style="width: 100%; height: 100%; border: none;"></iframe>
-      </div>
-      <div v-else class="text-center py-5">
-        <p>无法预览，请下载后查看</p>
-      </div>
-      <div style="margin-top: 16px; text-align: right;">
-        <a-button @click="closePreview">关闭</a-button>
-        <a-button type="primary" @click="downloadFile" style="margin-left: 8px;">下载</a-button>
-      </div>
-    </a-modal>
   </div>
 </template>
 
@@ -196,14 +175,13 @@
 import IconEdit from '@/components/IconEdit.vue';
 import IconDelete from '@/components/IconDelete.vue';
 import { notifyError } from '@/utils/notify';
-import { fileIdToUrl } from '@/utils/cloudUrl';
+import { fileHref } from '@/utils/cloudUrl';
 import {
   getManuals,
   getManualById,
   createManual,
   updateManual,
   deleteManual,
-  getPdfDownloadUrl,
   deletePdf,
   getUploadAuth,
   uploadToCosWithProgress
@@ -220,7 +198,7 @@ export default {
         { title: 'ID', dataIndex: 'id', key: 'id', width: 80 },
         { title: '手册名称', dataIndex: 'name', key: 'name' },
         { title: '手册类型', dataIndex: 'type', key: 'type', scopedSlots: { customRender: 'type' }, width: 120 },
-        { title: '语言', dataIndex: 'lang', key: 'lang', scopedSlots: { customRender: 'lang' }, width: 100 },
+        { title: '文件', dataIndex: 'lang', key: 'lang', scopedSlots: { customRender: 'lang' }, width: 100 },
         { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt', scopedSlots: { customRender: 'createdAt' }, width: 180 },
         { title: '创建者', dataIndex: 'creator', key: 'creator', scopedSlots: { customRender: 'creator' }, width: 120 },
         { title: '操作', key: 'action', scopedSlots: { customRender: 'action' }, width: 200 }
@@ -254,9 +232,6 @@ export default {
       },
       fileList: [],
       currentId: null,
-      previewVisible: false,
-      previewUrl: '',
-      currentManual: null,
       // 上传进度相关
       uploading: false,
       uploadProgress: 0,
@@ -269,6 +244,9 @@ export default {
   },
   methods: {
     langLabel,
+
+    // 文件链接（直接用文件 ID 算出公开链接，点击在新标签页打开）
+    fileHref,
 
     // 格式化日期
     formatDate(dateString) {
@@ -425,43 +403,6 @@ export default {
           }
         }
       });
-    },
-    
-    // 预览手册
-    async handlePreview(record) {
-      this.currentManual = record;
-      this.previewVisible = true;
-      this.previewUrl = '';
-      
-      if (record.fileId) {
-        // 优先直接用文件 ID 算出的公开链接（不依赖接口，浏览器内嵌预览）
-        this.previewUrl = fileIdToUrl(record.fileId);
-        if (!this.previewUrl) {
-          // 文件 ID 格式不对时才向服务端要下载链接。请求层返回的就是 { errcode, file_list }，
-          // 之前这里写成 res.code === 0 && res.data.file_list，永远为假，预览从来没有成功过
-          try {
-            const res = await getPdfDownloadUrl(record.fileId);
-            const fileInfo = res && res.file_list && res.file_list[0];
-            if (fileInfo && fileInfo.status === 0) this.previewUrl = fileInfo.download_url;
-          } catch (error) {
-            // 取不到预览链接时，对话框会显示"无法预览，请下载后查看"
-          }
-        }
-      }
-    },
-    
-    // 关闭预览
-    closePreview() {
-      this.previewVisible = false;
-      this.previewUrl = '';
-      this.currentManual = null;
-    },
-    
-    // 下载文件
-    downloadFile() {
-      if (this.previewUrl) {
-        window.open(this.previewUrl, '_blank');
-      }
     },
     
     // 上传前检查

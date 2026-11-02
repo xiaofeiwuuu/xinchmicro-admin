@@ -56,6 +56,7 @@
 </template>
 
 <script>
+import { notifyError } from '@/utils/notify';
 import { getLogs, getLogActions } from '@/api'
 import dateUtils from '@/utils/dateUtils'
 
@@ -145,7 +146,6 @@ export default {
 				// 使用utcToLocal方法处理UTC时间
 				return dateUtils.utcToLocal(dateTime);
 			} catch (error) {
-				console.error('时间格式化错误:', error, dateTime);
 				return String(dateTime);
 			}
 		},
@@ -168,7 +168,7 @@ export default {
 				this.logs = res.data.list
 				this.pagination.total = res.data.total
 			} catch (error) {
-				this.$message.error('获取日志列表失败')
+				notifyError(this, error, '获取日志列表失败')
 			} finally {
 				this.loading = false
 			}
@@ -178,7 +178,7 @@ export default {
 				const res = await getLogActions()
 				this.actions = res.data
 			} catch (error) {
-				this.$message.error('获取操作类型列表失败')
+				notifyError(this, error, '获取操作类型列表失败')
 			}
 		},
 		handleSearch() {

@@ -202,6 +202,7 @@
 </template>
 
 <script>
+import { notifyError } from '@/utils/notify';
 import { getCompanyInfo, updateCompanyInfo, uploadFile, uploadPdf, deletePdf, getPdfDownloadUrl } from '@/api'
 
 export default {
@@ -244,7 +245,7 @@ export default {
 						await updateCompanyInfo(values)
 						this.$message.success('公司信息更新成功')
 					} catch (error) {
-						this.$message.error('公司信息更新失败')
+						notifyError(this, error, '公司信息更新失败')
 					} finally {
 						this.loading = false
 					}
@@ -291,7 +292,7 @@ export default {
 					this.previewImage = data.logoUrl
 				}
 			} catch (error) {
-				this.$message.error('获取公司信息失败')
+				notifyError(this, error, '获取公司信息失败')
 			}
 		},
 		normFile(e) {
@@ -320,7 +321,7 @@ export default {
 				try {
 					await this.deletePdfFile(this.uploadedLogoInfo.fileID)
 				} catch (error) {
-					console.error('删除旧Logo文件失败:', error)
+					// 旧文件删除失败不影响新文件上传
 				}
 			}
 			
@@ -355,7 +356,6 @@ export default {
 				
 				// 上传文件
 				const result = await uploadFile(file)
-				console.log('Logo上传结果:', result)
 				
 				// 保存上传结果
 				this.uploadedLogoInfo = {
@@ -378,7 +378,6 @@ export default {
 				
 				this.$message.success('Logo上传成功')
 			} catch (error) {
-				console.error('Logo上传错误:', error)
 				
 				// 更新文件状态为错误
 				this.logoFileList = [{
@@ -394,7 +393,7 @@ export default {
 					this.logoUploadError = '文件上传失败: ' + (error.message || '未知错误') + '。请点击重试。'
 				}
 				
-				this.$message.error(this.logoUploadError)
+				if (!error.notified) this.$message.error(this.logoUploadError)
 			} finally {
 				this.logoUploading = false
 			}
@@ -419,7 +418,7 @@ export default {
 				try {
 					await this.deletePdfFile(this.uploadedPdfInfo.fileID)
 				} catch (error) {
-					console.error('删除旧PDF文件失败:', error)
+					// 旧文件删除失败不影响新文件上传
 				}
 			}
 			
@@ -472,7 +471,6 @@ export default {
 				
 				this.$message.success('PDF文件上传成功')
 			} catch (error) {
-				console.error('PDF上传错误:', error)
 				
 				// 更新文件状态为错误
 				this.pdfFileList = [{
@@ -488,7 +486,7 @@ export default {
 					this.pdfUploadError = '文件上传失败: ' + (error.message || '未知错误') + '。请点击重试。'
 				}
 				
-				this.$message.error(this.pdfUploadError)
+				if (!error.notified) this.$message.error(this.pdfUploadError)
 			} finally {
 				this.pdfUploading = false
 			}
@@ -498,7 +496,6 @@ export default {
 				await deletePdf(fileID)
 				return true
 			} catch (error) {
-				console.error('删除文件失败:', error)
 				throw error
 			}
 		},
@@ -508,7 +505,7 @@ export default {
 					await this.deletePdfFile(this.uploadedLogoInfo.fileID)
 					this.$message.success('Logo已删除')
 				} catch (error) {
-					this.$message.error('删除Logo失败: ' + error.message)
+					notifyError(this, error, '删除Logo失败')
 					return false
 				}
 			}
@@ -524,7 +521,7 @@ export default {
 					await this.deletePdfFile(this.uploadedPdfInfo.fileID)
 					this.$message.success('PDF文件已删除')
 				} catch (error) {
-					this.$message.error('删除PDF文件失败: ' + error.message)
+					notifyError(this, error, '删除PDF文件失败')
 					return false
 				}
 			}
@@ -545,7 +542,6 @@ export default {
 			}
 		},
 		handlePreview(file) {
-			console.log('预览文件:', file)
 			this.previewImage = file.url || file.thumbUrl
 			this.previewVisible = true
 		},
@@ -593,7 +589,6 @@ export default {
 				this.downloadLoading = true
 				this.$message.loading('正在获取下载链接...', 0)
 				const res = await getPdfDownloadUrl(this.uploadedPdfInfo.fileID)
-				console.log('下载链接:', res)
 				
 				this.$message.destroy()
 				
@@ -605,9 +600,8 @@ export default {
 					this.$message.error('获取下载链接失败')
 				}
 			} catch (error) {
-				console.error('下载失败:', error)
 				this.$message.destroy()
-				this.$message.error('下载PDF失败: ' + (error.message || '未知错误'))
+				notifyError(this, error, '下载PDF失败')
 			} finally {
 				this.downloadLoading = false
 			}
@@ -624,7 +618,6 @@ export default {
 				this.logoDownloadLoading = true
 				this.$message.loading('正在获取图片链接...', 0)
 				const res = await getPdfDownloadUrl(this.uploadedLogoInfo.fileID)
-				console.log('图片链接:', res)
 				
 				this.$message.destroy()
 				
@@ -639,9 +632,8 @@ export default {
 					this.$message.error('获取高清图片链接失败，使用原始图片')
 				}
 			} catch (error) {
-				console.error('获取图片链接失败:', error)
 				this.$message.destroy()
-				this.$message.error('获取图片链接失败: ' + (error.message || '未知错误'))
+				notifyError(this, error, '获取图片链接失败')
 				// 使用原始链接作为备选
 				this.previewImage = this.logoFileList[0].url
 				this.previewVisible = true

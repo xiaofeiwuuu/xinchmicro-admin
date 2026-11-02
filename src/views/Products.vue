@@ -228,6 +228,7 @@
 </template>
 
 <script>
+import { notifyError } from '@/utils/notify';
 import { getProducts, createProduct, deleteProduct, getCatalogs, updateProduct, deletePdfs, getPdfDownloadUrl } from '@/api';
 import PdfUploader from '@/components/PdfUploader.vue';
 import { buildProductQuery, orphanFileIDs } from '@/utils/i18nData';
@@ -332,7 +333,7 @@ export default {
             getCatalogs().then(res => {
                 this.catalogs = res;
             }).catch(error => {
-                this.$message.error('获取目录列表失败: ' + error.message);
+                notifyError(this, error, '获取目录列表失败');
             });
         },
 
@@ -382,7 +383,7 @@ export default {
                 }
             }).catch(error => {
                 this.loading = false;
-                this.$message.error('获取数据失败: ' + error.message);
+                notifyError(this, error, '获取数据失败');
             });
         },
 
@@ -437,7 +438,7 @@ export default {
                 }
             } catch (error) {
                 this.$message.destroy();
-                this.$message.error('下载PDF失败: ' + error.message);
+                notifyError(this, error, '下载PDF失败');
             }
         },
 
@@ -500,7 +501,7 @@ export default {
                         this.$message.success('删除成功');
                         this.fetchData();
                     }).catch((error) => {
-                        this.$message.error('删除失败: ' + error.message);
+                        notifyError(this, error, '删除失败');
                     });
                 },
                 onCancel: () => {
@@ -576,9 +577,9 @@ export default {
                     } catch (error) {
                         // 改进错误处理
                         if (error.message.includes('413') || error.message.includes('太大')) {
-                            this.$message.error('文件太大，超出服务器允许的大小限制。请尝试上传更小的文件（小于20MB）。');
+                            notifyError(this, error, '文件太大，超出服务器允许的大小限制。请尝试上传更小的文件（小于20MB）。');
                         } else {
-                            this.$message.error('操作失败: ' + error.message);
+                            notifyError(this, error, '操作失败');
                         }
                     } finally {
                         this.confirmLoading = false;

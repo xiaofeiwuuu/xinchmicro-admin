@@ -1,7 +1,7 @@
 import fetchWrapper from '@/plugins/fetchWrapper'; // 确保路径正确
 
-// 定义 API 基础 URL：开发环境走本地代理，生产环境同源（部署在微信云托管）
-export const API_BASE_URL = process.env.NODE_ENV === 'development' ? 'http://localhost:80' : '';
+// 接口地址前缀，由 .env / .env.development / .env.production 里的 VUE_APP_API_BASE_URL 决定（留空表示同源）
+export const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
 
 // 产品分类接口
 export const getCategories = async (query = {}) => {
@@ -160,12 +160,6 @@ export const getUploadAuth = async (data) => {
 // 上传文件到腾讯云COS
 export const uploadToCos = async (file, authData) => {
     try {
-        console.log('准备上传到COS, 授权数据:', authData);
-        console.log('文件信息:', {
-            name: file.name,
-            size: file.size,
-            type: file.type
-        });
 
         const formData = new FormData();
         formData.append('key', authData.key);
@@ -174,7 +168,6 @@ export const uploadToCos = async (file, authData) => {
         formData.append('x-cos-meta-fileid', authData.cos_file_id);
         formData.append('file', file);
 
-        console.log('开始上传到COS, URL:', authData.url);
         const res = await fetch(authData.url, {
             method: 'POST',
             body: formData
@@ -192,7 +185,6 @@ export const uploadToCos = async (file, authData) => {
         };
         return result;
     } catch (error) {
-        console.error('上传到COS错误:', error);
         throw error;
     }
 }
@@ -263,7 +255,6 @@ export const uploadToCosWithProgress = (file, authData, onProgress) => {
 // 文件上传接口
 export const uploadFile = async (file) => {
     try {
-        console.log('开始上传文件:', file.name);
         
         // 1. 获取上传授权
         const authData = await getUploadAuth({ path: file.name });
@@ -273,8 +264,10 @@ export const uploadFile = async (file) => {
 
         return result;
     } catch (error) {
-        console.error('文件上传错误:', error);
-        throw new Error(`文件上传失败: ${error.message}`);
+        const wrapped = new Error(`文件上传失败: ${error.message}`);
+        // 保留"请求层已经提示过"的标记，页面就不会再弹一条重复的提示
+        wrapped.notified = error.notified;
+        throw wrapped;
     }
 }
 
@@ -283,7 +276,6 @@ export const uploadPdf = async (file) => {
     try {
         return await uploadFile(file);
     } catch (error) {
-        console.error('PDF上传错误:', error);
         throw error;
     }
 }
@@ -310,14 +302,11 @@ export const getWxConfig = async () => {
 // 删除PDF文件
 export const deletePdf = async (fileID) => {
   try {
-    console.log('删除PDF文件, fileID:', fileID);
     const res = await fetchWrapper.post(`${API_BASE_URL}/api/files/delete`, {
       fileid_list: [fileID]
     });
-    console.log('删除PDF文件成功');
     return res;
   } catch (error) {
-    console.error('删除PDF文件错误:', error);
     throw error;
   }
 };
@@ -325,17 +314,14 @@ export const deletePdf = async (fileID) => {
 // 获取PDF下载链接
 export const getPdfDownloadUrl = async (fileID) => {
   try {
-    console.log('获取PDF下载链接, fileID:', fileID);
     const res = await fetchWrapper.post(`${API_BASE_URL}/api/files/download`, {
       file_list: [{
         fileid: fileID,
         max_age: 7200
       }]
     });
-    console.log('获取下载链接成功:', res);
     return res;
   } catch (error) {
-    console.error('获取PDF下载链接错误:', error);
     throw error;
   }
 };
@@ -637,7 +623,7 @@ export const deletePdfs = async (fileIDs) => {
             await fetchWrapper.post(`${API_BASE_URL}/api/files/delete`, { fileid_list: batch });
             submitted += batch.length;
         } catch (error) {
-            console.error('批量删除文件失败:', error);
+            // 只是清理云存储，某一批失败不影响主流程，继续处理下一批
         }
     }
     return submitted;

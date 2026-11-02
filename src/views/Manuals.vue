@@ -203,6 +203,7 @@
 </template>
 
 <script>
+import { notifyError } from '@/utils/notify';
 import {
   getManuals,
   getManualById,
@@ -301,8 +302,7 @@ export default {
           this.$message.error(res.message || '获取手册列表失败');
         }
       } catch (error) {
-        console.error('获取手册列表出错:', error);
-        this.$message.error('获取手册列表失败');
+        notifyError(this, error, '获取手册列表失败');
       } finally {
         this.loading = false;
       }
@@ -383,8 +383,7 @@ export default {
           this.$message.error(res.message || '获取手册详情失败');
         }
       } catch (error) {
-        console.error('获取手册详情出错:', error);
-        this.$message.error('获取手册详情失败');
+        notifyError(this, error, '获取手册详情失败');
       }
     },
     
@@ -420,7 +419,7 @@ export default {
                 try {
                   await deletePdf(record.fileId);
                 } catch (error) {
-                  console.error('删除文件出错:', error);
+                  // 手册记录已经删除，云存储里的文件清理失败不影响结果（服务端也会异步清理）
                 }
               }
               this.fetchManuals();
@@ -428,8 +427,7 @@ export default {
               this.$message.error(res.message || '删除失败');
             }
           } catch (error) {
-            console.error('删除手册出错:', error);
-            this.$message.error('删除失败');
+            notifyError(this, error, '删除失败');
           }
         }
       });
@@ -451,7 +449,7 @@ export default {
             }
           }
         } catch (error) {
-          console.error('获取预览链接出错:', error);
+          // 取不到预览链接时，对话框会显示"无法预览，请下载后查看"
         }
       }
     },
@@ -523,8 +521,7 @@ export default {
           options.onSuccess(res);
         }
       } catch (error) {
-        console.error('上传文件出错:', error);
-        this.$message.error(error.message || '文件上传失败');
+        notifyError(this, error, '', '文件上传失败');
         this.fileList = [];
 
         if (options.onError) {
@@ -605,8 +602,7 @@ export default {
               this.$message.error(res.message || (this.dialogType === 'add' ? '添加失败' : '更新失败'));
             }
           } catch (error) {
-            console.error(this.dialogType === 'add' ? '添加手册出错:' : '更新手册出错:', error);
-            this.$message.error(this.dialogType === 'add' ? '添加失败' : '更新失败');
+            notifyError(this, error, this.dialogType === 'add' ? '添加失败' : '更新失败');
           } finally {
             this.submitLoading = false;
           }

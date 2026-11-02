@@ -87,7 +87,8 @@ export default {
         this.error = uploadErrorMessage(error);
         // 文件太大重试没有意义
         if ((error && error.message || '').includes('413')) this.file = null;
-        this.$message.error(this.error);
+        // 请求层（获取上传授权）已经提示过的错误不再重复弹
+        if (!(error && error.notified)) this.$message.error(this.error);
       } finally {
         this.uploading = false;
         this.$emit('uploading', false);
@@ -115,7 +116,7 @@ export default {
         try {
           await deletePdf(current);
         } catch (error) {
-          console.error('清理未保存的 PDF 失败:', error);
+          // 只是清理云存储里没保存的文件，失败不影响上传结果
         }
       }
     }

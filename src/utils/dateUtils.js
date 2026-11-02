@@ -20,7 +20,6 @@ const dateUtils = {
       // 确保moment能正确解析ISO格式的时间字符串
       return moment(String(dateTime)).format(format);
     } catch (error) {
-      console.error('日期格式化错误:', error, dateTime);
       return String(dateTime);
     }
   },
@@ -36,7 +35,6 @@ const dateUtils = {
     try {
       return moment(String(date)).format(format);
     } catch (error) {
-      console.error('日期格式化错误:', error, date);
       return String(date);
     }
   },
@@ -52,7 +50,6 @@ const dateUtils = {
     try {
       return moment(String(time)).format(format);
     } catch (error) {
-      console.error('时间格式化错误:', error, time);
       return String(time);
     }
   },
@@ -67,7 +64,6 @@ const dateUtils = {
     try {
       return moment(String(dateTime)).fromNow();
     } catch (error) {
-      console.error('相对时间格式化错误:', error, dateTime);
       return String(dateTime);
     }
   },
@@ -100,7 +96,6 @@ const dateUtils = {
       // 如果不是ISO格式，尝试常规解析
       return moment(dateStr).format(format);
     } catch (error) {
-      console.error('ISO日期格式化错误:', error, isoString);
       return String(isoString);
     }
   },
@@ -117,7 +112,6 @@ const dateUtils = {
       // 解析UTC时间并转换为本地时间
       return moment.utc(String(utcTime)).local().format(format);
     } catch (error) {
-      console.error('UTC时间转换错误:', error, utcTime);
       return String(utcTime);
     }
   },
@@ -153,7 +147,6 @@ const dateUtils = {
       // 4. 如果都失败了，返回原始字符串
       return dateStr;
     } catch (error) {
-      console.error('简单ISO日期格式化错误:', error, isoString);
       return String(isoString);
     }
   },
@@ -192,7 +185,6 @@ const dateUtils = {
       // 格式化为 YYYY-MM-DD HH:mm:ss
       return `${year}-${month}-${day} ${hoursStr}:${minutes}:${seconds}`;
     } catch (error) {
-      console.error('UTC转北京时间错误:', error, utcTimeStr);
       return String(utcTimeStr);
     }
   }

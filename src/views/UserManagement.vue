@@ -125,6 +125,7 @@
 </template>
 
 <script>
+import { notifyError } from '@/utils/notify';
 import { 
 	createMainUser, 
 	createSubUser, 
@@ -291,7 +292,6 @@ export default {
 					username: 'admin',
 					userType: 'main'
 				};
-				console.warn('未找到用户信息，默认设置为主账号');
 			}
 		}
 		this.fetchUsers();
@@ -304,7 +304,6 @@ export default {
 				// 使用utcToLocal方法处理UTC时间
 				return dateUtils.utcToLocal(dateTime);
 			} catch (error) {
-				console.error('时间格式化错误:', error, dateTime);
 				return String(dateTime);
 			}
 		},
@@ -334,7 +333,7 @@ export default {
 				this.pagination.current = page;
 				this.pagination.pageSize = pageSize;
 			} catch (error) {
-				this.$message.error(error.message || '获取用户列表失败');
+				notifyError(this, error, '', '获取用户列表失败');
 			} finally {
 				this.loading = false;
 			}
@@ -411,7 +410,7 @@ export default {
 						}
 						this.userModalVisible = false;
 					} catch (error) {
-						this.$message.error(error.message || '操作失败');
+						notifyError(this, error, '', '操作失败');
 					} finally {
 						this.confirmLoading = false;
 					}
@@ -430,7 +429,7 @@ export default {
 						this.$message.success(res.message || '密码修改成功');
 						this.passwordModalVisible = false;
 					} catch (error) {
-						this.$message.error(error.message || '修改失败');
+						notifyError(this, error, '', '修改失败');
 					} finally {
 						this.confirmLoading = false;
 					}
@@ -448,7 +447,7 @@ export default {
 						this.$message.success(res.message || '密码重置成功');
 						this.resetPasswordModalVisible = false;
 					} catch (error) {
-						this.$message.error(error.message || '重置失败');
+						notifyError(this, error, '', '重置失败');
 					} finally {
 						this.confirmLoading = false;
 					}
@@ -462,7 +461,7 @@ export default {
 				this.$message.success(res.message || '用户删除成功');
 				this.fetchUsers();
 			} catch (error) {
-				this.$message.error(error.message || '删除失败');
+				notifyError(this, error, '', '删除失败');
 			} finally {
 				this.loading = false;
 			}

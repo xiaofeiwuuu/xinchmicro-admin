@@ -60,6 +60,7 @@
 </template>
 
 <script>
+import { notifyError } from '@/utils/notify';
 import { login } from '@/api'
 
 export default ({
@@ -94,7 +95,7 @@ export default ({
 						this.$message.success(res.message || '登录成功');
 						this.$router.push('/');
 					} catch (error) {
-						this.$message.error(error.message || '登录失败');
+						notifyError(this, error, '', '登录失败');
 					} finally {
 						this.loading = false;
 					}

@@ -175,6 +175,7 @@
 </template>
 
 <script>
+import { notifyError } from '@/utils/notify';
 import { getCatalogs, createCatalog, updateCatalog, deleteCatalog, getCategories } from '@/api';
 
 // 定义表格列的配置
@@ -247,7 +248,7 @@ export default {
             getCategories().then(res => {
                 this.categories = res;
             }).catch(error => {
-                this.$message.error('获取分类列表失败: ' + error.message);
+                notifyError(this, error, '获取分类列表失败');
             });
         },
 
@@ -283,7 +284,7 @@ export default {
                 this.data = res;
             }).catch(error => {
                 this.loading = false;
-                this.$message.error('获取数据失败: ' + error.message);
+                notifyError(this, error, '获取数据失败');
             });
         },
 
@@ -337,7 +338,7 @@ export default {
                         this.$message.success('删除成功');
                         this.fetchData();
                     }).catch((error) => {
-                        this.$message.error('删除失败: ' + error.message);
+                        notifyError(this, error, '删除失败');
                     });
                 },
                 onCancel: () => {
@@ -385,7 +386,7 @@ export default {
                         this.visible = false;
                         this.fetchData();
                     } catch (error) {
-                        this.$message.error('操作失败: ' + error.message);
+                        notifyError(this, error, '操作失败');
                     } finally {
                         this.confirmLoading = false;
                     }

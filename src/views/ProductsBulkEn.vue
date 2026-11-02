@@ -165,6 +165,7 @@
 </template>
 
 <script>
+import { notifyError } from '@/utils/notify';
 import {
   getCatalogs,
   getUploadAuth,
@@ -268,7 +269,7 @@ export default {
         this.catalogs = res || [];
         this.catalogsLoaded = true;
       })
-      .catch((error) => this.$message.error('获取目录列表失败: ' + error.message));
+      .catch((error) => notifyError(this, error, '获取目录列表失败'));
   },
   // 离开页面时，已上传但没有关联的文件会变成云存储里的孤儿文件，提示并清理
   beforeRouteLeave(to, from, next) {

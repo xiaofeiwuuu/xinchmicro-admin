@@ -109,6 +109,7 @@
 </template>
 
 <script>
+import { notifyError } from '@/utils/notify';
 import { getCarousels, createCarousel, updateCarousel, deleteCarousel, updateCarouselOrder, uploadFile, deletePdf, getPdfDownloadUrl } from '@/api'
 
 export default {
@@ -191,7 +192,7 @@ export default {
 				const res = await getCarousels()
 				this.carousels = res.data
 			} catch (error) {
-				this.$message.error('获取轮播图列表失败')
+				notifyError(this, error, '获取轮播图列表失败')
 			} finally {
 				this.loading = false
 			}
@@ -261,7 +262,7 @@ export default {
 						this.visible = false
 						this.fetchCarousels()
 					} catch (error) {
-						this.$message.error(error.message || '操作失败')
+						notifyError(this, error, '', '操作失败')
 					} finally {
 						this.confirmLoading = false
 					}
@@ -281,7 +282,7 @@ export default {
 				this.$message.success('删除成功')
 				this.fetchCarousels()
 			} catch (error) {
-				this.$message.error('删除失败')
+				notifyError(this, error, '删除失败')
 			}
 		},
 		async beforeUpload(file) {
@@ -304,7 +305,7 @@ export default {
 				try {
 					await this.deletePdfFile(this.uploadedFileInfo.fileID)
 				} catch (error) {
-					console.error('删除旧图片文件失败:', error)
+					// 旧文件删除失败不影响新文件上传
 				}
 			}
 			
@@ -339,7 +340,6 @@ export default {
 				
 				// 上传文件
 				const result = await uploadFile(file)
-				console.log('图片上传结果:', result)
 				
 				// 保存上传结果
 				this.uploadedFileInfo = {
@@ -363,7 +363,6 @@ export default {
 				
 				this.$message.success('图片上传成功')
 			} catch (error) {
-				console.error('图片上传错误:', error)
 				
 				// 更新文件状态为错误
 				this.fileList = [{
@@ -379,7 +378,7 @@ export default {
 					this.uploadError = '文件上传失败: ' + (error.message || '未知错误') + '。请点击重试。'
 				}
 				
-				this.$message.error(this.uploadError)
+				if (!error.notified) this.$message.error(this.uploadError)
 			} finally {
 				this.uploading = false
 			}
@@ -389,7 +388,6 @@ export default {
 				await deletePdf(fileID)
 				return true
 			} catch (error) {
-				console.error('删除文件失败:', error)
 				throw error
 			}
 		},
@@ -399,7 +397,7 @@ export default {
 					await this.deletePdfFile(this.uploadedFileInfo.fileID)
 					this.$message.success('图片已删除')
 				} catch (error) {
-					this.$message.error('删除图片失败: ' + error.message)
+					notifyError(this, error, '删除图片失败')
 					return false
 				}
 			}
@@ -436,7 +434,6 @@ export default {
 			try {
 				this.$message.loading('正在获取图片链接...', 0)
 				const res = await getPdfDownloadUrl(record.fileID)
-				console.log('图片链接:', res)
 				
 				this.$message.destroy()
 				
@@ -449,9 +446,8 @@ export default {
 					this.$message.error('获取高清图片链接失败，使用原始图片')
 				}
 			} catch (error) {
-				console.error('获取图片链接失败:', error)
 				this.$message.destroy()
-				this.$message.error('获取图片链接失败: ' + (error.message || '未知错误'))
+				notifyError(this, error, '获取图片链接失败')
 				// 使用原始链接作为备选
 				this.previewImage(record.imageUrl)
 			} finally {
@@ -470,7 +466,6 @@ export default {
 			try {
 				this.$message.loading('正在获取图片链接...', 0)
 				const res = await getPdfDownloadUrl(this.uploadedFileInfo.fileID)
-				console.log('图片链接:', res)
 				
 				this.$message.destroy()
 				
@@ -483,9 +478,8 @@ export default {
 					this.$message.error('获取高清图片链接失败，使用原始图片')
 				}
 			} catch (error) {
-				console.error('获取图片链接失败:', error)
 				this.$message.destroy()
-				this.$message.error('获取图片链接失败: ' + (error.message || '未知错误'))
+				notifyError(this, error, '获取图片链接失败')
 				// 使用原始链接作为备选
 				this.previewImage(this.fileList[0].url)
 			} finally {

@@ -1,4 +1,5 @@
 import fetchWrapper from '@/plugins/fetchWrapper'; // 确保路径正确
+import { isMainUser } from '@/utils/auth';
 
 // 接口地址前缀，由 .env / .env.development / .env.production 里的 VUE_APP_API_BASE_URL 决定（留空表示同源）
 export const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
@@ -200,8 +201,11 @@ export const getWxConfig = async () => {
   return fetchWrapper.get(`${API_BASE_URL}/api/wx_config`);
 };
 
-// 删除PDF文件
+// 删除云存储文件。服务端只允许主账号调用（/api/files/delete 按文件 ID 直接删，不检查是否在用）。
+// 这里的调用都是"取消/重选/移除后顺手清理刚上传、还没保存的文件"，子账号没有权限就直接跳过，
+// 不发请求、不弹错误；没清理掉的文件会留在「文件管理」里，由主账号在那里删除。
 export const deletePdf = async (fileID) => {
+  if (!isMainUser()) return null;
   return fetchWrapper.post(`${API_BASE_URL}/api/files/delete`, {
     fileid_list: [fileID]
   });
@@ -414,6 +418,7 @@ export const getEnglishStats = async () => {
 
 // 批量删除云存储文件（每次最多 50 个）。返回成功提交删除的数量；失败的批次会被忽略（只是清理，不影响主流程）
 export const deletePdfs = async (fileIDs) => {
+    if (!isMainUser()) return 0;
     const ids = [...new Set((fileIDs || []).filter(Boolean))];
     let submitted = 0;
     for (let i = 0; i < ids.length; i += 50) {

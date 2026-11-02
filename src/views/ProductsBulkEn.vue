@@ -3,8 +3,8 @@
     <!-- 概况与说明：只用灰色小字 -->
     <div class="be-summary" v-if="stats">产品共 {{ stats.total }} 个，已有英文版 {{ stats.withEnFile }} 个</div>
     <div class="be-hint">
-      文件名写成「产品名_EN.pdf」，例如 XC1234_EN.pdf，按产品名匹配（不区分大小写）。
-      不同目录里的同名产品会共用这一份英文 PDF；如果某个同名产品的文档内容不一样，请把它放进目录名文件夹（用「选择文件夹」），就只关联那个目录的产品。
+      文件名写成「产品名_EN.pdf」，例如 XC1234_EN.pdf，按产品名匹配（不区分大小写）。所有文件放在一个文件夹里就行，用「选择文件夹」可以一次选整个文件夹。
+      不同目录里的同名产品会共用这一份英文 PDF；如果某个同名产品的文档内容不一样，请把它放进以目录名命名的子文件夹，就只关联那个目录的产品。
       点「确认关联」之前不会影响线上数据。
     </div>
 
@@ -195,7 +195,7 @@ export default {
       if (row.parseError) return `文件名无法识别：${row.parseError}`;
       if (row.status === 'uploading') return `上传中 ${row.percent}%`;
       if (row.status === 'error') return `上传失败：${row.error}`;
-      if (row.status === 'pending') return row.folderNote ? '待上传（文件夹名与任何目录都不一致，将只按产品名匹配）' : '待上传';
+      if (row.status === 'pending') return row.folderNote ? '待上传（子文件夹名与任何目录都不一致，将按产品名匹配所有同名产品）' : '待上传';
       if (this.notes[row.path]) return this.notes[row.path];
       if (!this.reportFresh) return '已上传，待检查';
       return this.expandedNotes[row.path] || '可关联';
@@ -237,6 +237,10 @@ export default {
       const parsed = parseEnglishPdfName(file.name);
       const hasFolder = path !== file.name;
       const catalog = hasFolder ? catalogFromPath(path, this.catalogs) : null;
+      // 选择文件夹时 path 形如「所选文件夹/文件」或「所选文件夹/子文件夹/文件」。
+      // 所有文件放在同一个文件夹里是最常见的用法，这时文件夹名只是个容器，不需要和目录对上，不能提示。
+      // 只有文件在子文件夹里（说明用户想按目录分文件夹），而子文件夹名又对不上任何目录时才提示。
+      const nested = path.split(/[\\/]/).filter(Boolean).length >= 3;
       this.rows.push({
         key: ++rowSeq,
         file,
@@ -244,7 +248,7 @@ export default {
         fileName: file.name,
         catalogId: catalog ? catalog.id : undefined,
         catalogName: catalog ? catalog.name : '',
-        folderNote: hasFolder && !catalog ? `文件夹名与后台的任何目录都不一致：${path}` : '',
+        folderNote: nested && !catalog ? `子文件夹名与后台的任何目录都不一致：${path}` : '',
         parsedName: parsed.ok ? parsed.name : '',
         parseError: parsed.ok ? '' : parsed.reason,
         status: 'pending', // pending | uploading | done | error

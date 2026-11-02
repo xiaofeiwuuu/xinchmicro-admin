@@ -4,7 +4,6 @@
 			<a-form class="co-form" :form="form" @submit="handleSubmit">
 				<a-row :gutter="32">
 					<a-col :xs="24" :md="12">
-						<div class="co-col-title">中文</div>
 						<a-form-item label="公司名称" :labelCol="{ span: 6 }" :wrapperCol="{ span: 18 }">
 							<a-input
 								v-decorator="[
@@ -41,7 +40,6 @@
 						</a-form-item>
 					</a-col>
 					<a-col :xs="24" :md="12">
-						<div class="co-col-title">English</div>
 						<a-form-item label="英文名称" :labelCol="{ span: 6 }" :wrapperCol="{ span: 18 }">
 							<a-input
 								v-decorator="[
@@ -633,11 +631,6 @@ export default {
 }
 @media (max-width: 992px) {
 	.co-form { max-width: 100%; }
-}
-.co-col-title {
-	font-weight: 500;
-	margin-bottom: 16px;
-	padding-left: 25%;
 }
 .ant-upload-text {
 	margin-top: 8px;

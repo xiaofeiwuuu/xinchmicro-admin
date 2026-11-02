@@ -141,7 +141,7 @@ export default {
   },
   methods: {
     formatSize,
-    typeLabel: (t) => ({ product: '产品', manual: '手册', carousel: '轮播图', company: '公司' }[t] || t),
+    typeLabel: (t) => ({ product: '产品', manual: '手册', carousel: '轮播图', company: '公司', live: '线上' }[t] || t),
     checkboxProps(record) {
       return { props: { disabled: !record.deletable } };
     },

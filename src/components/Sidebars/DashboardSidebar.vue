@@ -10,6 +10,7 @@
 
 		<!-- 侧边栏导航菜单 -->
 		<a-menu theme="light" mode="inline">
+			<a-menu-item class="menu-item-header" disabled>产品</a-menu-item>
 			<a-menu-item>
 				<router-link to="/categories">
 					<span class="icon">
@@ -44,6 +45,18 @@
 				</router-link>
 			</a-menu-item>
 			<a-menu-item>
+				<router-link to="/manuals">
+					<span class="icon">
+						<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+							<path fill-rule="evenodd" clip-rule="evenodd" d="M4 4C4 2.89543 4.89543 2 6 2H14C15.1046 2 16 2.89543 16 4V16C16 17.1046 15.1046 18 14 18H6C4.89543 18 4 17.1046 4 16V4ZM6 4H14V16H6V4Z" fill="#111827"/>
+							<path d="M7 8H13M7 12H11" stroke="#111827" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+						</svg>
+					</span>
+					<span class="label">手册管理</span>
+				</router-link>
+			</a-menu-item>
+			<a-menu-item class="menu-item-header" disabled>公司</a-menu-item>
+			<a-menu-item>
 				<router-link to="/company">
 					<span class="icon">
 						<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -64,19 +77,8 @@
 					<span class="label">轮播图管理</span>
 				</router-link>
 			</a-menu-item>
-			<a-menu-item>
-				<router-link to="/manuals">
-					<span class="icon">
-						<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-							<path fill-rule="evenodd" clip-rule="evenodd" d="M4 4C4 2.89543 4.89543 2 6 2H14C15.1046 2 16 2.89543 16 4V16C16 17.1046 15.1046 18 14 18H6C4.89543 18 4 17.1046 4 16V4ZM6 4H14V16H6V4Z" fill="#111827"/>
-							<path d="M7 8H13M7 12H11" stroke="#111827" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-						</svg>
-					</span>
-					<span class="label">手册管理</span>
-				</router-link>
-			</a-menu-item>
-			<a-menu-item>
-				<router-link to="/logs" v-if="isMainUser">
+			<a-menu-item v-if="isMainUser">
+				<router-link to="/logs">
 					<span class="icon">
 						<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
 							<path fill-rule="evenodd" clip-rule="evenodd" d="M5 4C3.89543 4 3 4.89543 3 6V14C3 15.1046 3.89543 16 5 16H15C16.1046 16 17 15.1046 17 14V6C17 4.89543 16.1046 4 15 4H5ZM7 8C6.44772 8 6 8.44772 6 9C6 9.55228 6.44772 10 7 10H13C13.5523 10 14 9.55228 14 9C14 8.44772 13.5523 8 13 8H7ZM7 12C6.44772 12 6 12.4477 6 13C6 13.5523 6.44772 14 7 14H11C11.5523 14 12 13.5523 12 13C12 12.4477 11.5523 12 11 12H7Z" fill="#111827"/>
@@ -85,8 +87,8 @@
 					<span class="label">日志管理</span>
 				</router-link>
 			</a-menu-item>
-			<a-menu-item>
-				<router-link to="/users" v-if="isMainUser">
+			<a-menu-item v-if="isMainUser">
+				<router-link to="/users">
 					<span class="icon">
 						<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
 							<path d="M10 9a3 3 0 100-6 3 3 0 000 6zM6.5 10C5.67 10 5 10.67 5 11.5v1a3 3 0 003 3h4a3 3 0 003-3v-1c0-.83-.67-1.5-1.5-1.5h-7z" fill="#111827"/>

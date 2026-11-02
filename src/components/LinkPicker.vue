@@ -5,7 +5,9 @@
       <a-radio-button value="category">产品分类</a-radio-button>
       <a-radio-button value="catalog">产品目录</a-radio-button>
       <a-radio-button value="product">产品详情</a-radio-button>
-      <a-radio-button value="custom">其他链接</a-radio-button>
+      <a-radio-button value="company">公司页</a-radio-button>
+      <!-- 外部网址在小程序里不能打开（只会复制），所以不再提供；已保存的旧外部链接仍会显示，改选其他类型即可 -->
+      <a-radio-button value="custom" disabled>外部链接</a-radio-button>
     </a-radio-group>
 
     <a-select
@@ -56,9 +58,7 @@
       v-else-if="type === 'custom'"
       class="lp-field"
       :value="custom"
-      allow-clear
-      placeholder="外部网址（http 开头）或小程序页面路径（/pages/... 开头）"
-      @change="onCustomInput"
+      disabled
     />
 
     <div class="lp-tip">{{ tip }}</div>
@@ -92,7 +92,8 @@ export default {
   computed: {
     tip() {
       if (this.type === 'none') return '点击轮播图不会跳转。';
-      if (this.type === 'custom') return '以 http 开头的外部网址在小程序里不能直接打开，点击后只会复制网址；也可以手写小程序页面路径。底部标签页（首页、搜索、公司）不能作为跳转目标。';
+      if (this.type === 'company') return '点击后跳转到小程序的「公司」页。';
+      if (this.type === 'custom') return '这是旧的外部链接，小程序里不能直接打开（点击只会复制网址）。请改选上面的其他类型。';
       return this.value ? `将生成的链接：${this.value}` : '请选择跳转目标。';
     }
   },
@@ -156,8 +157,7 @@ export default {
     onTypeChange(e) {
       this.type = e.target.value;
       this.id = undefined;
-      if (this.type === LINK_TYPES.custom) this.emit(this.custom);
-      else this.emit('');
+      this.emit(buildLink(this.type)); // 不跳转为空；公司页是固定路径；其余要等选了具体对象再生成
       if (this.type === LINK_TYPES.product && !this.productOptions.length) this.search('');
     },
     onPick(id) {
@@ -167,10 +167,6 @@ export default {
       if (this.type === LINK_TYPES.category) name = (this.categories.find((c) => c.id === id) || {}).name;
       if (this.type === LINK_TYPES.catalog) name = (this.catalogs.find((c) => c.id === id) || {}).name;
       this.emit(buildLink(this.type, id, name));
-    },
-    onCustomInput(e) {
-      this.custom = e.target.value;
-      this.emit(this.custom.trim());
     },
     onSearch(keyword) {
       clearTimeout(this.timer);

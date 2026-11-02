@@ -68,94 +68,107 @@
             </span>
         </a-table>
 
-        <!-- 编辑模态框 -->
+        <!-- 编辑模态框：左边是基本信息，右边是参数标题 -->
         <a-modal :maskClosable="false" :title="modalTitle" :visible="visible" :confirm-loading="confirmLoading"
-            @ok="handleOk" @cancel="handleCancel">
+            width="980px" okText="确定" cancelText="取消" @ok="handleOk" @cancel="handleCancel">
             <a-form :form="form" :hide-required-mark="true">
-                <a-form-item label="目录名称" :colon="false">
-                    <a-input 
-                        v-decorator="[
-                            'name', 
-                            { 
-                                rules: [{ required: true, message: '请输入目录名称!' }],
-                                initialValue: currentRecord ? currentRecord.name : ''
-                            }
-                        ]"
-                        placeholder="请输入目录名称" 
-                    />
-                </a-form-item>
-                <a-form-item label="英文名称" :colon="false">
-                    <a-input
-                        v-decorator="[
-                            'nameEn',
-                            {
-                                rules: [{ max: 100, message: '最多 100 个字符' }],
-                                initialValue: currentRecord ? currentRecord.nameEn : ''
-                            }
-                        ]"
-                        placeholder="可选；没有填写时英文界面显示目录名称"
-                    />
-                </a-form-item>
-                <a-form-item label="所属分类" :colon="false">
-                    <a-select
-                        v-decorator="[
-                            'categoryId', 
-                            { 
-                                rules: [{ required: true, message: '请选择所属分类!' }],
-                                initialValue: currentRecord ? currentRecord.categoryId : undefined
-                            }
-                        ]"
-                        placeholder="请选择所属分类"
-                    >
-                        <a-select-option v-for="category in categories" :key="category.id" :value="category.id">
-                            {{ category.name }}
-                        </a-select-option>
-                    </a-select>
-                </a-form-item>
-                <a-form-item label="排序" :colon="false">
-                    <a-input-number
-                        v-decorator="[
-                            'sort',
-                            {
-                                rules: [{ required: true, message: '请输入排序值!' }],
-                                initialValue: currentRecord ? currentRecord.sort : 999
-                            }
-                        ]"
-                        :min="0"
-                        :precision="0"
-                        placeholder="数字越小越靠前"
-                        style="width: 100%;"
-                    />
-                    <div style="color: #999; font-size: 12px; margin-top: 5px;">
-                        提示：数字越小越靠前，相同则按创建时间倒序
-                    </div>
-                </a-form-item>
-                <a-form-item label="参数标题" :colon="false">
-                    <div>
-                        <div v-for="(param, index) in paramTitlesList" :key="param.id || index" style="display: flex; margin-bottom: 8px;">
+                <a-row :gutter="32">
+                    <!-- 左：基本信息 -->
+                    <a-col :span="10">
+                        <a-form-item label="目录名称" :colon="false" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
                             <a-input
-                                v-model="param.title"
-                                placeholder="请输入参数标题"
-                                style="flex: 1; margin-right: 8px;"
+                                v-decorator="[
+                                    'name',
+                                    {
+                                        rules: [{ required: true, message: '请输入目录名称!' }],
+                                        initialValue: currentRecord ? currentRecord.name : ''
+                                    }
+                                ]"
+                                placeholder="请输入目录名称"
                             />
+                        </a-form-item>
+                        <a-form-item label="英文名称" :colon="false" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
                             <a-input
-                                v-model="param.titleEn"
-                                placeholder="英文标题（可选）"
-                                style="flex: 1; margin-right: 8px;"
+                                v-decorator="[
+                                    'nameEn',
+                                    {
+                                        rules: [{ max: 100, message: '最多 100 个字符' }],
+                                        initialValue: currentRecord ? currentRecord.nameEn : ''
+                                    }
+                                ]"
+                                placeholder="可选；没有填写时英文界面显示目录名称"
                             />
-                            <a-button type="danger" icon="delete" @click="removeParamTitle(index)" />
+                        </a-form-item>
+                        <a-form-item label="所属分类" :colon="false" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+                            <a-select
+                                v-decorator="[
+                                    'categoryId',
+                                    {
+                                        rules: [{ required: true, message: '请选择所属分类!' }],
+                                        initialValue: currentRecord ? currentRecord.categoryId : undefined
+                                    }
+                                ]"
+                                placeholder="请选择所属分类"
+                            >
+                                <a-select-option v-for="category in categories" :key="category.id" :value="category.id">
+                                    {{ category.name }}
+                                </a-select-option>
+                            </a-select>
+                        </a-form-item>
+                        <a-form-item label="排序" :colon="false" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+                            <a-input-number
+                                v-decorator="[
+                                    'sort',
+                                    {
+                                        rules: [{ required: true, message: '请输入排序值!' }],
+                                        initialValue: currentRecord ? currentRecord.sort : 999
+                                    }
+                                ]"
+                                :min="0"
+                                :precision="0"
+                                placeholder="数字越小越靠前"
+                                style="width: 100%;"
+                            />
+                            <div style="color: #999; font-size: 12px; line-height: 1.5; margin-top: 5px;">
+                                提示：数字越小越靠前，相同则按创建时间倒序
+                            </div>
+                        </a-form-item>
+                    </a-col>
+
+                    <!-- 右：参数标题 -->
+                    <a-col :span="14">
+                        <div style="font-weight: 500; margin-bottom: 8px;">参数标题</div>
+                        <div style="display: flex; margin-bottom: 8px; color: #999; font-size: 12px;">
+                            <div style="flex: 1; margin-right: 8px;">中文标题</div>
+                            <div style="flex: 1; margin-right: 8px;">英文标题（可选）</div>
+                            <div style="width: 32px;"></div>
                         </div>
-                        <a-button type="dashed" icon="plus" @click="addParamTitle" style="width: 100%;">
+                        <div style="max-height: 440px; overflow-y: auto; padding-right: 4px;">
+                            <div v-for="(param, index) in paramTitlesList" :key="param.id || index" style="display: flex; margin-bottom: 8px;">
+                                <a-input
+                                    v-model="param.title"
+                                    placeholder="请输入参数标题"
+                                    style="flex: 1; margin-right: 8px;"
+                                />
+                                <a-input
+                                    v-model="param.titleEn"
+                                    placeholder="英文标题（可选）"
+                                    style="flex: 1; margin-right: 8px;"
+                                />
+                                <a-button type="danger" icon="delete" @click="removeParamTitle(index)" />
+                            </div>
+                        </div>
+                        <a-button type="dashed" icon="plus" @click="addParamTitle" style="width: 100%; margin-top: 4px;">
                             添加参数标题
                         </a-button>
                         <div v-if="paramTitlesList.length === 0" style="color: #ff4d4f; font-size: 12px; margin-top: 5px;">
                             请添加至少一个参数标题
                         </div>
-                    </div>
-                    <div style="color: #999; font-size: 12px; margin-top: 5px;">
-                        提示：如型号、封装、功耗等
-                    </div>
-                </a-form-item>
+                        <div style="color: #999; font-size: 12px; margin-top: 5px;">
+                            提示：如型号、封装、功耗等
+                        </div>
+                    </a-col>
+                </a-row>
             </a-form>
         </a-modal>
     </div>

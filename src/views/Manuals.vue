@@ -196,6 +196,7 @@
 import IconEdit from '@/components/IconEdit.vue';
 import IconDelete from '@/components/IconDelete.vue';
 import { notifyError } from '@/utils/notify';
+import { fileIdToUrl } from '@/utils/cloudUrl';
 import {
   getManuals,
   getManualById,
@@ -433,16 +434,18 @@ export default {
       this.previewUrl = '';
       
       if (record.fileId) {
-        try {
-          const res = await getPdfDownloadUrl(record.fileId);
-          if (res.code === 0 && res.data.file_list && res.data.file_list.length > 0) {
-            const fileInfo = res.data.file_list[0];
-            if (fileInfo.status === 0) {
-              this.previewUrl = fileInfo.download_url;
-            }
+        // 优先直接用文件 ID 算出的公开链接（不依赖接口，浏览器内嵌预览）
+        this.previewUrl = fileIdToUrl(record.fileId);
+        if (!this.previewUrl) {
+          // 文件 ID 格式不对时才向服务端要下载链接。请求层返回的就是 { errcode, file_list }，
+          // 之前这里写成 res.code === 0 && res.data.file_list，永远为假，预览从来没有成功过
+          try {
+            const res = await getPdfDownloadUrl(record.fileId);
+            const fileInfo = res && res.file_list && res.file_list[0];
+            if (fileInfo && fileInfo.status === 0) this.previewUrl = fileInfo.download_url;
+          } catch (error) {
+            // 取不到预览链接时，对话框会显示"无法预览，请下载后查看"
           }
-        } catch (error) {
-          // 取不到预览链接时，对话框会显示"无法预览，请下载后查看"
         }
       }
     },

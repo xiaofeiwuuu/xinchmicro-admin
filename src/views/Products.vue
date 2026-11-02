@@ -65,15 +65,11 @@
             </template>
             <template slot="pdfUrl" slot-scope="text, record">
                 <div>
-                    <a-button v-if="record.fileID" type="link" @click="handleDownloadPdf(record)">
-                        <a-icon type="download" /> 中文版
-                    </a-button>
+                    <a v-if="record.fileID" :href="fileHref(record.fileID, record.pdfUrl)" target="_blank" rel="noopener noreferrer">中文版</a>
                     <span v-else>-</span>
                 </div>
                 <div>
-                    <a-button v-if="record.fileIDEn" type="link" @click="handleDownloadPdf(record, 'en')">
-                        <a-icon type="download" /> 英文版
-                    </a-button>
+                    <a v-if="record.fileIDEn" :href="fileHref(record.fileIDEn, record.pdfUrlEn)" target="_blank" rel="noopener noreferrer">英文版</a>
                     <a-tag v-else color="orange">缺英文版</a-tag>
                 </div>
             </template>
@@ -232,7 +228,8 @@
 import IconEdit from '@/components/IconEdit.vue';
 import IconDelete from '@/components/IconDelete.vue';
 import { notifyError } from '@/utils/notify';
-import { getProducts, createProduct, deleteProduct, getCatalogs, updateProduct, deletePdfs, getPdfDownloadUrl } from '@/api';
+import { getProducts, createProduct, deleteProduct, getCatalogs, updateProduct, deletePdfs } from '@/api';
+import { fileHref } from '@/utils/cloudUrl';
 import PdfUploader from '@/components/PdfUploader.vue';
 import { buildProductQuery, orphanFileIDs } from '@/utils/i18nData';
 
@@ -424,26 +421,8 @@ export default {
             this.uploadedFileInfoEn = info;
         },
 
-        // 下载PDF文件（lang 为 'en' 时下载英文版）
-        async handleDownloadPdf(record, lang) {
-            const fileID = lang === 'en' ? record.fileIDEn : record.fileID;
-            try {
-                this.$message.loading('正在获取下载链接...', 0);
-                const res = await getPdfDownloadUrl(fileID);
-
-                this.$message.destroy();
-
-                if (res && res.file_list.length > 0 && res.file_list[0].download_url) {
-                    // 打开新窗口下载文件
-                    window.open(res.file_list[0].download_url, '_blank');
-                } else {
-                    this.$message.error('获取下载链接失败');
-                }
-            } catch (error) {
-                this.$message.destroy();
-                notifyError(this, error, '下载PDF失败');
-            }
-        },
+        // 打开 PDF 用的链接（直接用文件 ID 算出公开链接，点击即在新标签页预览）
+        fileHref,
 
         // 显示添加或编辑产品的模态框
         showModal(record) {

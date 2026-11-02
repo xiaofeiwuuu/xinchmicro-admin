@@ -31,6 +31,7 @@
 				<a-form-item>
 					<a-button type="primary" @click="handleSearch">查询</a-button>
 					<a-button style="margin-left: 8px" @click="handleReset">重置</a-button>
+					<a-button style="margin-left: 24px" type="danger" ghost :loading="cleaning" @click="handleCleanup">清理一个月前的日志</a-button>
 				</a-form-item>
 			</a-form>
 		</a-card>
@@ -57,14 +58,16 @@
 
 <script>
 import { notifyError } from '@/utils/notify';
-import { getLogs, getLogActions } from '@/api'
+import { getLogs, getLogActions, previewLogCleanup, cleanupLogs } from '@/api'
 import dateUtils from '@/utils/dateUtils'
+import fetchWrapper from '@/plugins/fetchWrapper'
 
 export default {
 	data() {
 		return {
 			form: this.$form.createForm(this),
 			loading: false,
+			cleaning: false,
 			logs: [],
 			actions: [],
 			pagination: {
@@ -189,6 +192,43 @@ export default {
 			this.form.resetFields()
 			this.pagination.current = 1
 			this.fetchLogs()
+		},
+		// 清理一个月前的日志：先问服务端有多少条，让用户确认数量后再永久删除
+		async handleCleanup() {
+			if (this.cleaning) return
+			this.cleaning = true
+			let preview
+			try {
+				const res = await previewLogCleanup()
+				preview = res.data
+			} catch (error) {
+				notifyError(this, error, '获取待清理日志数量失败')
+				return
+			} finally {
+				this.cleaning = false
+			}
+			if (!preview || !preview.count) {
+				this.$message.info('没有一个月前的日志，无需清理')
+				return
+			}
+			this.$confirm({
+				title: '清理一个月前的日志',
+				content: `将永久删除 ${fetchWrapper.formatISODate(preview.before)} 之前的 ${preview.count} 条日志，删除后无法恢复。`,
+				okText: '确认删除',
+				okType: 'danger',
+				cancelText: '取消',
+				onOk: async () => {
+					try {
+						const res = await cleanupLogs()
+						this.$message.success(res.message || '清理完成')
+						this.pagination.current = 1
+						this.fetchLogs()
+						this.fetchActions()
+					} catch (error) {
+						notifyError(this, error, '清理日志失败')
+					}
+				}
+			})
 		},
 		handleTableChange(pagination) {
 			this.pagination = pagination

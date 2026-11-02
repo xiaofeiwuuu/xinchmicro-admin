@@ -335,6 +335,20 @@ export const getLogActions = async () => {
     });
 }
 
+// 预览：一个月前的日志有多少条（不删除）。返回 { count, before }
+export const previewLogCleanup = async () => {
+    return fetchWrapper.get(`${API_BASE_URL}/api/logs/cleanup-preview`, {
+        returnFullResponse: true
+    });
+}
+
+// 永久删除一个月前的全部日志（截止时间由服务端计算）。返回 { deleted, before }
+export const cleanupLogs = async () => {
+    return fetchWrapper.post(`${API_BASE_URL}/api/logs/cleanup`, {}, {
+        returnFullResponse: true
+    });
+}
+
 // 手册管理相关接口
 export const getManuals = async (query = {}) => {
     const queryParams = new URLSearchParams(query).toString();

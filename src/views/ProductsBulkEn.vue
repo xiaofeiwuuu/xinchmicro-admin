@@ -4,7 +4,7 @@
     <div class="be-summary" v-if="stats">产品共 {{ stats.total }} 个，已有英文版 {{ stats.withEnFile }} 个</div>
     <div class="be-hint">
       文件名写成「产品名_EN.pdf」，例如 XC1234_EN.pdf，按产品名匹配（不区分大小写）。
-      产品名在多个目录里重复时，请把文件按目录名分文件夹放好，再用「选择文件夹」。
+      不同目录里的同名产品会共用这一份英文 PDF；如果某个同名产品的文档内容不一样，请把它放进目录名文件夹（用「选择文件夹」），就只关联那个目录的产品。
       点「确认关联」之前不会影响线上数据。
     </div>
 
@@ -93,6 +93,7 @@ export default {
       previewFileNames: [],
       previewSkipped: [],
       notes: {}, // 检查后有问题的文件：路径 → 原因（只显示在状态列里）
+      expandedNotes: {}, // 一个文件会关联到多个同名产品的：路径 → 说明
       committed: null,
       columns: [
         { title: '文件', dataIndex: 'path', key: 'path', ellipsis: true },
@@ -127,7 +128,8 @@ export default {
     mainLabel() {
       if (this.uploading) return `停止上传（${this.uploadDone}/${this.uploadTotal}）`;
       if (this.reportFresh) return this.report.matched > 0 ? `确认关联 ${this.report.matched} 个产品` : '没有可关联的文件';
-      return this.uploadableCount ? `上传并检查（${this.uploadableCount}）` : '检查';
+      if (this.uploadableCount) return `上传并检查（${this.uploadableCount}）`;
+      return this.summary.done > 0 ? '检查' : '上传并检查'; // 文件都已上传、只差检查时叫「检查」；没选文件时灰着
     },
     mainEnabled() {
       if (this.uploading) return true; // 点击即停止
@@ -139,7 +141,7 @@ export default {
     statusLine() {
       if (this.uploading) return `正在上传 ${this.uploadDone}/${this.uploadTotal}…`;
       if (this.previewing) return '正在检查…';
-      if (this.reportFresh) return `可关联 ${this.report.matched} 个，有问题 ${this.problems.length} 个${this.problems.length ? '（原因见下表，这些文件不会被关联）' : ''}`;
+      if (this.reportFresh) return `可关联 ${this.report.matched} 个产品，有问题的文件 ${this.problems.length} 个${this.problems.length ? '（原因见下表，这些文件不会被关联）' : ''}`;
       if (this.committed) return `已关联 ${this.committed.updated} 个产品的英文版`;
       return this.rows.length ? `已选择 ${this.summary.total} 个文件` : '';
     },
@@ -195,7 +197,8 @@ export default {
       if (row.status === 'error') return `上传失败：${row.error}`;
       if (row.status === 'pending') return row.folderNote ? '待上传（文件夹名与任何目录都不一致，将只按产品名匹配）' : '待上传';
       if (this.notes[row.path]) return this.notes[row.path];
-      return this.reportFresh ? '可关联' : '已上传，待检查';
+      if (!this.reportFresh) return '已上传，待检查';
+      return this.expandedNotes[row.path] || '可关联';
     },
 
     // 主按钮：停止上传 / 上传并检查 / 确认关联
@@ -332,7 +335,8 @@ export default {
       const parts = [];
       let offset = 0;
       for (const batch of chunk(items, BATCH_SIZE)) {
-        const report = await bulkLinkEnglishProducts({ dryRun, items: batch });
+        // duplicates: 'all'：不同目录里的同名产品共用这一份英文文件（它们通常是同一份文档在各目录里各传了一遍）
+        const report = await bulkLinkEnglishProducts({ dryRun, duplicates: 'all', items: batch });
         parts.push({ report, offset });
         offset += batch.length;
       }
@@ -359,6 +363,11 @@ export default {
         this.notes = {};
         describeProblems(report, fileNames, skipped).forEach((p) => {
           if (p.fileName) this.notes[p.fileName] = `${p.type}：${p.detail}`;
+        });
+        this.expandedNotes = {};
+        ((report && report.expanded) || []).forEach((e) => {
+          const name = fileNames[e.index];
+          if (name) this.expandedNotes[name] = `可关联（同名产品共 ${e.count} 个，都会关联这个文件）`;
         });
         this.committed = null;
       } catch (error) {

@@ -134,13 +134,13 @@ export async function runPool(list, worker, { concurrency = 3, onProgress, shoul
 
 // 合并分批提交的批量接口报告；每批的 index 是批内序号，需要加上该批的起始偏移
 export function mergeBulkReports(parts) {
-  const merged = { total: 0, matched: 0, updated: 0, notFound: [], ambiguous: [], conflicts: [], invalid: [] };
+  const merged = { total: 0, matched: 0, updated: 0, notFound: [], ambiguous: [], conflicts: [], invalid: [], expanded: [] };
   (parts || []).forEach(({ report, offset }) => {
     if (!report) return;
     merged.total += report.total || 0;
     merged.matched += report.matched || 0;
     merged.updated += report.updated || 0;
-    ['notFound', 'ambiguous', 'conflicts', 'invalid'].forEach((key) => {
+    ['notFound', 'ambiguous', 'conflicts', 'invalid', 'expanded'].forEach((key) => {
       (report[key] || []).forEach((entry) => merged[key].push({ ...entry, index: entry.index + offset }));
     });
   });

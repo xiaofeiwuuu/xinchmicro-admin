@@ -1,9 +1,11 @@
+const path = require('path')
 const webpack = require('webpack')
 
 module.exports = {
-	runtimeCompiler: true,
-
 	chainWebpack: config => {
+		// antd 图标按需打包，见 src/icons.js
+		config.resolve.alias.set('@ant-design/icons/lib/dist$', path.resolve(__dirname, 'src/icons.js'))
+
 		config
 			.plugin('html')
 			.tap(args => {

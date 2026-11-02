@@ -5,188 +5,103 @@ export const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
 
 // 产品分类接口
 export const getCategories = async (query = {}) => {
-  try {
-    const queryParams = new URLSearchParams(query).toString();
-    const url = `${API_BASE_URL}/api/categories${queryParams ? `?${queryParams}` : ''}`;
-    const res = await fetchWrapper.get(url);
-    return res;
-  } catch (error) {
-    throw error;
-  }
+  const queryParams = new URLSearchParams(query).toString();
+  const url = `${API_BASE_URL}/api/categories${queryParams ? `?${queryParams}` : ''}`;
+  return fetchWrapper.get(url);
 };
 
 export const getCategoryById = async (id) => {
-  try {
-    const res = await fetchWrapper.get(`${API_BASE_URL}/api/categories/${id}`);
-    return res;
-  } catch (error) {
-    throw error;
-  }
+  return fetchWrapper.get(`${API_BASE_URL}/api/categories/${id}`);
 };
 
 export const createCategory = async (data) => {
-  try {
-    const res = await fetchWrapper.post(`${API_BASE_URL}/api/categories`, data);
-    return res;
-  } catch (error) {
-    throw error;
-  }
+  return fetchWrapper.post(`${API_BASE_URL}/api/categories`, data);
 };
 
 export const updateCategory = async (id, data) => {
-  try {
-    const res = await fetchWrapper.put(`${API_BASE_URL}/api/categories/${id}`, data);
-    return res;
-  } catch (error) {
-    throw error;
-  }
+  return fetchWrapper.put(`${API_BASE_URL}/api/categories/${id}`, data);
 };
 
 export const deleteCategory = async (id) => {
-  try {
-    const res = await fetchWrapper.delete(`${API_BASE_URL}/api/categories/${id}`);
-    return res;
-  } catch (error) {
-    throw error;
-  }
+  return fetchWrapper.delete(`${API_BASE_URL}/api/categories/${id}`);
 };
 
 // 产品目录接口
 export const getCatalogs = async (query = {}) => {
-  try {
-    const queryParams = new URLSearchParams(query).toString();
-    const url = `${API_BASE_URL}/api/catalogs${queryParams ? `?${queryParams}` : ''}`;
-    const res = await fetchWrapper.get(url);
-    return res;
-  } catch (error) {
-    throw error;
-  }
+  const queryParams = new URLSearchParams(query).toString();
+  const url = `${API_BASE_URL}/api/catalogs${queryParams ? `?${queryParams}` : ''}`;
+  return fetchWrapper.get(url);
 };
 
 export const getCatalogById = async (id) => {
-  try {
-    const res = await fetchWrapper.get(`${API_BASE_URL}/api/catalogs/${id}`);
-    return res;
-  } catch (error) {
-    throw error;
-  }
+  return fetchWrapper.get(`${API_BASE_URL}/api/catalogs/${id}`);
 };
 
 export const createCatalog = async (data) => {
-  try {
-    const res = await fetchWrapper.post(`${API_BASE_URL}/api/catalogs`, data);
-    return res;
-  } catch (error) {
-    throw error;
-  }
+  return fetchWrapper.post(`${API_BASE_URL}/api/catalogs`, data);
 };
 
 export const updateCatalog = async (id, data) => {
-  try {
-    const res = await fetchWrapper.put(`${API_BASE_URL}/api/catalogs/${id}`, data);
-    return res;
-  } catch (error) {
-    throw error;
-  }
+  return fetchWrapper.put(`${API_BASE_URL}/api/catalogs/${id}`, data);
 };
 
 export const deleteCatalog = async (id) => {
-  try {
-    const res = await fetchWrapper.delete(`${API_BASE_URL}/api/catalogs/${id}`);
-    return res;
-  } catch (error) {
-    throw error;
-  }
+  return fetchWrapper.delete(`${API_BASE_URL}/api/catalogs/${id}`);
 };
 
 // 产品详情接口
 export const getProducts = async (query = {}) => {
-  try {
-    const queryParams = new URLSearchParams(query).toString();
-    const url = `${API_BASE_URL}/api/products${queryParams ? `?${queryParams}` : ''}`;
-    const res = await fetchWrapper.get(url);
-    return res;
-  } catch (error) {
-    throw error;
-  }
+  const queryParams = new URLSearchParams(query).toString();
+  const url = `${API_BASE_URL}/api/products${queryParams ? `?${queryParams}` : ''}`;
+  return fetchWrapper.get(url);
 };
 
 export const getProductById = async (id) => {
-  try {
-    const res = await fetchWrapper.get(`${API_BASE_URL}/api/products/${id}`);
-    return res;
-  } catch (error) {
-    throw error;
-  }
+  return fetchWrapper.get(`${API_BASE_URL}/api/products/${id}`);
 };
 
 export const createProduct = async (data) => {
-  try {
-    const res = await fetchWrapper.post(`${API_BASE_URL}/api/products`, data);
-    return res;
-  } catch (error) {
-    throw error;
-  }
+  return fetchWrapper.post(`${API_BASE_URL}/api/products`, data);
 };
 
 export const updateProduct = async (id, data) => {
-  try {
-    const res = await fetchWrapper.put(`${API_BASE_URL}/api/products/${id}`, data);
-    return res;
-  } catch (error) {
-    throw error;
-  }
+  return fetchWrapper.put(`${API_BASE_URL}/api/products/${id}`, data);
 };
 
 export const deleteProduct = async (id) => {
-  try {
-    const res = await fetchWrapper.delete(`${API_BASE_URL}/api/products/${id}`);
-    return res;
-  } catch (error) {
-    throw error;
-  }
+  return fetchWrapper.delete(`${API_BASE_URL}/api/products/${id}`);
 };
 
 // 获取上传授权
 export const getUploadAuth = async (data) => {
-    try {
-        const res = await fetchWrapper.post(`${API_BASE_URL}/api/chunk-uploads/auth`, data);
-        return res;
-    } catch (error) {
-        throw error;
-    }
+    return fetchWrapper.post(`${API_BASE_URL}/api/chunk-uploads/auth`, data);
 }
 
 // 上传文件到腾讯云COS
 export const uploadToCos = async (file, authData) => {
-    try {
+    const formData = new FormData();
+    formData.append('key', authData.key);
+    formData.append('Signature', authData.authorization);
+    formData.append('x-cos-security-token', authData.token);
+    formData.append('x-cos-meta-fileid', authData.cos_file_id);
+    formData.append('file', file);
 
-        const formData = new FormData();
-        formData.append('key', authData.key);
-        formData.append('Signature', authData.authorization);
-        formData.append('x-cos-security-token', authData.token);
-        formData.append('x-cos-meta-fileid', authData.cos_file_id);
-        formData.append('file', file);
+    const res = await fetch(authData.url, {
+        method: 'POST',
+        body: formData
+    });
 
-        const res = await fetch(authData.url, {
-            method: 'POST',
-            body: formData
-        });
-
-        if (!res.ok) {
-            const errorText = await res.text();
-            throw new Error(`上传失败: ${res.status} ${res.statusText} - ${errorText}`);
-        }
-
-        const result = {
-            fileID: authData.file_id,
-            url: authData.download_url || authData.url, // 优先使用下载URL
-            filename: file.name
-        };
-        return result;
-    } catch (error) {
-        throw error;
+    if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`上传失败: ${res.status} ${res.statusText} - ${errorText}`);
     }
+
+    const result = {
+        fileID: authData.file_id,
+        url: authData.download_url || authData.url, // 优先使用下载URL
+        filename: file.name
+    };
+    return result;
 }
 
 // 带进度监控的上传到 COS
@@ -273,344 +188,195 @@ export const uploadFile = async (file) => {
 
 // PDF文件上传接口
 export const uploadPdf = async (file) => {
-    try {
-        return await uploadFile(file);
-    } catch (error) {
-        throw error;
-    }
+    return await uploadFile(file);
 }
 
 // 微信小程序相关接口
 export const getWxOpenId = async () => {
-  try {
-    const res = await fetchWrapper.get(`${API_BASE_URL}/api/wx_openid`);
-    return res;
-  } catch (error) {
-    throw error;
-  }
+  return fetchWrapper.get(`${API_BASE_URL}/api/wx_openid`);
 };
 
 export const getWxConfig = async () => {
-  try {
-    const res = await fetchWrapper.get(`${API_BASE_URL}/api/wx_config`);
-    return res;
-  } catch (error) {
-    throw error;
-  }
+  return fetchWrapper.get(`${API_BASE_URL}/api/wx_config`);
 };
 
 // 删除PDF文件
 export const deletePdf = async (fileID) => {
-  try {
-    const res = await fetchWrapper.post(`${API_BASE_URL}/api/files/delete`, {
-      fileid_list: [fileID]
-    });
-    return res;
-  } catch (error) {
-    throw error;
-  }
+  return fetchWrapper.post(`${API_BASE_URL}/api/files/delete`, {
+    fileid_list: [fileID]
+  });
 };
 
 // 获取PDF下载链接
 export const getPdfDownloadUrl = async (fileID) => {
-  try {
-    const res = await fetchWrapper.post(`${API_BASE_URL}/api/files/download`, {
-      file_list: [{
-        fileid: fileID,
-        max_age: 7200
-      }]
-    });
-    return res;
-  } catch (error) {
-    throw error;
-  }
+  return fetchWrapper.post(`${API_BASE_URL}/api/files/download`, {
+    file_list: [{
+      fileid: fileID,
+      max_age: 7200
+    }]
+  });
 };
 
 // 用户相关接口
 export const login = async (data) => {
-    try {
-        const res = await fetchWrapper.post(`${API_BASE_URL}/api/users/login`, data, {
-            returnFullResponse: true  // 添加一个选项来获取完整响应
-        });
-        return res;
-    } catch (error) {
-        throw error;
-    }
+    return fetchWrapper.post(`${API_BASE_URL}/api/users/login`, data, {
+        returnFullResponse: true  // 添加一个选项来获取完整响应
+    });
 }
 
 export const changePassword = async (data) => {
-    try {
-        const res = await fetchWrapper.post(`${API_BASE_URL}/api/users/change-password`, data, {
-            returnFullResponse: true
-        });
-        return res;
-    } catch (error) {
-        throw error;
-    }
+    return fetchWrapper.post(`${API_BASE_URL}/api/users/change-password`, data, {
+        returnFullResponse: true
+    });
 }
 
 export const createMainUser = async (data) => {
-    try {
-        const res = await fetchWrapper.post(`${API_BASE_URL}/api/users/main`, data, {
-            returnFullResponse: true
-        });
-        return res;
-    } catch (error) {
-        throw error;
-    }
+    return fetchWrapper.post(`${API_BASE_URL}/api/users/main`, data, {
+        returnFullResponse: true
+    });
 }
 
 export const createSubUser = async (data) => {
-    try {
-        const res = await fetchWrapper.post(`${API_BASE_URL}/api/users/sub`, data, {
-            returnFullResponse: true
-        });
-        return res;
-    } catch (error) {
-        throw error;
-    }
+    return fetchWrapper.post(`${API_BASE_URL}/api/users/sub`, data, {
+        returnFullResponse: true
+    });
 }
 
 export const getUsers = async (query = {}) => {
-    try {
-        const queryParams = new URLSearchParams(query).toString();
-        const url = `${API_BASE_URL}/api/users${queryParams ? `?${queryParams}` : ''}`;
-        const res = await fetchWrapper.get(url, {
-            returnFullResponse: true
-        });
-        return res;
-    } catch (error) {
-        throw error;
-    }
+    const queryParams = new URLSearchParams(query).toString();
+    const url = `${API_BASE_URL}/api/users${queryParams ? `?${queryParams}` : ''}`;
+    return fetchWrapper.get(url, {
+        returnFullResponse: true
+    });
 }
 
 export const getUserById = async (id) => {
-    try {
-        const res = await fetchWrapper.get(`${API_BASE_URL}/api/users/${id}`, {
-            returnFullResponse: true
-        });
-        return res;
-    } catch (error) {
-        throw error;
-    }
+    return fetchWrapper.get(`${API_BASE_URL}/api/users/${id}`, {
+        returnFullResponse: true
+    });
 }
 
 export const updateUser = async (id, data) => {
-    try {
-        const res = await fetchWrapper.put(`${API_BASE_URL}/api/users/${id}`, data, {
-            returnFullResponse: true
-        });
-        return res;
-    } catch (error) {
-        throw error;
-    }
+    return fetchWrapper.put(`${API_BASE_URL}/api/users/${id}`, data, {
+        returnFullResponse: true
+    });
 }
 
 export const deleteUser = async (id) => {
-    try {
-        const res = await fetchWrapper.delete(`${API_BASE_URL}/api/users/${id}`, {
-            returnFullResponse: true
-        });
-        return res;
-    } catch (error) {
-        throw error;
-    }
+    return fetchWrapper.delete(`${API_BASE_URL}/api/users/${id}`, {
+        returnFullResponse: true
+    });
 }
 
 export const resetUserPassword = async (id, data) => {
-    try {
-        const res = await fetchWrapper.post(`${API_BASE_URL}/api/users/${id}/reset-password`, data, {
-            returnFullResponse: true
-        });
-        return res;
-    } catch (error) {
-        throw error;
-    }
+    return fetchWrapper.post(`${API_BASE_URL}/api/users/${id}/reset-password`, data, {
+        returnFullResponse: true
+    });
 }
 
 // 公司信息相关接口
 export const getCompanyInfo = async () => {
-    try {
-        const res = await fetchWrapper.get(`${API_BASE_URL}/api/company`, {
-            returnFullResponse: true
-        });
-        return res;
-    } catch (error) {
-        throw error;
-    }
+    return fetchWrapper.get(`${API_BASE_URL}/api/company`, {
+        returnFullResponse: true
+    });
 }
 
 export const updateCompanyInfo = async (data) => {
-    try {
-        const res = await fetchWrapper.put(`${API_BASE_URL}/api/company`, data, {
-            returnFullResponse: true
-        });
-        return res;
-    } catch (error) {
-        throw error;
-    }
+    return fetchWrapper.put(`${API_BASE_URL}/api/company`, data, {
+        returnFullResponse: true
+    });
 }
 
 // 轮播图相关接口
 export const getCarousels = async (query = {}) => {
-    try {
-        const queryParams = new URLSearchParams(query).toString();
-        const url = `${API_BASE_URL}/api/carousels${queryParams ? `?${queryParams}` : ''}`;
-        const res = await fetchWrapper.get(url, {
-            returnFullResponse: true
-        });
-        return res;
-    } catch (error) {
-        throw error;
-    }
+    const queryParams = new URLSearchParams(query).toString();
+    const url = `${API_BASE_URL}/api/carousels${queryParams ? `?${queryParams}` : ''}`;
+    return fetchWrapper.get(url, {
+        returnFullResponse: true
+    });
 }
 
 export const createCarousel = async (data) => {
-    try {
-        const res = await fetchWrapper.post(`${API_BASE_URL}/api/carousels`, data, {
-            returnFullResponse: true
-        });
-        return res;
-    } catch (error) {
-        throw error;
-    }
+    return fetchWrapper.post(`${API_BASE_URL}/api/carousels`, data, {
+        returnFullResponse: true
+    });
 }
 
 export const updateCarousel = async (id, data) => {
-    try {
-        const res = await fetchWrapper.put(`${API_BASE_URL}/api/carousels/${id}`, data, {
-            returnFullResponse: true
-        });
-        return res;
-    } catch (error) {
-        throw error;
-    }
+    return fetchWrapper.put(`${API_BASE_URL}/api/carousels/${id}`, data, {
+        returnFullResponse: true
+    });
 }
 
 export const deleteCarousel = async (id) => {
-    try {
-        const res = await fetchWrapper.delete(`${API_BASE_URL}/api/carousels/${id}`, {
-            returnFullResponse: true
-        });
-        return res;
-    } catch (error) {
-        throw error;
-    }
+    return fetchWrapper.delete(`${API_BASE_URL}/api/carousels/${id}`, {
+        returnFullResponse: true
+    });
 }
 
 export const updateCarouselOrder = async (data) => {
-    try {
-        const res = await fetchWrapper.put(`${API_BASE_URL}/api/carousels/order/batch`, data, {
-            returnFullResponse: true
-        });
-        return res;
-    } catch (error) {
-        throw error;
-    }
+    return fetchWrapper.put(`${API_BASE_URL}/api/carousels/order/batch`, data, {
+        returnFullResponse: true
+    });
 }
 
 // 日志相关接口
 export const getLogs = async (query = {}) => {
-    try {
-        const queryParams = new URLSearchParams(query).toString();
-        const url = `${API_BASE_URL}/api/logs${queryParams ? `?${queryParams}` : ''}`;
-        const res = await fetchWrapper.get(url, {
-            returnFullResponse: true
-        });
-        return res;
-    } catch (error) {
-        throw error;
-    }
+    const queryParams = new URLSearchParams(query).toString();
+    const url = `${API_BASE_URL}/api/logs${queryParams ? `?${queryParams}` : ''}`;
+    return fetchWrapper.get(url, {
+        returnFullResponse: true
+    });
 }
 
 export const getLogActions = async () => {
-    try {
-        const res = await fetchWrapper.get(`${API_BASE_URL}/api/logs/actions`, {
-            returnFullResponse: true
-        });
-        return res;
-    } catch (error) {
-        throw error;
-    }
+    return fetchWrapper.get(`${API_BASE_URL}/api/logs/actions`, {
+        returnFullResponse: true
+    });
 }
 
 // 手册管理相关接口
 export const getManuals = async (query = {}) => {
-    try {
-        const queryParams = new URLSearchParams(query).toString();
-        const url = `${API_BASE_URL}/api/manuals${queryParams ? `?${queryParams}` : ''}`;
-        const res = await fetchWrapper.get(url, {
-            returnFullResponse: true
-        });
-        return res;
-    } catch (error) {
-        throw error;
-    }
+    const queryParams = new URLSearchParams(query).toString();
+    const url = `${API_BASE_URL}/api/manuals${queryParams ? `?${queryParams}` : ''}`;
+    return fetchWrapper.get(url, {
+        returnFullResponse: true
+    });
 }
 
 export const getManualById = async (id) => {
-    try {
-        const res = await fetchWrapper.get(`${API_BASE_URL}/api/manuals/${id}`, {
-            returnFullResponse: true
-        });
-        return res;
-    } catch (error) {
-        throw error;
-    }
+    return fetchWrapper.get(`${API_BASE_URL}/api/manuals/${id}`, {
+        returnFullResponse: true
+    });
 }
 
 export const createManual = async (data) => {
-    try {
-        const res = await fetchWrapper.post(`${API_BASE_URL}/api/manuals`, data, {
-            returnFullResponse: true
-        });
-        return res;
-    } catch (error) {
-        throw error;
-    }
+    return fetchWrapper.post(`${API_BASE_URL}/api/manuals`, data, {
+        returnFullResponse: true
+    });
 }
 
 export const updateManual = async (id, data) => {
-    try {
-        const res = await fetchWrapper.put(`${API_BASE_URL}/api/manuals/${id}`, data, {
-            returnFullResponse: true
-        });
-        return res;
-    } catch (error) {
-        throw error;
-    }
+    return fetchWrapper.put(`${API_BASE_URL}/api/manuals/${id}`, data, {
+        returnFullResponse: true
+    });
 }
 
 export const deleteManual = async (id) => {
-    try {
-        const res = await fetchWrapper.delete(`${API_BASE_URL}/api/manuals/${id}`, {
-            returnFullResponse: true
-        });
-        return res;
-    } catch (error) {
-        throw error;
-    }
+    return fetchWrapper.delete(`${API_BASE_URL}/api/manuals/${id}`, {
+        returnFullResponse: true
+    });
 }
 
 // 批量关联产品的英文版（英文名、英文 PDF）。data: { dryRun, items: [{ name, catalogId?, nameEn?, fileIDEn?, pdfUrlEn? }] }
 // dryRun 为 true 时只返回匹配报告，不写入。返回报告对象
 export const bulkLinkEnglishProducts = async (data) => {
-    try {
-        const res = await fetchWrapper.post(`${API_BASE_URL}/api/products/bulk-en`, data);
-        return res;
-    } catch (error) {
-        throw error;
-    }
+    return fetchWrapper.post(`${API_BASE_URL}/api/products/bulk-en`, data);
 }
 
 // 产品英文版覆盖情况：{ total, withZhFile, withEnFile, missingEnFile }
 export const getEnglishStats = async () => {
-    try {
-        const res = await fetchWrapper.get(`${API_BASE_URL}/api/products/en-stats`);
-        return res;
-    } catch (error) {
-        throw error;
-    }
+    return fetchWrapper.get(`${API_BASE_URL}/api/products/en-stats`);
 }
 
 // 批量删除云存储文件（每次最多 50 个）。返回成功提交删除的数量；失败的批次会被忽略（只是清理，不影响主流程）

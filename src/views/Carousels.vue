@@ -24,9 +24,6 @@
 				</template>
 				<template slot="action" slot-scope="text, record">
 					<a-space>
-						<a-button type="link" size="small" @click="handleViewImage(record)" :loading="record.viewLoading">
-							<a-icon type="eye" /> 查看
-						</a-button>
 						<a @click="showModal(record)">编辑</a>
 						<a-divider type="vertical" />
 						<a-popconfirm
@@ -102,16 +99,13 @@
 			</a-form-model>
 		</a-modal>
 
-		<a-modal :visible="previewVisible" :footer="null" @cancel="handlePreviewCancel">
-			<img alt="preview" style="width: 100%" :src="previewImageUrl" />
-		</a-modal>
 	</div>
 </template>
 
 <script>
 import { notifyError } from '@/utils/notify';
 import { toDisplayUrl } from '@/utils/cloudUrl';
-import { getCarousels, createCarousel, updateCarousel, deleteCarousel, updateCarouselOrder, uploadFile, deletePdf, getPdfDownloadUrl } from '@/api'
+import { getCarousels, createCarousel, updateCarousel, deleteCarousel, updateCarouselOrder, uploadFile, deletePdf } from '@/api'
 
 export default {
 	data() {
@@ -120,9 +114,6 @@ export default {
 			carousels: [],
 			visible: false,
 			confirmLoading: false,
-			previewVisible: false,
-			previewImageUrl: '',
-			viewLoading: false,
 			form: {
 				title: '',
 				imageUrl: '',
@@ -411,46 +402,6 @@ export default {
 			}
 		},
 		toDisplayUrl,
-		previewImage(url) {
-			this.previewImageUrl = toDisplayUrl(url)
-			this.previewVisible = true
-		},
-		handlePreviewCancel() {
-			this.previewVisible = false
-		},
-		async handleViewImage(record) {
-			if (!record || !record.fileID) {
-				// 如果没有fileID，直接使用imageUrl预览
-				this.previewImage(record.imageUrl)
-				return
-			}
-			
-			// 设置当前记录的加载状态
-			this.$set(record, 'viewLoading', true)
-			
-			try {
-				this.$message.loading('正在获取图片链接...', 0)
-				const res = await getPdfDownloadUrl(record.fileID)
-				
-				this.$message.destroy()
-				
-				if (res && res.file_list && res.file_list.length > 0 && res.file_list[0].download_url) {
-					// 使用下载链接预览图片
-					this.previewImage(res.file_list[0].download_url)
-				} else {
-					// 如果获取失败，使用原始链接
-					this.previewImage(record.imageUrl)
-					this.$message.error('获取高清图片链接失败，使用原始图片')
-				}
-			} catch (error) {
-				this.$message.destroy()
-				notifyError(this, error, '获取图片链接失败')
-				// 使用原始链接作为备选
-				this.previewImage(record.imageUrl)
-			} finally {
-				this.$set(record, 'viewLoading', false)
-			}
-		},
 		handleChangeImage() {
 			// 创建一个隐藏的文件输入框
 			const input = document.createElement('input')

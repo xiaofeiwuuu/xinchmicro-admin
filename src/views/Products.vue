@@ -94,7 +94,7 @@
 
         <!-- 编辑模态框 -->
         <a-modal :maskClosable="false" :title="modalTitle" :visible="visible" :confirm-loading="confirmLoading"
-            @ok="handleOk" @cancel="handleCancel" width="700px"
+            @ok="handleOk" @cancel="handleCancel" width="980px"
             :okButtonProps="{ disabled: uploading || confirmLoading }"
         >
             <template v-if="uploading" slot="footer">
@@ -104,114 +104,125 @@
                 </a-button>
             </template>
             <a-form :form="form" :hide-required-mark="true">
-                <a-form-item label="产品名称" :colon="false">
-                    <a-input 
-                        v-decorator="[
-                            'name', 
-                            { 
-                                rules: [{ required: true, message: '请输入产品名称!' }],
-                                initialValue: currentRecord ? currentRecord.name : ''
-                            }
-                        ]"
-                        placeholder="请输入产品名称" 
-                    />
-                </a-form-item>
-                <a-form-item label="英文名称" :colon="false">
-                    <a-input
-                        v-decorator="[
-                            'nameEn',
-                            {
-                                rules: [{ max: 100, message: '最多 100 个字符' }],
-                                initialValue: currentRecord ? currentRecord.nameEn : ''
-                            }
-                        ]"
-                        placeholder="可选；没有填写时英文界面显示产品名称"
-                    />
-                </a-form-item>
-                <a-form-item label="所属目录" :colon="false">
-                    <a-select
-                        v-decorator="[
-                            'catalogId', 
-                            { 
-                                rules: [{ required: true, message: '请选择所属目录!' }],
-                                initialValue: currentRecord ? currentRecord.catalogId : undefined
-                            }
-                        ]"
-                        placeholder="请选择所属目录"
-                        @change="handleCatalogChange"
-                    >
-                        <a-select-option v-for="catalog in catalogs" :key="catalog.id" :value="catalog.id">
-                            {{ catalog.name }}
-                        </a-select-option>
-                    </a-select>
-                </a-form-item>
+                <a-row :gutter="32">
+                    <!-- 左：基本信息与 PDF -->
+                    <a-col :span="10">
+                        <a-form-item label="产品名称" :colon="false" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+                            <a-input 
+                                v-decorator="[
+                                    'name', 
+                                    { 
+                                        rules: [{ required: true, message: '请输入产品名称!' }],
+                                        initialValue: currentRecord ? currentRecord.name : ''
+                                    }
+                                ]"
+                                placeholder="请输入产品名称" 
+                            />
+                        </a-form-item>
+                        <a-form-item label="英文名称" :colon="false" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+                            <a-input
+                                v-decorator="[
+                                    'nameEn',
+                                    {
+                                        rules: [{ max: 100, message: '最多 100 个字符' }],
+                                        initialValue: currentRecord ? currentRecord.nameEn : ''
+                                    }
+                                ]"
+                                placeholder="可选；没有填写时英文界面显示产品名称"
+                            />
+                        </a-form-item>
+                        <a-form-item label="所属目录" :colon="false" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+                            <a-select
+                                v-decorator="[
+                                    'catalogId', 
+                                    { 
+                                        rules: [{ required: true, message: '请选择所属目录!' }],
+                                        initialValue: currentRecord ? currentRecord.catalogId : undefined
+                                    }
+                                ]"
+                                placeholder="请选择所属目录"
+                                @change="handleCatalogChange"
+                            >
+                                <a-select-option v-for="catalog in catalogs" :key="catalog.id" :value="catalog.id">
+                                    {{ catalog.name }}
+                                </a-select-option>
+                            </a-select>
+                        </a-form-item>
                 
-                <a-form-item label="排序" :colon="false">
-                    <a-input-number
-                        v-decorator="[
-                            'sort',
-                            {
-                                rules: [{ required: true, message: '请输入排序值!' }],
-                                initialValue: currentRecord ? currentRecord.sort : 999
-                            }
-                        ]"
-                        :min="0"
-                        :precision="0"
-                        placeholder="数字越小越靠前"
-                        style="width: 100%;"
-                    />
-                    <div style="color: #999; font-size: 12px; margin-top: 5px;">
-                        提示：数字越小越靠前，相同则按创建时间倒序
-                    </div>
-                </a-form-item>
+                        <a-form-item label="排序" :colon="false" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+                            <a-input-number
+                                v-decorator="[
+                                    'sort',
+                                    {
+                                        rules: [{ required: true, message: '请输入排序值!' }],
+                                        initialValue: currentRecord ? currentRecord.sort : 999
+                                    }
+                                ]"
+                                :min="0"
+                                :precision="0"
+                                placeholder="数字越小越靠前"
+                                style="width: 100%;"
+                            />
+                            <div style="color: #999; font-size: 12px; line-height: 1.5; margin-top: 5px;">
+                                提示：数字越小越靠前，相同则按创建时间倒序
+                            </div>
+                        </a-form-item>
+                        <a-form-item label="中文PDF" :colon="false" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+                            <pdf-uploader
+                                :value="uploadedFileInfo"
+                                :original-file-id="currentRecord && currentRecord.fileID ? currentRecord.fileID : ''"
+                                button-text="上传PDF"
+                                @change="onZhPdfChange"
+                                @uploading="uploadingZh = $event"
+                            />
+                            <div style="color: #999; font-size: 12px; line-height: 1.5; margin-top: 5px;">
+                                提示：仅支持PDF格式，文件大小不能超过20MB。先上传PDF文件，再提交表单。
+                            </div>
+                        </a-form-item>
+                        <a-form-item label="英文PDF" :colon="false" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+                            <pdf-uploader
+                                :value="uploadedFileInfoEn"
+                                :original-file-id="currentRecord && currentRecord.fileIDEn ? currentRecord.fileIDEn : ''"
+                                removable
+                                button-text="上传英文PDF"
+                                @change="onEnPdfChange"
+                                @uploading="uploadingEn = $event"
+                            />
+                            <div style="color: #999; font-size: 12px; line-height: 1.5; margin-top: 5px;">
+                                可选。没有英文版时，小程序切换到英文后会显示中文版 PDF。需要批量关联请使用「批量关联英文PDF」。
+                            </div>
+                        </a-form-item>
+                    </a-col>
 
-                <!-- 动态参数表单 -->
-                <div v-if="selectedCatalog">
-                    <h3 style="margin-bottom: 16px;">产品参数</h3>
-                    <a-form-item
-                        v-for="param in selectedCatalog.paramTitles"
-                        :key="param.id"
-                        :label="param.title"
-                        :colon="false"
-                    >
-                        <a-input
-                            v-decorator="[
-                                `parameters[${param.id}]`,
-                                {
-                                    rules: [{ required: true, message: `请输入${param.title}!` }],
-                                    initialValue: currentRecord && currentRecord.parameters ? currentRecord.parameters[param.id] : ''
-                                }
-                            ]"
-                            :placeholder="`请输入${param.title}`"
-                        />
-                    </a-form-item>
-                </div>
-                
-                <a-form-item label="PDF文件（中文）" :colon="false">
-                    <pdf-uploader
-                        :value="uploadedFileInfo"
-                        :original-file-id="currentRecord && currentRecord.fileID ? currentRecord.fileID : ''"
-                        button-text="上传PDF"
-                        @change="onZhPdfChange"
-                        @uploading="uploadingZh = $event"
-                    />
-                    <div style="color: #999; font-size: 12px; margin-top: 5px;">
-                        提示：仅支持PDF格式，文件大小不能超过20MB。先上传PDF文件，再提交表单。
-                    </div>
-                </a-form-item>
-                <a-form-item label="PDF文件（英文）" :colon="false">
-                    <pdf-uploader
-                        :value="uploadedFileInfoEn"
-                        :original-file-id="currentRecord && currentRecord.fileIDEn ? currentRecord.fileIDEn : ''"
-                        removable
-                        button-text="上传英文PDF"
-                        @change="onEnPdfChange"
-                        @uploading="uploadingEn = $event"
-                    />
-                    <div style="color: #999; font-size: 12px; margin-top: 5px;">
-                        可选。没有英文版时，小程序切换到英文后会显示中文版 PDF。需要批量关联请使用「批量关联英文PDF」。
-                    </div>
-                </a-form-item>
+                    <!-- 右：产品参数（随所属目录变化） -->
+                    <a-col :span="14">
+                        <div style="font-weight: 500; margin-bottom: 12px;">产品参数</div>
+                        <div v-if="selectedCatalog" style="max-height: calc(100vh - 280px); overflow-y: auto; padding-right: 8px;">
+                            <a-form-item
+                                v-for="param in selectedCatalog.paramTitles"
+                                :key="param.id"
+                                :label="param.title"
+                                :colon="false"
+                                :label-col="{ span: 8 }"
+                                :wrapper-col="{ span: 16 }"
+                            >
+                                <a-input
+                                    v-decorator="[
+                                        `parameters[${param.id}]`,
+                                        {
+                                            rules: [{ required: true, message: `请输入${param.title}!` }],
+                                            initialValue: currentRecord && currentRecord.parameters ? currentRecord.parameters[param.id] : ''
+                                        }
+                                    ]"
+                                    :placeholder="`请输入${param.title}`"
+                                />
+                            </a-form-item>
+                        </div>
+                        <div v-else style="color: #999; font-size: 13px; padding: 24px 0;">
+                            请先在左侧选择所属目录，选择后在这里填写该目录对应的产品参数
+                        </div>
+                    </a-col>
+                </a-row>
             </a-form>
         </a-modal>
     </div>

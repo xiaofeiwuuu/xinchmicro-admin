@@ -226,12 +226,6 @@ export const deleteUploadedFiles = async (ids) => {
   return fetchWrapper.post(`${API_BASE_URL}/api/uploaded-files/delete`, { ids }, { returnFullResponse: true });
 };
 
-// 批量删除云文件，返回云存储的原始结果：{ errcode, delete_list: [{ fileid, status, errmsg }] }
-// 和 deletePdfs 不同：这里不吞错误，调用方要看到每个文件到底有没有删成功
-export const deleteCloudFiles = async (fileIDs) => {
-  return fetchWrapper.post(`${API_BASE_URL}/api/files/delete`, { fileid_list: fileIDs });
-};
-
 // 获取PDF下载链接
 export const getPdfDownloadUrl = async (fileID) => {
   return fetchWrapper.post(`${API_BASE_URL}/api/files/download`, {

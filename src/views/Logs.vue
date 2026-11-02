@@ -39,6 +39,7 @@
 		<!-- 日志列表 -->
 		<a-card :bordered="false">
 			<a-table
+				rowKey="id"
 				:columns="columns"
 				:dataSource="logs"
 				:pagination="pagination"

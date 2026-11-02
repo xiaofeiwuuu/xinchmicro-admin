@@ -4,13 +4,6 @@
 			<a-form class="co-form" layout="vertical" :form="form" @submit="handleSubmit">
 				<a-form-item label="公司Logo">
 					<a-upload
-						v-decorator="[
-							'logo',
-							{
-								valuePropName: 'fileList',
-								getValueFromEvent: normFile
-							}
-						]"
 						name="file"
 						:fileList="logoFileList"
 						:beforeUpload="beforeUpload"
@@ -309,7 +302,9 @@ export default {
 					}
 					this.originalPdfFileID = data.safetyManualFileID
 				}
-				this.form.setFieldsValue(data)
+				// 只设置表单里注册过的字段；把整条记录塞进去会让 id、createdAt、logoUrl 等每个多余的键各报一次警告
+				const FORM_FIELDS = ['name', 'nameEn', 'description', 'descriptionEn', 'contacts', 'email', 'website', 'address', 'addressEn']
+				this.form.setFieldsValue(FORM_FIELDS.reduce((o, k) => (k in data ? { ...o, [k]: data[k] } : o), {}))
 				
 				// 设置预览图片
 				if (data.logoUrl) {

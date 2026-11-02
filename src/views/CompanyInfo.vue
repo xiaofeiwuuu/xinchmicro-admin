@@ -13,6 +13,17 @@
 						placeholder="请输入公司名称"
 					/>
 				</a-form-item>
+				<a-form-item label="英文名称" :labelCol="{ span: 4 }" :wrapperCol="{ span: 14 }">
+					<a-input
+						v-decorator="[
+							'nameEn',
+							{
+								rules: [{ max: 100, message: '最多 100 个字符' }]
+							}
+						]"
+						placeholder="可选；没有填写时英文界面显示公司名称"
+					/>
+				</a-form-item>
 				<a-form-item label="公司介绍" :labelCol="{ span: 4 }" :wrapperCol="{ span: 14 }">
 					<a-textarea
 						v-decorator="[
@@ -23,6 +34,18 @@
 						]"
 						:rows="4"
 						placeholder="请输入公司介绍"
+					/>
+				</a-form-item>
+				<a-form-item label="英文介绍" :labelCol="{ span: 4 }" :wrapperCol="{ span: 14 }">
+					<a-textarea
+						v-decorator="[
+							'descriptionEn',
+							{
+								rules: [{ max: 20000, message: '最多 20000 个字符' }]
+							}
+						]"
+						:rows="4"
+						placeholder="可选；没有填写时英文界面显示公司介绍"
 					/>
 				</a-form-item>
 				<a-form-item label="联系方式" :labelCol="{ span: 4 }" :wrapperCol="{ span: 14 }">
@@ -74,6 +97,17 @@
 							}
 						]"
 						placeholder="请输入公司地址"
+					/>
+				</a-form-item>
+				<a-form-item label="英文地址" :labelCol="{ span: 4 }" :wrapperCol="{ span: 14 }">
+					<a-input
+						v-decorator="[
+							'addressEn',
+							{
+								rules: [{ max: 200, message: '最多 200 个字符' }]
+							}
+						]"
+						placeholder="可选；没有填写时英文界面显示公司地址"
 					/>
 				</a-form-item>
 				<a-form-item label="公司Logo" :labelCol="{ span: 4 }" :wrapperCol="{ span: 14 }">

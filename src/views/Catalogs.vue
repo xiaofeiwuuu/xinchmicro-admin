@@ -36,6 +36,10 @@
             <template slot="paramTitles" slot-scope="text">
                 <a-tag v-for="(item, index) in text" :key="item.id || index" color="blue">{{ item.title || item }}</a-tag>
             </template>
+            <template slot="name" slot-scope="text, record">
+                {{ text }}
+                <div v-if="record.nameEn" style="color: #999; font-size: 12px;">{{ record.nameEn }}</div>
+            </template>
             <template slot="category" slot-scope="text">
                 {{ text ? text.name : '-' }}
             </template>
@@ -80,6 +84,18 @@
                         placeholder="请输入目录名称" 
                     />
                 </a-form-item>
+                <a-form-item label="英文名称" :colon="false">
+                    <a-input
+                        v-decorator="[
+                            'nameEn',
+                            {
+                                rules: [{ max: 100, message: '最多 100 个字符' }],
+                                initialValue: currentRecord ? currentRecord.nameEn : ''
+                            }
+                        ]"
+                        placeholder="可选；没有填写时英文界面显示目录名称"
+                    />
+                </a-form-item>
                 <a-form-item label="所属分类" :colon="false">
                     <a-select
                         v-decorator="[
@@ -122,6 +138,11 @@
                                 placeholder="请输入参数标题"
                                 style="flex: 1; margin-right: 8px;"
                             />
+                            <a-input
+                                v-model="param.titleEn"
+                                placeholder="英文标题（可选）"
+                                style="flex: 1; margin-right: 8px;"
+                            />
                             <a-button type="danger" icon="delete" @click="removeParamTitle(index)" />
                         </div>
                         <a-button type="dashed" icon="plus" @click="addParamTitle" style="width: 100%;">
@@ -153,7 +174,8 @@ const columns = [
     {
         title: '目录名称',
         dataIndex: 'name',
-        width: '20%',
+        width: '16%',
+        scopedSlots: { customRender: 'name' },
     },
     {
         title: '所属分类',
@@ -254,7 +276,7 @@ export default {
 
         // 添加参数标题
         addParamTitle() {
-            this.paramTitlesList.push({ title: '' });
+            this.paramTitlesList.push({ title: '', titleEn: '' });
         },
 
         // 删除参数标题
@@ -272,13 +294,15 @@ export default {
                 this.currentRecord = record;
                 this.form.setFieldsValue({
                     name: record.name,
+                    nameEn: record.nameEn || '',
                     categoryId: record.categoryId,
                     sort: record.sort != null ? record.sort : 999,
                 });
                 // 复制 paramTitles 数组（保留 id）
                 this.paramTitlesList = (record.paramTitles || []).map(p => ({
                     id: p.id,
-                    title: p.title || p  // 兼容旧格式（纯字符串）
+                    title: p.title || p,  // 兼容旧格式（纯字符串）
+                    titleEn: p.titleEn || ''
                 }));
             } else {
                 this.modalTitle = "新增目录";
@@ -325,11 +349,14 @@ export default {
                         // 构建提交数据
                         const submitData = {
                             name: values.name,
+                            nameEn: values.nameEn || '',
                             categoryId: values.categoryId,
                             sort: values.sort,
                             paramTitles: validParamTitles.map(p => ({
                                 id: p.id,  // 保留 id（新增时为 undefined，后端会自动生成）
-                                title: p.title.trim()
+                                title: p.title.trim(),
+                                // 始终带上英文标题（空串表示清空）。不带的话服务端会保留原有英文标题
+                                titleEn: (p.titleEn || '').trim()
                             }))
                         };
 

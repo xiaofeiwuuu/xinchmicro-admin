@@ -65,6 +65,18 @@
                         placeholder="请输入分类名称" 
                     />
                 </a-form-item>
+                <a-form-item label="英文名称" :colon="false">
+                    <a-input
+                        v-decorator="[
+                            'nameEn',
+                            {
+                                rules: [{ max: 100, message: '最多 100 个字符' }],
+                                initialValue: currentRecord ? currentRecord.nameEn : ''
+                            }
+                        ]"
+                        placeholder="可选；没有填写时英文界面显示分类名称"
+                    />
+                </a-form-item>
                 <a-form-item label="排序" :colon="false">
                     <a-input-number 
                         v-decorator="[
@@ -97,7 +109,13 @@ const columns = [
     {
         title: '分类名称',
         dataIndex: 'name',
-        width: '45%',
+        width: '25%',
+    },
+    {
+        title: '英文名称',
+        dataIndex: 'nameEn',
+        width: '20%',
+        customRender: (text) => text || '-',
     },
     {
         title: '排序',
@@ -179,6 +197,7 @@ export default {
                 this.currentRecord = record;
                 this.form.setFieldsValue({
                     name: record.name,
+                    nameEn: record.nameEn || '',
                     sort_order: record.sort_order
                 });
             } else {

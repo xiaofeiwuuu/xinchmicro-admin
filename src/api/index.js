@@ -604,4 +604,41 @@ export const deleteManual = async (id) => {
     } catch (error) {
         throw error;
     }
-} 
+}
+
+// 批量关联产品的英文版（英文名、英文 PDF）。data: { dryRun, items: [{ name, catalogId?, nameEn?, fileIDEn?, pdfUrlEn? }] }
+// dryRun 为 true 时只返回匹配报告，不写入。返回报告对象
+export const bulkLinkEnglishProducts = async (data) => {
+    try {
+        const res = await fetchWrapper.post(`${API_BASE_URL}/api/products/bulk-en`, data);
+        return res;
+    } catch (error) {
+        throw error;
+    }
+}
+
+// 产品英文版覆盖情况：{ total, withZhFile, withEnFile, missingEnFile }
+export const getEnglishStats = async () => {
+    try {
+        const res = await fetchWrapper.get(`${API_BASE_URL}/api/products/en-stats`);
+        return res;
+    } catch (error) {
+        throw error;
+    }
+}
+
+// 批量删除云存储文件（每次最多 50 个）。返回成功提交删除的数量；失败的批次会被忽略（只是清理，不影响主流程）
+export const deletePdfs = async (fileIDs) => {
+    const ids = [...new Set((fileIDs || []).filter(Boolean))];
+    let submitted = 0;
+    for (let i = 0; i < ids.length; i += 50) {
+        const batch = ids.slice(i, i + 50);
+        try {
+            await fetchWrapper.post(`${API_BASE_URL}/api/files/delete`, { fileid_list: batch });
+            submitted += batch.length;
+        } catch (error) {
+            console.error('批量删除文件失败:', error);
+        }
+    }
+    return submitted;
+}

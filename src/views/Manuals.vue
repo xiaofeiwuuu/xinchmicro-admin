@@ -10,6 +10,11 @@
           </a-select>
         </a-form-item>
         <a-form-item>
+          <a-select v-model="searchForm.lang" placeholder="全部语言" style="width: 130px;" allowClear>
+            <a-select-option v-for="item in langOptions" :key="item.value" :value="item.value">{{ item.label }}</a-select-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item>
           <a-input v-model="searchForm.keyword" placeholder="搜索手册名称" style="width: 200px;" />
         </a-form-item>
         <a-form-item>
@@ -39,6 +44,10 @@
         <a-tag v-else color="default">其他</a-tag>
       </template>
       
+      <template slot="lang" slot-scope="text">
+        <a-tag :color="text === 'en' ? 'green' : 'default'">{{ langLabel(text) }}</a-tag>
+      </template>
+
       <template slot="createdAt" slot-scope="text">
         {{ formatDate(text) }}
       </template>
@@ -117,6 +126,23 @@
             <a-select-option value="safety">安全手册</a-select-option>
           </a-select>
         </a-form-item>
+        <a-form-item label="手册语言" :required="true">
+          <a-select
+            v-decorator="[
+              'lang',
+              {
+                rules: [{ required: true, message: '请选择手册语言' }],
+                initialValue: formData.lang || 'zh'
+              }
+            ]"
+            placeholder="请选择手册语言"
+          >
+            <a-select-option v-for="item in langOptions" :key="item.value" :value="item.value">{{ item.label }}</a-select-option>
+          </a-select>
+          <div style="color: #999; font-size: 12px; margin-top: 5px;">
+            小程序按语言显示手册：中文界面只显示中文手册，英文界面只显示英文手册。
+          </div>
+        </a-form-item>
         <a-form-item label="手册文件" :required="dialogType === 'add'">
           <a-upload
             :file-list="fileList"
@@ -188,6 +214,7 @@ import {
   getUploadAuth,
   uploadToCosWithProgress
 } from '@/api';
+import { LANG_OPTIONS, langLabel, buildManualQuery } from '@/utils/i18nData';
 
 export default {
   name: 'Manuals',
@@ -198,6 +225,7 @@ export default {
         { title: 'ID', dataIndex: 'id', key: 'id', width: 80 },
         { title: '手册名称', dataIndex: 'name', key: 'name' },
         { title: '手册类型', dataIndex: 'type', key: 'type', scopedSlots: { customRender: 'type' }, width: 120 },
+        { title: '语言', dataIndex: 'lang', key: 'lang', scopedSlots: { customRender: 'lang' }, width: 100 },
         { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt', scopedSlots: { customRender: 'createdAt' }, width: 180 },
         { title: '创建者', dataIndex: 'creator', key: 'creator', scopedSlots: { customRender: 'creator' }, width: 120 },
         { title: '操作', key: 'action', scopedSlots: { customRender: 'action' }, width: 200 }
@@ -213,8 +241,10 @@ export default {
         showTotal: total => `共 ${total} 条记录`,
         pageSizeOptions: ['10', '20', '50', '100']
       },
+      langOptions: LANG_OPTIONS,
       searchForm: {
         type: undefined,
+        lang: undefined,
         keyword: ''
       },
       dialogVisible: false,
@@ -223,6 +253,7 @@ export default {
       formData: {
         name: '',
         type: 'product',
+        lang: 'zh',
         fileId: '',
         filePath: ''
       },
@@ -242,6 +273,8 @@ export default {
     this.fetchManuals();
   },
   methods: {
+    langLabel,
+
     // 格式化日期
     formatDate(dateString) {
       if (!dateString) return '-';
@@ -253,12 +286,13 @@ export default {
     async fetchManuals() {
       this.loading = true;
       try {
-        const params = {
+        // 语言不选时传 lang=all：服务端不带 lang 只返回中文手册，后台要能看到全部
+        const params = buildManualQuery({
           page: this.pagination.current,
           pageSize: this.pagination.pageSize,
           ...this.searchForm
-        };
-        
+        });
+
         const res = await getManuals(params);
         if (res.code === 0) {
           this.manualsList = res.data.list || [];
@@ -291,6 +325,7 @@ export default {
     resetSearch() {
       this.searchForm = {
         type: undefined,
+        lang: undefined,
         keyword: ''
       };
       this.pagination.current = 1;
@@ -303,6 +338,8 @@ export default {
       this.formData = {
         name: '',
         type: 'product',
+        // 正在按某种语言筛选时，新增默认用该语言
+        lang: this.searchForm.lang || 'zh',
         fileId: '',
         filePath: ''
       };
@@ -323,6 +360,7 @@ export default {
           this.formData = {
             name: manual.name,
             type: manual.type,
+            lang: manual.lang || 'zh',
             fileId: manual.fileId,
             filePath: manual.filePath
           };
@@ -356,6 +394,7 @@ export default {
       this.formData = {
         name: '',
         type: 'product',
+        lang: 'zh',
         fileId: '',
         filePath: ''
       };
@@ -544,6 +583,7 @@ export default {
           const data = {
             name: values.name,
             type: values.type,
+            lang: values.lang,
             fileId: this.formData.fileId,
             filePath: this.formData.filePath
           };

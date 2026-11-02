@@ -20,6 +20,18 @@
                     </a-select>
                 </a-form-item>
                 <a-form-item>
+                    <a-select
+                        v-model="searchForm.enFile"
+                        placeholder="英文版"
+                        style="width: 130px"
+                        size="small"
+                        allowClear
+                    >
+                        <a-select-option value="has">已有英文版</a-select-option>
+                        <a-select-option value="missing">缺英文版</a-select-option>
+                    </a-select>
+                </a-form-item>
+                <a-form-item>
                     <a-button type="primary" size="small" @click="handleSearch">查询</a-button>
                     <a-button style="margin-left: 8px" size="small" @click="handleReset">重置</a-button>
                 </a-form-item>
@@ -29,6 +41,9 @@
         <!-- 新增产品按钮 -->
         <a-button type="primary" icon="plus" size="small" @click="showModal()" style="margin-bottom: 16px;">
             新增产品
+        </a-button>
+        <a-button icon="cloud-upload" size="small" @click="$router.push('/products/bulk-en')" style="margin-bottom: 16px; margin-left: 8px;">
+            批量关联英文PDF
         </a-button>
 
         <!-- 表格组件 -->
@@ -41,15 +56,26 @@
                     </div>
                 </div>
             </template>
+            <template slot="name" slot-scope="text, record">
+                {{ text }}
+                <div v-if="record.nameEn" style="color: #999; font-size: 12px;">{{ record.nameEn }}</div>
+            </template>
             <template slot="catalog" slot-scope="text">
                 {{ text ? text.name : '-' }}
             </template>
             <template slot="pdfUrl" slot-scope="text, record">
-                <!-- <span v-if="record.fileID">{{ record.fileID }}</span> -->
-                <a-button v-if="record.fileID" type="link" @click="handleDownloadPdf(record)">
-                    <a-icon type="download" /> 下载PDF
-                </a-button>
-                <span v-else>-</span>
+                <div>
+                    <a-button v-if="record.fileID" type="link" @click="handleDownloadPdf(record)">
+                        <a-icon type="download" /> 中文版
+                    </a-button>
+                    <span v-else>-</span>
+                </div>
+                <div>
+                    <a-button v-if="record.fileIDEn" type="link" @click="handleDownloadPdf(record, 'en')">
+                        <a-icon type="download" /> 英文版
+                    </a-button>
+                    <a-tag v-else color="orange">缺英文版</a-tag>
+                </div>
             </template>
             <span slot="action" slot-scope="text, record">
                 <!-- 编辑按钮 -->
@@ -98,6 +124,18 @@
                             }
                         ]"
                         placeholder="请输入产品名称" 
+                    />
+                </a-form-item>
+                <a-form-item label="英文名称" :colon="false">
+                    <a-input
+                        v-decorator="[
+                            'nameEn',
+                            {
+                                rules: [{ max: 100, message: '最多 100 个字符' }],
+                                initialValue: currentRecord ? currentRecord.nameEn : ''
+                            }
+                        ]"
+                        placeholder="可选；没有填写时英文界面显示产品名称"
                     />
                 </a-form-item>
                 <a-form-item label="所属目录" :colon="false">
@@ -159,27 +197,29 @@
                     </a-form-item>
                 </div>
                 
-                <a-form-item label="PDF文件" :colon="false">
-                    <a-upload
-                        name="pdf"
-                        :fileList="fileList"
-                        :beforeUpload="beforeUpload"
-                        :showUploadList="{ showRemoveIcon: false }"
-                        accept=".pdf"
-                        :disabled="uploading"
-                    >
-                        <a-button :disabled="uploading">
-                            <a-icon :type="uploading ? 'loading' : 'upload'" /> {{ uploading ? '上传中...' : '上传PDF' }}
-                        </a-button>
-                    </a-upload>
-                    <div v-if="uploadError" style="margin-top: 8px;">
-                        <a-alert type="error" :message="uploadError" banner />
-                        <a-button type="link" @click="retryUpload" style="padding-left: 0;">
-                            <a-icon type="reload" /> 重试上传
-                        </a-button>
-                    </div>
+                <a-form-item label="PDF文件（中文）" :colon="false">
+                    <pdf-uploader
+                        :value="uploadedFileInfo"
+                        :original-file-id="currentRecord && currentRecord.fileID ? currentRecord.fileID : ''"
+                        button-text="上传PDF"
+                        @change="onZhPdfChange"
+                        @uploading="uploadingZh = $event"
+                    />
                     <div style="color: #999; font-size: 12px; margin-top: 5px;">
                         提示：仅支持PDF格式，文件大小不能超过20MB。先上传PDF文件，再提交表单。
+                    </div>
+                </a-form-item>
+                <a-form-item label="PDF文件（英文）" :colon="false">
+                    <pdf-uploader
+                        :value="uploadedFileInfoEn"
+                        :original-file-id="currentRecord && currentRecord.fileIDEn ? currentRecord.fileIDEn : ''"
+                        removable
+                        button-text="上传英文PDF"
+                        @change="onEnPdfChange"
+                        @uploading="uploadingEn = $event"
+                    />
+                    <div style="color: #999; font-size: 12px; margin-top: 5px;">
+                        可选。没有英文版时，小程序切换到英文后会显示中文版 PDF。需要批量关联请使用「批量关联英文PDF」。
                     </div>
                 </a-form-item>
             </a-form>
@@ -188,7 +228,9 @@
 </template>
 
 <script>
-import { getProducts, createProduct, getProductById, deleteProduct, getCatalogs, getCatalogById, updateProduct, uploadPdf, deletePdf, getPdfDownloadUrl } from '@/api';
+import { getProducts, createProduct, deleteProduct, getCatalogs, updateProduct, deletePdfs, getPdfDownloadUrl } from '@/api';
+import PdfUploader from '@/components/PdfUploader.vue';
+import { buildProductQuery, orphanFileIDs } from '@/utils/i18nData';
 
 // 定义表格列的配置
 const columns = [
@@ -201,6 +243,7 @@ const columns = [
         title: '产品名称',
         dataIndex: 'name',
         width: '20%',
+        scopedSlots: { customRender: 'name' },
     },
     {
         title: '所属目录',
@@ -234,6 +277,7 @@ const columns = [
 ];
 
 export default {
+    components: { PdfUploader },
     data() {
         return {
             modalTitle: "新增产品",
@@ -248,21 +292,18 @@ export default {
             searchForm: {
                 name: '',
                 catalogId: undefined,
+                enFile: undefined,
             },
             // 目录列表
             catalogs: [],
             // 选中的目录
             selectedCatalog: null,
-            // 文件列表
-            fileList: [],
-            // 上传的文件
-            uploadFile: null,
-            // 上传的文件URL和fileID
+            // 中文 / 英文 PDF 的文件信息 { fileID, url, filename }（没有则为 null）
             uploadedFileInfo: null,
-            // 文件上传中状态
-            uploading: false,
-            // 上传错误信息
-            uploadError: null,
+            uploadedFileInfoEn: null,
+            // 两个上传控件各自的上传中状态
+            uploadingZh: false,
+            uploadingEn: false,
             // 分页配置
             pagination: {
                 current: 1,
@@ -274,6 +315,12 @@ export default {
                 pageSizeOptions: ['10', '20', '50', '100'],
             },
         };
+    },
+    computed: {
+        // 任意一个 PDF 正在上传
+        uploading() {
+            return this.uploadingZh || this.uploadingEn;
+        },
     },
     mounted() {
         this.fetchCatalogs();
@@ -300,6 +347,7 @@ export default {
             this.searchForm = {
                 name: '',
                 catalogId: undefined,
+                enFile: undefined,
             };
             this.pagination.current = 1;  // 重置时回到第一页
             this.fetchData();
@@ -315,18 +363,11 @@ export default {
         // 获取数据方法
         fetchData() {
             this.loading = true;
-            const query = {
+            const query = buildProductQuery({
                 page: this.pagination.current,
                 pageSize: this.pagination.pageSize,
-            };
-
-            if (this.searchForm.name) {
-                query.name = this.searchForm.name;
-            }
-
-            if (this.searchForm.catalogId) {
-                query.catalogId = this.searchForm.catalogId;
-            }
+                ...this.searchForm,
+            });
 
             getProducts(query).then(res => {
                 this.loading = false;
@@ -371,127 +412,23 @@ export default {
             }
         },
 
-        // 文件上传前处理
-        async beforeUpload(file) {
-            console.log('文件信息:', file);
-            
-            // 检查文件类型
-            const isPDF = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-            if (!isPDF) {
-                this.$message.error('只能上传PDF文件!');
-                return false;
-            }
-            
-            // 将限制改为20MB，确保小于服务器限制
-            const isLt20M = file.size / 1024 / 1024 < 20;
-            if (!isLt20M) {
-                this.$message.error('PDF文件大小不能超过20MB!');
-                return false;
-            }
-
-            // 清除之前的文件信息（旧 PDF 的清理交由服务端 updateProduct 异步处理）
-            this.uploadFile = file;
-            this.uploadedFileInfo = null;
-            
-            // 更新文件列表状态为上传中
-            this.fileList = [{
-                uid: file.uid || '-1',
-                name: file.name,
-                status: 'uploading',
-                percent: 50,
-            }];
-            
-            // 立即上传文件
-            this.uploadPdfFile(file);
-            return false;
+        // 上传控件的结果：新上传成功时为文件信息；英文版被移除时为 null
+        onZhPdfChange(info) {
+            this.uploadedFileInfo = info;
+        },
+        onEnPdfChange(info) {
+            this.uploadedFileInfoEn = info;
         },
 
-        // 上传PDF文件
-        async uploadPdfFile(file) {
-            console.log('开始处理文件上传:', file.name);
-            this.uploading = true;
-            this.uploadError = null; // 清除之前的错误
-            
-            try {
-                // 更新文件状态为获取授权中
-                this.fileList = [{
-                    uid: file.uid || '-1',
-                    name: file.name,
-                    status: 'uploading',
-                    percent: 30,
-                }];
-                
-                console.log('正在上传文件...');
-                // 上传文件
-                const result = await uploadPdf(file);
-                console.log('文件上传完成, 结果:', result);
-                
-                // 保存上传结果
-                this.uploadedFileInfo = {
-                    fileID: result.fileID || '',
-                    url: result.url,
-                    filename: file.name
-                };
-                
-                // 更新文件状态为已完成
-                this.fileList = [{
-                    uid: file.uid || '-1',
-                    name: file.name,
-                    status: 'done',
-                    url: result.url,
-                }];
-                
-                this.$message.success('文件上传成功');
-            } catch (error) {
-                console.error('上传处理错误:', error);
-                
-                // 更新文件状态为错误
-                this.fileList = [{
-                    uid: file.uid || '-1',
-                    name: file.name,
-                    status: 'error',
-                }];
-                
-                // 设置错误信息
-                if (error.message.includes('413')) {
-                    this.uploadError = '文件太大，超出服务器允许的大小限制。请尝试上传更小的文件（小于20MB）。';
-                    this.uploadFile = null;
-                } else if (error.message.includes('获取上传授权')) {
-                    this.uploadError = error.message;
-                } else if (error.message.includes('上传失败')) {
-                    this.uploadError = '上传到腾讯云失败: ' + error.message;
-                } else if (error.message.includes('缺少必要字段')) {
-                    this.uploadError = '服务器返回数据错误: ' + error.message;
-                } else {
-                    this.uploadError = '文件上传失败: ' + (error.message || '未知错误') + '。请点击重试。';
-                }
-                
-                this.$message.error(this.uploadError);
-            } finally {
-                this.uploading = false;
-            }
-        },
-
-        // 删除PDF文件
-        async deletePdfFile(fileID) {
-            try {
-                await deletePdf(fileID);
-                return true;
-            } catch (error) {
-                console.error('删除PDF文件失败:', error);
-                throw error;
-            }
-        },
-
-        // 下载PDF文件
-        async handleDownloadPdf(record) {
+        // 下载PDF文件（lang 为 'en' 时下载英文版）
+        async handleDownloadPdf(record, lang) {
+            const fileID = lang === 'en' ? record.fileIDEn : record.fileID;
             try {
                 this.$message.loading('正在获取下载链接...', 0);
-                const res = await getPdfDownloadUrl(record.fileID);
-                console.log('下载链接:', res);
-                
+                const res = await getPdfDownloadUrl(fileID);
+
                 this.$message.destroy();
-                
+
                 if (res && res.file_list.length > 0 && res.file_list[0].download_url) {
                     // 打开新窗口下载文件
                     window.open(res.file_list[0].download_url, '_blank');
@@ -499,7 +436,6 @@ export default {
                     this.$message.error('获取下载链接失败');
                 }
             } catch (error) {
-                console.log('下载失败:', error);
                 this.$message.destroy();
                 this.$message.error('下载PDF失败: ' + error.message);
             }
@@ -509,38 +445,39 @@ export default {
         showModal(record) {
             this.form.resetFields();
             this.visible = true;
-            this.fileList = [];
-            this.uploadFile = null;
             this.uploadedFileInfo = null;
-            
+            this.uploadedFileInfoEn = null;
+            this.uploadingZh = false;
+            this.uploadingEn = false;
+
             if (record) {
                 this.modalTitle = "编辑产品";
                 this.currentRecord = record;
-                
+
                 // 设置基本信息
                 this.form.setFieldsValue({
                     name: record.name,
+                    nameEn: record.nameEn || '',
                     catalogId: record.catalogId,
                     sort: record.sort != null ? record.sort : 999,
                 });
-                
+
                 // 触发目录变更
                 this.handleCatalogChange(record.catalogId);
-                
-                // 如果有PDF文件
+
+                // 如果有 PDF 文件，作为当前文件展示
                 if (record.pdfUrl) {
-                    this.fileList = [{
-                        uid: '-1',
-                        name: record.pdfUrl.split('/').pop() || '当前PDF文件',
-                        status: 'done',
-                        url: record.pdfUrl,
-                    }];
-                    
-                    // 保存文件信息
                     this.uploadedFileInfo = {
                         fileID: record.fileID || '',
                         url: record.pdfUrl,
                         filename: record.pdfUrl.split('/').pop() || '当前PDF文件'
+                    };
+                }
+                if (record.fileIDEn) {
+                    this.uploadedFileInfoEn = {
+                        fileID: record.fileIDEn,
+                        url: record.pdfUrlEn || '',
+                        filename: (record.pdfUrlEn || '').split('/').pop() || '当前英文PDF文件'
                     };
                 }
             } else {
@@ -572,12 +509,23 @@ export default {
             });
         },
 
+        // 提交的英文 PDF 字段：有文件 → 写入；原来有、现在被移除 → 明确清空；其它情况不带这两个字段
+        buildEnglishPdfFields() {
+            if (this.uploadedFileInfoEn) {
+                return { pdfUrlEn: this.uploadedFileInfoEn.url, fileIDEn: this.uploadedFileInfoEn.fileID };
+            }
+            if (this.currentRecord && this.currentRecord.fileIDEn) {
+                return { pdfUrlEn: null, fileIDEn: null };
+            }
+            return {};
+        },
+
         // 确认模态框操作
         handleOk() {
             this.form.validateFields(async (err, values) => {
                 if (!err) {
                     this.confirmLoading = true;
-                    
+
                     try {
                         // 处理参数（使用 param.id 作为 key）
                         const parameters = {};
@@ -589,32 +537,30 @@ export default {
                                 }
                             });
                         }
-                        console.log('表单值:', values);
-                        console.log('处理后的参数:', parameters);
-                        
-                        // 检查是否有PDF文件但尚未上传
-                        if (this.uploadFile && !this.uploadedFileInfo) {
+
+                        // PDF 还在上传时不能提交
+                        if (this.uploading) {
                             this.$message.warning('PDF文件正在上传中，请等待上传完成后再提交');
                             this.confirmLoading = false;
                             return;
                         }
-                        
+
                         // 准备JSON格式的提交数据
                         const submitData = {
                             name: values.name,
+                            nameEn: values.nameEn || '',
                             catalogId: values.catalogId,
                             sort: values.sort,
-                            parameters: parameters
+                            parameters: parameters,
+                            ...this.buildEnglishPdfFields(),
                         };
-                        
-                        // 如果有上传的文件信息，添加到提交数据中
+
+                        // 如果有上传的中文文件信息，添加到提交数据中
                         if (this.uploadedFileInfo) {
                             submitData.pdfUrl = this.uploadedFileInfo.url;
                             submitData.fileID = this.uploadedFileInfo.fileID;
                         }
-                        
-                        console.log('提交数据:', submitData);
-                        
+
                         if (this.currentRecord) {
                             // 编辑
                             await updateProduct(this.currentRecord.id, submitData);
@@ -624,7 +570,7 @@ export default {
                             await createProduct(submitData);
                             this.$message.success('新增成功');
                         }
-                        
+
                         this.visible = false;
                         this.fetchData();
                     } catch (error) {
@@ -643,42 +589,26 @@ export default {
 
         // 取消模态框操作
         async handleCancel() {
-            // 清理孤儿文件：本次会话刚上传但未保存的 PDF
-            // 新增场景：uploadedFileInfo 一定是新文件
-            // 编辑场景：uploadedFileInfo.fileID 与 currentRecord.fileID 不同，说明是新上传的替换文件
-            const orphanFileID = this.uploadedFileInfo && this.uploadedFileInfo.fileID;
-            const originalFileID = this.currentRecord && this.currentRecord.fileID;
-            if (orphanFileID && orphanFileID !== originalFileID) {
-                try {
-                    await this.deletePdfFile(orphanFileID);
-                } catch (error) {
-                    console.error('清理孤儿 PDF 失败:', error);
-                }
+            // 清理孤儿文件：本次会话刚上传但未保存的 PDF（中英文都要处理）。
+            // 记录里原有的文件不能删。
+            const original = this.currentRecord ? [this.currentRecord.fileID, this.currentRecord.fileIDEn] : [];
+            const orphans = orphanFileIDs([this.uploadedFileInfo, this.uploadedFileInfoEn], original);
+            if (orphans.length) {
+                await deletePdfs(orphans);
             }
 
             this.visible = false;
             this.form.resetFields();
             this.currentRecord = null;
             this.selectedCatalog = null;
-            this.fileList = [];
-            this.uploadFile = null;
             this.uploadedFileInfo = null;
-            this.uploadError = null;
-        },
-
-        // 重试上传
-        retryUpload() {
-            if (this.uploadFile) {
-                this.uploadPdfFile(this.uploadFile);
-            }
+            this.uploadedFileInfoEn = null;
         },
     },
     // 在组件销毁时清理资源
     beforeDestroy() {
-        // 清除可能的大文件引用
-        this.uploadFile = null;
         this.uploadedFileInfo = null;
-        this.fileList = [];
+        this.uploadedFileInfoEn = null;
     },
 };
 </script> 

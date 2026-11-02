@@ -1,97 +1,60 @@
 <template>
-  <div>
-    <!-- 统计 -->
-    <a-card class="mb-24" :bordered="false" title="文件管理">
-      <a-row :gutter="16">
-        <a-col :span="6"><a-statistic title="已登记文件" :value="summary.total" suffix="个" /></a-col>
-        <a-col :span="6"><a-statistic title="使用中" :value="summary.used" suffix="个" /></a-col>
-        <a-col :span="6"><a-statistic title="未使用" :value="summary.unused" :suffix="'个 / ' + unusedSize" /></a-col>
-        <a-col :span="6"><a-statistic title="数据库引用但未登记" :value="summary.unregisteredRefs" suffix="个" /></a-col>
-      </a-row>
-      <a-alert
-        v-if="summary.unregisteredRefs > 0"
-        type="info"
-        show-icon
-        style="margin-top: 16px;"
-        message="有正在使用的文件还没登记（登记功能上线前上传的历史文件）"
-        description="点击「导入历史文件」，选择在云开发控制台导出的文件列表，即可补全登记。导入只会新增记录，不会改动或删除任何文件。"
-      />
-      <a-alert
-        type="warning"
-        show-icon
-        style="margin-top: 16px;"
-        message="删除文件会同时从云存储中永久删除，无法恢复（云存储没有回收站）"
-        description="只有「未使用」且上传超过 24 小时的文件才能删除；文件删除成功后，这里的记录才会一并移除，没有只删记录的入口。"
-      />
-    </a-card>
+  <a-card :bordered="false">
+    <!-- 概况与提示：只用灰色小字，不用色块 -->
+    <div class="fm-summary">
+      已登记 {{ summary.total }} 个　使用中 {{ summary.used }} 个　未使用 {{ summary.unused }} 个（{{ unusedSize }}）
+      <span v-if="summary.unregisteredRefs > 0">　还有 {{ summary.unregisteredRefs }} 个正在使用的文件未登记，可点「导入历史文件」补全</span>
+    </div>
+    <div class="fm-hint">
+      删除会同时从云存储永久删除，无法恢复；只能删除「未使用」且上传超过 24 小时的文件，文件删除成功后记录才会一并移除。
+    </div>
 
-    <a-card :bordered="false">
-      <!-- 工具栏 -->
-      <div style="margin-bottom: 16px; display: flex; flex-wrap: wrap; align-items: center;">
-        <a-radio-group v-model="status" button-style="solid" @change="onFilterChange" style="margin-right: 16px;">
-          <a-radio-button value="all">全部</a-radio-button>
-          <a-radio-button value="unused">未使用</a-radio-button>
-          <a-radio-button value="used">使用中</a-radio-button>
-        </a-radio-group>
-        <a-input-search
-          v-model="keyword"
-          placeholder="搜索文件名"
-          allow-clear
-          style="width: 240px; margin-right: 16px;"
-          @search="onFilterChange"
-        />
-        <a-button style="margin-right: 16px;" :loading="importing" @click="$refs.importInput.click()">导入历史文件</a-button>
-        <input ref="importInput" type="file" accept=".html,.htm,.csv,.txt" style="display: none;" @change="onImportFile" />
-        <a-button type="danger" :disabled="!selectedRowKeys.length || deleting" :loading="deleting" @click="confirmDelete(selectedRowKeys)">
-          删除选中的 {{ selectedRowKeys.length }} 个文件（约 {{ selectedSize }}）
-        </a-button>
-      </div>
+    <!-- 工具栏 -->
+    <div class="fm-toolbar">
+      <a-radio-group v-model="status" @change="onFilterChange">
+        <a-radio-button value="all">全部</a-radio-button>
+        <a-radio-button value="unused">未使用</a-radio-button>
+        <a-radio-button value="used">使用中</a-radio-button>
+      </a-radio-group>
+      <a-input-search v-model="keyword" placeholder="搜索文件名" allow-clear style="width: 220px;" @search="onFilterChange" />
+      <a-button :loading="importing" @click="$refs.importInput.click()">导入历史文件</a-button>
+      <input ref="importInput" type="file" accept=".html,.htm,.csv,.txt" style="display: none;" @change="onImportFile" />
+      <a-button :disabled="!selectedRowKeys.length || deleting" :loading="deleting" @click="confirmDelete(selectedRowKeys)">
+        删除选中（{{ selectedRowKeys.length }} 个，约 {{ selectedSize }}）
+      </a-button>
+    </div>
 
-      <a-table
-        row-key="id"
-        size="small"
-        :columns="columns"
-        :data-source="list"
-        :loading="loading"
-        :pagination="pagination"
-        :row-selection="{ selectedRowKeys, onChange: onSelectChange, getCheckboxProps: checkboxProps }"
-        @change="onTableChange"
-      >
-        <template slot="name" slot-scope="text, record">
-          <a :href="record.url" target="_blank" rel="noopener noreferrer" :title="record.url">{{ text }}</a>
-        </template>
-        <template slot="size" slot-scope="text">{{ text ? formatSize(text) : '-' }}</template>
-        <template slot="status" slot-scope="text, record">
-          <a-tag v-if="record.inUse" color="green">使用中</a-tag>
-          <a-tag v-else color="orange">未使用</a-tag>
-          <div v-for="(u, i) in record.usedBy" :key="i" style="font-size: 12px; color: #888;">
-            {{ typeLabel(u.type) }}：{{ u.name }}
-          </div>
-        </template>
-        <template slot="action" slot-scope="text, record">
-          <a-button v-if="record.deletable" type="link" size="small" class="text-danger" @click="confirmDelete([record.id])">删除</a-button>
-          <span v-else style="color: #bbb;">{{ record.reason }}</span>
-        </template>
-      </a-table>
-    </a-card>
+    <a-table
+      row-key="id"
+      size="small"
+      :columns="columns"
+      :data-source="list"
+      :loading="loading"
+      :pagination="pagination"
+      :row-selection="{ selectedRowKeys, onChange: onSelectChange, getCheckboxProps: checkboxProps }"
+      @change="onTableChange"
+    >
+      <template slot="name" slot-scope="text, record">
+        <a :href="record.url" target="_blank" rel="noopener noreferrer" :title="record.url">{{ text }}</a>
+      </template>
+      <template slot="size" slot-scope="text">{{ text ? formatSize(text) : '-' }}</template>
+      <template slot="status" slot-scope="text, record">
+        <span>{{ record.inUse ? '使用中' : '未使用' }}</span>
+        <span v-for="(u, i) in record.usedBy" :key="i" class="fm-used-by">{{ typeLabel(u.type) }}：{{ u.name }}</span>
+      </template>
+      <template slot="action" slot-scope="text, record">
+        <a v-if="record.deletable" @click="confirmDelete([record.id])">删除</a>
+        <span v-else-if="!record.inUse" class="fm-muted">{{ record.reason }}</span>
+      </template>
+    </a-table>
 
-    <!-- 操作结果 -->
-    <a-card v-if="result" class="mt-24" :bordered="false" title="上一次删除的结果" style="margin-top: 24px;">
-      <a-alert
-        :type="result.failed.length || result.rejected.length ? 'warning' : 'success'"
-        show-icon
-        :message="resultMessage"
-      />
-      <div v-if="result.failed.length" style="margin-top: 12px;">
-        <div style="font-weight: 500;">删除失败（文件和记录都保留）：</div>
-        <ul style="padding-left: 18px;"><li v-for="f in result.failed" :key="f.id">{{ f.name }}：{{ f.reason }}</li></ul>
-      </div>
-      <div v-if="result.rejected.length" style="margin-top: 12px;">
-        <div style="font-weight: 500;">被拒绝（没有删除）：</div>
-        <ul style="padding-left: 18px;"><li v-for="f in result.rejected" :key="f.id">{{ f.name || ('记录 ' + f.id) }}：{{ f.reason }}</li></ul>
-      </div>
-    </a-card>
-  </div>
+    <!-- 上一次删除的结果：纯文字 -->
+    <div v-if="result" class="fm-result">
+      <div>{{ resultMessage }}</div>
+      <div v-for="f in result.failed" :key="'f' + f.id" class="fm-muted">删除失败（文件和记录都保留）：{{ f.name }}（{{ f.reason }}）</div>
+      <div v-for="f in result.rejected" :key="'r' + f.id" class="fm-muted">已拒绝：{{ f.name || ('记录 ' + f.id) }}（{{ f.reason }}）</div>
+    </div>
+  </a-card>
 </template>
 
 <script>
@@ -251,3 +214,12 @@ export default {
   }
 };
 </script>
+
+<style scoped>
+.fm-summary { color: rgba(0, 0, 0, 0.65); }
+.fm-hint { color: rgba(0, 0, 0, 0.45); font-size: 12px; margin: 4px 0 16px; }
+.fm-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 16px; }
+.fm-used-by { display: block; font-size: 12px; color: rgba(0, 0, 0, 0.45); }
+.fm-muted { color: rgba(0, 0, 0, 0.35); }
+.fm-result { margin-top: 16px; color: rgba(0, 0, 0, 0.65); font-size: 13px; line-height: 1.8; }
+</style>

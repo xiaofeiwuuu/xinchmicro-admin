@@ -2,6 +2,45 @@
 	<div>
 		<a-card :bordered="false">
 			<a-form class="co-form" :form="form" @submit="handleSubmit">
+				<a-form-item label="公司Logo" :labelCol="{ span: 3 }" :wrapperCol="{ span: 9 }">
+					<a-upload
+						v-decorator="[
+							'logo',
+							{
+								valuePropName: 'fileList',
+								getValueFromEvent: normFile
+							}
+						]"
+						name="file"
+						:fileList="logoFileList"
+						:beforeUpload="beforeUpload"
+						:remove="handleRemoveLogo"
+						listType="picture-card"
+						:showUploadList="{ showPreviewIcon: true, showRemoveIcon: true }"
+						:disabled="logoUploading"
+						@preview="handlePreview"
+					>
+						<div v-if="!logoFileList.length">
+							<a-icon :type="logoUploading ? 'loading' : 'plus'" />
+							<div class="ant-upload-text">{{ logoUploading ? '上传中...' : '上传' }}</div>
+						</div>
+					</a-upload>
+					<div v-if="logoUploadError" style="margin-top: 8px;">
+						<a-alert type="error" :message="logoUploadError" banner />
+						<a-button type="link" @click="retryLogoUpload" style="padding-left: 0;">
+							<a-icon type="reload" /> 重试上传
+						</a-button>
+					</div>
+					<div v-if="logoFileList.length && logoFileList[0].url" style="margin-top: 8px;">
+						<img :src="toDisplayUrl(logoFileList[0].url)" alt="公司Logo" title="点击更换Logo"
+							:style="{ maxWidth: '200px', maxHeight: '200px', cursor: logoUploading ? 'not-allowed' : 'pointer' }"
+							@click="!logoUploading && handleChangeLogo()" />
+						<div style="margin-top: 4px; color: rgba(0, 0, 0, 0.45); font-size: 12px;">点击图片可更换Logo</div>
+					</div>
+					<a-modal :visible="previewVisible" :footer="null" @cancel="handleCancel">
+						<img alt="example" style="width: 100%" :src="toDisplayUrl(previewImage)" />
+					</a-modal>
+				</a-form-item>
 				<a-row :gutter="32">
 					<a-col :xs="24" :md="12">
 						<a-form-item label="公司名称" :labelCol="{ span: 6 }" :wrapperCol="{ span: 18 }">
@@ -85,8 +124,11 @@
 							}
 						]"
 						mode="tags"
-						placeholder="请输入联系方式"
+						placeholder="输入后按回车添加"
 					/>
+					<div style="color: #999; font-size: 12px; line-height: 1.5; margin-top: 5px;">
+						输入后按回车添加，可以添加多个联系方式
+					</div>
 				</a-form-item>
 				<a-form-item label="电子邮箱" :labelCol="{ span: 3 }" :wrapperCol="{ span: 9 }">
 					<a-input
@@ -115,45 +157,6 @@
 						]"
 						placeholder="请输入公司网站"
 					/>
-				</a-form-item>
-				<a-form-item label="公司Logo" :labelCol="{ span: 3 }" :wrapperCol="{ span: 9 }">
-					<a-upload
-						v-decorator="[
-							'logo',
-							{
-								valuePropName: 'fileList',
-								getValueFromEvent: normFile
-							}
-						]"
-						name="file"
-						:fileList="logoFileList"
-						:beforeUpload="beforeUpload"
-						:remove="handleRemoveLogo"
-						listType="picture-card"
-						:showUploadList="{ showPreviewIcon: true, showRemoveIcon: true }"
-						:disabled="logoUploading"
-						@preview="handlePreview"
-					>
-						<div v-if="!logoFileList.length">
-							<a-icon :type="logoUploading ? 'loading' : 'plus'" />
-							<div class="ant-upload-text">{{ logoUploading ? '上传中...' : '上传' }}</div>
-						</div>
-					</a-upload>
-					<div v-if="logoUploadError" style="margin-top: 8px;">
-						<a-alert type="error" :message="logoUploadError" banner />
-						<a-button type="link" @click="retryLogoUpload" style="padding-left: 0;">
-							<a-icon type="reload" /> 重试上传
-						</a-button>
-					</div>
-					<div v-if="logoFileList.length && logoFileList[0].url" style="margin-top: 8px;">
-						<img :src="toDisplayUrl(logoFileList[0].url)" alt="公司Logo" title="点击更换Logo"
-							:style="{ maxWidth: '200px', maxHeight: '200px', cursor: logoUploading ? 'not-allowed' : 'pointer' }"
-							@click="!logoUploading && handleChangeLogo()" />
-						<div style="margin-top: 4px; color: rgba(0, 0, 0, 0.45); font-size: 12px;">点击图片可更换Logo</div>
-					</div>
-					<a-modal :visible="previewVisible" :footer="null" @cancel="handleCancel">
-						<img alt="example" style="width: 100%" :src="toDisplayUrl(previewImage)" />
-					</a-modal>
 				</a-form-item>
 				<!-- <a-form-item label="安全手册" :labelCol="{ span: 4 }" :wrapperCol="{ span: 14 }">
 					<a-upload

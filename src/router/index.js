@@ -55,6 +55,16 @@ let routes = [
 		component: () => import('@/views/Products.vue'),
 	},
 	{
+		path: '/products/bulk-en',
+		name: 'ProductsBulkEn',
+		layout: "dashboard",
+		meta:{
+			name:'批量关联英文PDF',
+			requiresAuth: true
+		},
+		component: () => import('@/views/ProductsBulkEn.vue'),
+	},
+	{
 		path: '/company',
 		name: 'CompanyInfo',
 		layout: "dashboard",

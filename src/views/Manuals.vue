@@ -215,11 +215,11 @@ export default {
       columns: [
         { title: 'ID', dataIndex: 'id', key: 'id', width: 80 },
         { title: '手册名称', dataIndex: 'name', key: 'name' },
-        { title: '手册类型', dataIndex: 'type', key: 'type', scopedSlots: { customRender: 'type' }, width: 120 },
-        { title: '文件', dataIndex: 'lang', key: 'lang', scopedSlots: { customRender: 'lang' }, width: 100 },
-        { title: '排序', dataIndex: 'sort', key: 'sort', width: 120, sorter: (a, b) => (a.sort || 0) - (b.sort || 0) },
-        { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt', scopedSlots: { customRender: 'createdAt' }, width: 180 },
-        { title: '创建者', dataIndex: 'creator', key: 'creator', scopedSlots: { customRender: 'creator' }, width: 120 },
+        { title: '手册类型', dataIndex: 'type', key: 'type', scopedSlots: { customRender: 'type' }, minWidth: 120 },
+        { title: '文件', dataIndex: 'lang', key: 'lang', scopedSlots: { customRender: 'lang' }, minWidth: 100 },
+        { title: '排序', dataIndex: 'sort', key: 'sort', minWidth: 120, sorter: (a, b) => (a.sort || 0) - (b.sort || 0) },
+        { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt', scopedSlots: { customRender: 'createdAt' }, minWidth: 180 },
+        { title: '创建者', dataIndex: 'creator', key: 'creator', scopedSlots: { customRender: 'creator' }, minWidth: 120 },
         { title: '操作', key: 'action', scopedSlots: { customRender: 'action' }, width: 200 }
       ],
       loading: false,

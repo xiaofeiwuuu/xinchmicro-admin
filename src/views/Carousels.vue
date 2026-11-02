@@ -78,10 +78,7 @@
 					<div v-if="fileList.length && fileList[0].url" style="margin-top: 8px;">
 						<img :src="toDisplayUrl(fileList[0].url)" alt="轮播图" style="max-width: 200px; max-height: 200px;" />
 						<div style="margin-top: 8px;">
-							<a-button type="primary" @click="handleViewUploadedImage" :loading="viewUploadLoading">
-								<a-icon type="eye" /> 查看
-							</a-button>
-							<a-button type="primary" style="margin-left: 8px;" @click="handleChangeImage">
+							<a-button type="primary" @click="handleChangeImage">
 								<a-icon type="edit" /> 修改
 							</a-button>
 						</div>
@@ -182,8 +179,7 @@ export default {
 			uploadFile: null,
 			uploadedFileInfo: null,
 			// 已保存在服务端的图片文件 ID：和当前图片不同，说明当前图片是本次新传、还没保存的
-			originalFileID: '',
-			viewUploadLoading: false
+			originalFileID: ''
 		}
 	},
 	computed: {
@@ -453,38 +449,6 @@ export default {
 				this.previewImage(record.imageUrl)
 			} finally {
 				this.$set(record, 'viewLoading', false)
-			}
-		},
-		async handleViewUploadedImage() {
-			if (!this.uploadedFileInfo || !this.uploadedFileInfo.fileID) {
-				// 如果没有fileID，直接使用url预览
-				this.previewImage(this.fileList[0].url)
-				return
-			}
-			
-			this.viewUploadLoading = true
-			
-			try {
-				this.$message.loading('正在获取图片链接...', 0)
-				const res = await getPdfDownloadUrl(this.uploadedFileInfo.fileID)
-				
-				this.$message.destroy()
-				
-				if (res && res.file_list && res.file_list.length > 0 && res.file_list[0].download_url) {
-					// 使用下载链接预览图片
-					this.previewImage(res.file_list[0].download_url)
-				} else {
-					// 如果获取失败，使用原始链接
-					this.previewImage(this.fileList[0].url)
-					this.$message.error('获取高清图片链接失败，使用原始图片')
-				}
-			} catch (error) {
-				this.$message.destroy()
-				notifyError(this, error, '获取图片链接失败')
-				// 使用原始链接作为备选
-				this.previewImage(this.fileList[0].url)
-			} finally {
-				this.viewUploadLoading = false
 			}
 		},
 		handleChangeImage() {

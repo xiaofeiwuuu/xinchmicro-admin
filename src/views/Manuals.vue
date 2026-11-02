@@ -132,6 +132,24 @@
             小程序按语言显示手册：中文界面只显示中文手册，英文界面只显示英文手册。
           </div>
         </a-form-item>
+        <a-form-item label="排序">
+          <a-input-number
+            v-decorator="[
+              'sort',
+              {
+                rules: [{ required: true, message: '请输入排序值' }],
+                initialValue: formData.sort
+              }
+            ]"
+            :min="0"
+            :precision="0"
+            placeholder="数字越小越靠前"
+            style="width: 100%;"
+          />
+          <div style="color: #999; font-size: 12px; margin-top: 5px;">
+            提示：数字越小越靠前，相同则按创建时间倒序（小程序按这个顺序显示）
+          </div>
+        </a-form-item>
         <a-form-item label="手册文件" :required="dialogType === 'add'">
           <a-upload
             :file-list="fileList"
@@ -199,6 +217,7 @@ export default {
         { title: '手册名称', dataIndex: 'name', key: 'name' },
         { title: '手册类型', dataIndex: 'type', key: 'type', scopedSlots: { customRender: 'type' }, width: 120 },
         { title: '文件', dataIndex: 'lang', key: 'lang', scopedSlots: { customRender: 'lang' }, width: 100 },
+        { title: '排序', dataIndex: 'sort', key: 'sort', width: 120, sorter: (a, b) => (a.sort || 0) - (b.sort || 0) },
         { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt', scopedSlots: { customRender: 'createdAt' }, width: 180 },
         { title: '创建者', dataIndex: 'creator', key: 'creator', scopedSlots: { customRender: 'creator' }, width: 120 },
         { title: '操作', key: 'action', scopedSlots: { customRender: 'action' }, width: 200 }
@@ -227,6 +246,7 @@ export default {
         name: '',
         type: 'product',
         lang: 'zh',
+        sort: 999,
         fileId: '',
         filePath: ''
       },
@@ -312,6 +332,7 @@ export default {
         type: 'product',
         // 正在按某种语言筛选时，新增默认用该语言
         lang: this.searchForm.lang || 'zh',
+        sort: 999,
         fileId: '',
         filePath: ''
       };
@@ -333,6 +354,7 @@ export default {
             name: manual.name,
             type: manual.type,
             lang: manual.lang || 'zh',
+            sort: manual.sort != null ? manual.sort : 999,
             fileId: manual.fileId,
             filePath: manual.filePath
           };
@@ -366,6 +388,7 @@ export default {
         name: '',
         type: 'product',
         lang: 'zh',
+        sort: 999,
         fileId: '',
         filePath: ''
       };
@@ -518,6 +541,7 @@ export default {
             name: values.name,
             type: values.type,
             lang: values.lang,
+            sort: values.sort,
             fileId: this.formData.fileId,
             filePath: this.formData.filePath
           };

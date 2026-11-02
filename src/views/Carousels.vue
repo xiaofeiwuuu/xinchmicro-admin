@@ -178,6 +178,8 @@ export default {
 			uploadError: null,
 			uploadFile: null,
 			uploadedFileInfo: null,
+			// 已保存在服务端的图片文件 ID：和当前图片不同，说明当前图片是本次新传、还没保存的
+			originalFileID: '',
 			viewUploadLoading: false
 		}
 	},
@@ -199,6 +201,7 @@ export default {
 			}
 		},
 		showModal(record) {
+			this.originalFileID = record ? (record.fileID || '') : ''
 			this.fileList = []
 			this.uploadFile = null
 			this.uploadedFileInfo = null
@@ -271,6 +274,8 @@ export default {
 			})
 		},
 		handleCancel() {
+			// 取消：本次新传、没保存的图片不留下（已保存的原图不动，仍然可用）
+			this.discardSessionFile()
 			this.visible = false
 			this.$refs.form.resetFields()
 			this.fileList = []
@@ -301,14 +306,9 @@ export default {
 				return false
 			}
 
-			// 如果已有图片，先删除旧文件
-			if (this.uploadedFileInfo && this.uploadedFileInfo.fileID) {
-				try {
-					await this.deletePdfFile(this.uploadedFileInfo.fileID)
-				} catch (error) {
-					// 旧文件删除失败不影响新文件上传
-				}
-			}
+			// 只清理"本次新传、还没保存"的上一张图；已保存的旧图不能在这里删——
+			// 用户随时可能点取消，由服务端在保存成功后再删
+			await this.discardSessionFile()
 			
 			// 清除之前的文件信息
 			this.uploadFile = file
@@ -384,24 +384,20 @@ export default {
 				this.uploading = false
 			}
 		},
-		async deletePdfFile(fileID) {
-			try {
-				await deletePdf(fileID)
-				return true
-			} catch (error) {
-				throw error
+		// 清理"本次新传、还没保存"的图片（当前文件 ID 和已保存的不同）。已保存的图片绝不在这里删。
+		// 删除失败只会留下一个孤儿文件，不影响操作
+		async discardSessionFile() {
+			const info = this.uploadedFileInfo
+			if (info && info.fileID && info.fileID !== this.originalFileID) {
+				try {
+					await deletePdf(info.fileID)
+				} catch (error) {
+					// 忽略
+				}
 			}
 		},
 		async handleRemove() {
-			if (this.uploadedFileInfo && this.uploadedFileInfo.fileID) {
-				try {
-					await this.deletePdfFile(this.uploadedFileInfo.fileID)
-					this.$message.success('图片已删除')
-				} catch (error) {
-					notifyError(this, error, '删除图片失败')
-					return false
-				}
-			}
+			await this.discardSessionFile()
 			
 			this.uploadFile = null
 			this.fileList = []

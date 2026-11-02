@@ -218,7 +218,13 @@ export default {
 			logoFile: null,
 			pdfFile: null,
 			uploadedLogoInfo: null,
-			uploadedPdfInfo: null
+			uploadedPdfInfo: null,
+			// 已保存在服务端的文件 ID：和当前文件不同，说明当前文件是本次新传、还没保存的
+			originalLogoFileID: '',
+			originalPdfFileID: '',
+			// 用户移除了已保存的文件：点保存时通知服务端清空（并由服务端删除旧文件）
+			logoRemoved: false,
+			pdfRemoved: false
 		}
 	},
 	methods: {
@@ -233,12 +239,23 @@ export default {
 						if (this.uploadedLogoInfo) {
 							values.logoUrl = this.uploadedLogoInfo.url
 							values.logoFileID = this.uploadedLogoInfo.fileID
+						} else if (this.logoRemoved) {
+							values.logoUrl = ''
+							values.logoFileID = ''
 						}
 						if (this.uploadedPdfInfo) {
 							values.safetyManualUrl = this.uploadedPdfInfo.url
 							values.safetyManualFileID = this.uploadedPdfInfo.fileID
+						} else if (this.pdfRemoved) {
+							values.safetyManualUrl = ''
+							values.safetyManualFileID = ''
 						}
 						await updateCompanyInfo(values)
+						// 保存成功：当前文件成为"已保存"的文件，旧文件由服务端清理
+						this.originalLogoFileID = this.uploadedLogoInfo ? this.uploadedLogoInfo.fileID : ''
+						this.originalPdfFileID = this.uploadedPdfInfo ? this.uploadedPdfInfo.fileID : ''
+						this.logoRemoved = false
+						this.pdfRemoved = false
 						this.$message.success('公司信息更新成功')
 					} catch (error) {
 						notifyError(this, error, '公司信息更新失败')
@@ -266,6 +283,7 @@ export default {
 						fileID: data.logoFileID,
 						filename: 'logo'
 					}
+					this.originalLogoFileID = data.logoFileID
 				}
 				if (data.safetyManualUrl && data.safetyManualFileID) {
 					this.pdfFileList = [{
@@ -280,6 +298,7 @@ export default {
 						fileID: data.safetyManualFileID,
 						filename: 'safety-manual.pdf'
 					}
+					this.originalPdfFileID = data.safetyManualFileID
 				}
 				this.form.setFieldsValue(data)
 				
@@ -312,14 +331,9 @@ export default {
 				return false
 			}
 
-			// 如果已有Logo，先删除旧文件
-			if (this.uploadedLogoInfo && this.uploadedLogoInfo.fileID) {
-				try {
-					await this.deletePdfFile(this.uploadedLogoInfo.fileID)
-				} catch (error) {
-					// 旧文件删除失败不影响新文件上传
-				}
-			}
+			// 只清理"本次新传、还没保存"的上一个文件；已保存的旧文件不能在这里删——
+			// 用户随时可能不保存，由服务端在保存成功后再删
+			await this.discardSessionFile('logo')
 			
 			// 清除之前的文件信息
 			this.logoFile = file
@@ -409,14 +423,8 @@ export default {
 				return false
 			}
 
-			// 如果已有PDF，先删除旧文件
-			if (this.uploadedPdfInfo && this.uploadedPdfInfo.fileID) {
-				try {
-					await this.deletePdfFile(this.uploadedPdfInfo.fileID)
-				} catch (error) {
-					// 旧文件删除失败不影响新文件上传
-				}
-			}
+			// 只清理"本次新传、还没保存"的上一个文件（原因同上）
+			await this.discardSessionFile('pdf')
 			
 			// 清除之前的文件信息
 			this.pdfFile = file
@@ -487,44 +495,40 @@ export default {
 				this.pdfUploading = false
 			}
 		},
-		async deletePdfFile(fileID) {
-			try {
-				await deletePdf(fileID)
-				return true
-			} catch (error) {
-				throw error
+		// 清理"本次新传、还没保存"的文件（当前文件的 ID 和已保存的不同）。已保存的文件绝不在这里删。
+		// 删除失败只会留下一个孤儿文件，不影响操作
+		async discardSessionFile(kind) {
+			const info = kind === 'logo' ? this.uploadedLogoInfo : this.uploadedPdfInfo
+			const original = kind === 'logo' ? this.originalLogoFileID : this.originalPdfFileID
+			if (info && info.fileID && info.fileID !== original) {
+				try {
+					await deletePdf(info.fileID)
+				} catch (error) {
+					// 忽略
+				}
 			}
 		},
 		async handleRemoveLogo() {
-			if (this.uploadedLogoInfo && this.uploadedLogoInfo.fileID) {
-				try {
-					await this.deletePdfFile(this.uploadedLogoInfo.fileID)
-					this.$message.success('Logo已删除')
-				} catch (error) {
-					notifyError(this, error, '删除Logo失败')
-					return false
-				}
-			}
-			
+			await this.discardSessionFile('logo')
 			this.logoFile = null
 			this.logoFileList = []
 			this.uploadedLogoInfo = null
+			// 已保存过的 Logo：点保存后才真正清空（并由服务端删除文件），不保存则什么都不会变
+			if (this.originalLogoFileID) {
+				this.logoRemoved = true
+				this.$message.info('已移除，点击保存后生效')
+			}
 			return true
 		},
 		async handleRemovePdf() {
-			if (this.uploadedPdfInfo && this.uploadedPdfInfo.fileID) {
-				try {
-					await this.deletePdfFile(this.uploadedPdfInfo.fileID)
-					this.$message.success('PDF文件已删除')
-				} catch (error) {
-					notifyError(this, error, '删除PDF文件失败')
-					return false
-				}
-			}
-			
+			await this.discardSessionFile('pdf')
 			this.pdfFile = null
 			this.pdfFileList = []
 			this.uploadedPdfInfo = null
+			if (this.originalPdfFileID) {
+				this.pdfRemoved = true
+				this.$message.info('已移除，点击保存后生效')
+			}
 			return true
 		},
 		retryLogoUpload() {
@@ -605,6 +609,11 @@ export default {
 	},
 	created() {
 		this.fetchCompanyInfo()
+	},
+	beforeDestroy() {
+		// 离开页面时没保存的新文件不留下孤儿（尽力而为，浏览器直接关闭时做不到）
+		this.discardSessionFile('logo')
+		this.discardSessionFile('pdf')
 	}
 }
 </script>

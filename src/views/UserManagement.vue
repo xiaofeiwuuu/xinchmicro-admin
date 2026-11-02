@@ -126,6 +126,7 @@
 
 <script>
 import { notifyError } from '@/utils/notify';
+import { getUserInfo } from '@/utils/auth';
 import { 
 	createMainUser, 
 	createSubUser, 
@@ -266,33 +267,10 @@ export default {
 		}
 	},
 	created() {
-		// 从本地存储获取当前用户信息
-		const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+		// 取不到用户信息时 currentUser 保持默认值（非主账号），不再默认当成管理员显示操作按钮
+		const userInfo = getUserInfo();
 		if (userInfo.id) {
-			this.currentUser = {
-				id: userInfo.id,
-				username: userInfo.username,
-				userType: userInfo.userType
-			};
-		}
-		// 如果没有获取到用户信息，默认设置为主账号，确保按钮可见
-		else {
-			// 从sessionStorage中尝试获取
-			const sessionUserInfo = JSON.parse(sessionStorage.getItem('userInfo') || '{}');
-			if (sessionUserInfo.id) {
-				this.currentUser = {
-					id: sessionUserInfo.id,
-					username: sessionUserInfo.username,
-					userType: sessionUserInfo.userType
-				};
-			} else {
-				// 如果仍然没有，设置为主账号
-				this.currentUser = {
-					id: 1,
-					username: 'admin',
-					userType: 'main'
-				};
-			}
+			this.currentUser = { id: userInfo.id, username: userInfo.username, userType: userInfo.userType };
 		}
 		this.fetchUsers();
 	},

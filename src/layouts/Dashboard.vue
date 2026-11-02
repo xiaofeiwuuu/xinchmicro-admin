@@ -65,6 +65,7 @@
 
 <script>
 
+import { isMainUser } from '@/utils/auth';
 import DashboardSidebar from '../components/Sidebars/DashboardSidebar';
 import DashboardHeader from '../components/Headers/DashboardHeader';
 import DashboardFooter from '../components/Footers/DashboardFooter';
@@ -99,17 +100,8 @@ export default ({
 		}
 	},
 	created() {
-		// 从本地存储获取当前用户信息
-		const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
-		if (userInfo.userType) {
-			this.isMainUser = userInfo.userType === 'main';
-		} else {
-			// 从sessionStorage中尝试获取
-			const sessionUserInfo = JSON.parse(sessionStorage.getItem('userInfo') || '{}');
-			if (sessionUserInfo.userType) {
-				this.isMainUser = sessionUserInfo.userType === 'main';
-			}
-		}
+		// 取不到用户信息时按子账号处理（隐藏主账号菜单），宁可少显示也不能多显示
+		this.isMainUser = isMainUser();
 	},
 	methods: {
 		toggleSidebar(value) {

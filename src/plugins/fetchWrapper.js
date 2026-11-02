@@ -1,5 +1,7 @@
 // 单个请求的超时时间（毫秒），来自 .env 的 VUE_APP_REQUEST_TIMEOUT；
 // 取不到有效数值时用 30 秒，避免超时时间变成 0 导致请求立刻被中止
+import { getToken, clearAuth } from '@/utils/auth';
+
 const DEFAULT_TIMEOUT = Number(process.env.VUE_APP_REQUEST_TIMEOUT) || 30000;
 
 const pad2 = (n) => String(n).padStart(2, '0');
@@ -77,7 +79,7 @@ const fetchWrapper = {
       },
     };
 
-    const token = localStorage.getItem('token');
+    const token = getToken();
     if (token) {
       defaultOptions.headers['Authorization'] = `Bearer ${token}`;
     }
@@ -116,8 +118,7 @@ const fetchWrapper = {
       // 带着令牌的请求返回 401：令牌失效，统一清除登录态并跳转登录页。
       // 没带令牌（比如登录时密码错误）的 401 是普通业务错误，要显示服务端给的原因
       if (response.status === 401 && token) {
-        localStorage.clear();
-        sessionStorage.clear();
+        clearAuth();
         if (this.router) {
           this.router.push('/login');
         }

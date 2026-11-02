@@ -1,5 +1,6 @@
 import Vue from 'vue'
 import VueRouter from 'vue-router'
+import { isLoggedIn, isMainUser, clearAuth } from '@/utils/auth'
 
 Vue.use(VueRouter)
 
@@ -155,19 +156,14 @@ const router = new VueRouter({
 
 // 添加全局路由守卫
 router.beforeEach((to, from, next) => {
-	// 从localStorage获取token判断是否登录
-	const token = localStorage.getItem('token')
-	const isLogin = !!token
+	// 令牌存在且没有过期才算已登录
+	const isLogin = isLoggedIn()
 	
 	if (to.meta.requiresAuth) {
 		if (isLogin) {
 			// 检查是否需要主账号权限
 			if (to.meta.requiresMainUser) {
-				// 从本地存储获取当前用户信息
-				const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
-				const isMainUser = userInfo.userType === 'main';
-				
-				if (isMainUser) {
+				if (isMainUser()) {
 					next();
 				} else {
 					// 如果不是主账号，重定向到首页
@@ -177,6 +173,8 @@ router.beforeEach((to, from, next) => {
 				next();
 			}
 		} else {
+			// 令牌已过期的话顺手清掉残留的登录信息
+			clearAuth();
 			next('/login');
 		}
 	} else {

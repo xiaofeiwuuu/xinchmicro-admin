@@ -61,6 +61,7 @@
 
 <script>
 import { notifyError } from '@/utils/notify';
+import { saveAuth } from '@/utils/auth';
 import { login } from '@/api'
 
 export default ({
@@ -82,15 +83,11 @@ export default ({
 						const res = await login(values);
 						
 						// 存储登录信息到localStorage
-						localStorage.setItem('token', res.data.token);
-						
-						// 存储用户信息对象
-						const userInfo = {
+						saveAuth(res.data.token, {
 							id: res.data.user.id,
 							username: res.data.user.username,
 							userType: res.data.user.userType
-						};
-						localStorage.setItem('userInfo', JSON.stringify(userInfo));
+						});
 						
 						this.$message.success(res.message || '登录成功');
 						this.$router.push('/');

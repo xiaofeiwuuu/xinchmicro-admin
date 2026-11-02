@@ -59,6 +59,7 @@
 </template>
 
 <script>
+	import { clearAuth, getUserInfo } from '@/utils/auth';
 
 	export default ({
 		props: {
@@ -103,9 +104,7 @@
 					okType: 'danger',
 					cancelText: '否',
 					onOk: () => {
-						// 清除localStorage中的登录相关数据
-						localStorage.removeItem('token');
-						localStorage.removeItem('userInfo');
+						clearAuth();
 						
 						this.$router.push('/login');
 						this.$message.success('退出成功');
@@ -121,13 +120,7 @@
 			this.wrapper = document.getElementById('layout-dashboard') ;
 			
 			// 获取用户名
-			const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
-			if (userInfo.username) {
-				this.username = userInfo.username;
-			} else {
-				// 兼容旧方式
-				this.username = sessionStorage.getItem('username') || '';
-			}
+			this.username = getUserInfo().username || '';
 		},
 		created() {
 			// 注册窗口调整大小事件监听器，以修复affix元素大小

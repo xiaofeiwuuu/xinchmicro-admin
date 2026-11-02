@@ -19,10 +19,6 @@
 			</a-layout-content>
 			<!-- / Page Content -->
 
-			<!-- Layout Footer -->
-			<!-- <DefaultFooter></DefaultFooter> -->
-			<!-- / Layout Footer -->
-
 		</a-layout>
 		<!-- / Default Layout -->
 
@@ -32,12 +28,10 @@
 <script>
 
 	import DefaultHeader from '../components/Headers/DefaultHeader' ;
-	import DefaultFooter from '../components/Footers/DefaultFooter' ;
 
 	export default ({
 		components: {
 			DefaultHeader,
-			DefaultFooter,
 		},
 		data() {
 			return {

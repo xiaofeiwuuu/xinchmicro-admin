@@ -79,18 +79,8 @@
 						<div style="margin-top: 4px; color: rgba(0, 0, 0, 0.45); font-size: 12px;">点击图片可更换图片</div>
 					</div>
 				</a-form-model-item>
-				<a-form-model-item label="链接" prop="link">
-					<a-input v-model="form.link" placeholder="例如：/pages/product/detail?id=123" />
-					<div class="link-help">
-						<div>点击轮播图后的跳转，分两种写法：</div>
-						<div>1. 跳转到小程序内页面（以 / 开头）：</div>
-						<div class="link-help-item">产品目录（某个分类下）：<code>/pages/catalog/index?categoryId=分类ID&amp;categoryName=分类名称</code></div>
-						<div class="link-help-item">产品列表（某个目录下）：<code>/pages/product/list?catalogId=目录ID&amp;catalogName=目录名称</code></div>
-						<div class="link-help-item">产品详情：<code>/pages/product/detail?id=产品ID</code></div>
-						<div class="link-help-item">ID 在「产品分类」「产品目录」「产品详情」页的 ID 列里查看；名称显示为页面标题，名称里含 &amp; # ? % 等符号时不要直接写。</div>
-						<div>2. 外部网址（以 http 开头）：小程序里不能直接打开，点击后只会复制该网址。</div>
-						<div>首页、搜索、公司是底部标签页，目前不能作为跳转目标。</div>
-					</div>
+				<a-form-model-item label="链接">
+					<link-picker :key="linkPickerKey" v-model="form.link" />
 				</a-form-model-item>
 				<a-form-model-item label="排序" prop="order">
 					<a-input-number v-model="form.order" :min="0" />
@@ -112,12 +102,15 @@
 
 <script>
 import { notifyError } from '@/utils/notify';
+import LinkPicker from '@/components/LinkPicker.vue';
 import { toDisplayUrl } from '@/utils/cloudUrl';
 import { getCarousels, createCarousel, updateCarousel, deleteCarousel, updateCarouselOrder, uploadFile, deletePdf } from '@/api'
 
 export default {
+	components: { LinkPicker },
 	data() {
 		return {
+			linkPickerKey: 0,
 			loading: false,
 			carousels: [],
 			visible: false,
@@ -133,7 +126,6 @@ export default {
 			rules: {
 				title: [{ required: true, message: '请输入标题' }],
 				imageUrl: [{ required: true, message: '请上传图片' }],
-				link: [{ required: true, message: '请输入链接' }],
 				order: [{ required: true, message: '请输入排序值' }],
 				status: [{ required: true, message: '请选择状态' }]
 			},
@@ -152,7 +144,8 @@ export default {
 				{
 					title: '链接',
 					dataIndex: 'link',
-					key: 'link'
+					key: 'link',
+					customRender: (text) => (!text || text === '无' ? '-' : text)
 				},
 				{
 					title: '排序',
@@ -199,6 +192,7 @@ export default {
 			}
 		},
 		showModal(record) {
+			this.linkPickerKey += 1 // 每次打开都重建链接选择器，按当前记录的链接还原选择
 			this.originalFileID = record ? (record.fileID || '') : ''
 			this.fileList = []
 			this.uploadFile = null
@@ -438,7 +432,4 @@ export default {
 	margin-top: 8px;
 	color: #666;
 }
-.link-help { margin-top: 4px; color: rgba(0, 0, 0, 0.45); font-size: 12px; line-height: 1.8; }
-.link-help-item { padding-left: 14px; }
-.link-help code { background: rgba(0, 0, 0, 0.04); padding: 0 4px; border-radius: 2px; word-break: break-all; }
 </style> 

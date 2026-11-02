@@ -73,12 +73,10 @@
 						</a-button>
 					</div>
 					<div v-if="fileList.length && fileList[0].url" style="margin-top: 8px;">
-						<img :src="toDisplayUrl(fileList[0].url)" alt="轮播图" style="max-width: 200px; max-height: 200px;" />
-						<div style="margin-top: 8px;">
-							<a-button type="primary" @click="handleChangeImage">
-								<a-icon type="edit" /> 修改
-							</a-button>
-						</div>
+						<img :src="toDisplayUrl(fileList[0].url)" alt="轮播图" title="点击更换图片"
+							:style="{ maxWidth: '200px', maxHeight: '200px', cursor: uploading ? 'not-allowed' : 'pointer' }"
+							@click="!uploading && handleChangeImage()" />
+						<div style="margin-top: 4px; color: rgba(0, 0, 0, 0.45); font-size: 12px;">点击图片可更换图片</div>
 					</div>
 				</a-form-model-item>
 				<a-form-model-item label="链接" prop="link">

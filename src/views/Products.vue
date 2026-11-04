@@ -47,7 +47,7 @@
         </a-button>
 
         <!-- 表格组件 -->
-        <a-table :columns="columns" :data-source="data" :loading="loading" rowKey="id"
+        <a-table :scroll="tableScroll" :rowClassName="(r) => (r.id === focusId ? 'row-focus' : '')" :columns="columns" :data-source="data" :loading="loading" rowKey="id"
             :pagination="pagination" @change="handleTableChange">
             <template slot="parameters" slot-scope="text, record">
                 <div v-if="record.catalog && record.catalog.paramTitles">
@@ -73,13 +73,22 @@
                     <a-tag v-else color="orange">缺英文版</a-tag>
                 </div>
             </template>
-            <span slot="action" slot-scope="text, record">
+            <span slot="action" slot-scope="text, record" class="row-actions">
+                <!-- 详情按钮：只看，不改 -->
+                <a-button type="link" size="small" @click="openDetail(record)">
+                    <a-icon type="eye" />
+                    <span class="text-dark">详情</span>
+                </a-button>
                 <!-- 编辑按钮 -->
                 <a-button type="link" size="small" @click="showModal(record)">
                     <icon-edit />
                     <span class="text-dark">编辑</span>
                 </a-button>
-                <a-divider type="vertical" />
+                <!-- 去价格库存页：带上产品名和目录，在那边定位到这个产品 -->
+                <a-button type="link" size="small" @click="goShopProduct(record)">
+                    <icon-price />
+                    <span class="text-dark">价格库存</span>
+                </a-button>
                 <!-- 删除按钮 -->
                 <a-button type="link" size="small" @click="handleDelete(record)">
                     <icon-delete />
@@ -89,6 +98,45 @@
         </a-table>
 
         <!-- 编辑模态框 -->
+        <!-- 产品详情：左边基本信息和资料文件，右边参数（只看，修改请点「编辑」） -->
+        <a-modal v-model="detailVisible" :title="detailRecord ? detailRecord.name : '产品详情'" :footer="null" :width="960" :destroyOnClose="true" :bodyStyle="{ maxHeight: '72vh', overflowY: 'auto' }">
+            <div v-if="detailRecord" class="pd-cols">
+                <div class="pd-col">
+                    <div class="pd-title">基本信息</div>
+                    <div class="pd-grid">
+                        <div class="pd-k">产品名称</div><div class="pd-v">{{ detailRecord.name }}</div>
+                        <div class="pd-k">所属分类</div><div class="pd-v">{{ detailRecord.catalog && detailRecord.catalog.category ? detailRecord.catalog.category.name : '-' }}</div>
+                        <div class="pd-k">所属目录</div><div class="pd-v">{{ detailRecord.catalog ? detailRecord.catalog.name : '-' }}</div>
+                        <div class="pd-k">排序</div><div class="pd-v">{{ detailRecord.sort }}</div>
+                        <div class="pd-k">创建时间</div><div class="pd-v">{{ detailRecord.createdAt || '-' }}</div>
+                        <div class="pd-k">修改时间</div><div class="pd-v">{{ detailRecord.updatedAt || '-' }}</div>
+                    </div>
+
+                    <div class="pd-title">资料文件（PDF）</div>
+                    <div class="pd-grid">
+                        <div class="pd-k">中文版</div>
+                        <div class="pd-v"><a v-if="detailRecord.fileID" :href="fileHref(detailRecord.fileID, detailRecord.pdfUrl)" target="_blank" rel="noopener noreferrer">查看 / 下载</a><span v-else class="pd-empty">未上传</span></div>
+                        <div class="pd-k">英文版</div>
+                        <div class="pd-v"><a v-if="detailRecord.fileIDEn" :href="fileHref(detailRecord.fileIDEn, detailRecord.pdfUrlEn)" target="_blank" rel="noopener noreferrer">查看 / 下载</a><span v-else class="pd-empty">未上传</span></div>
+                    </div>
+                </div>
+                <div class="pd-col">
+                    <div class="pd-title">产品参数</div>
+                    <div v-if="!detailParams.length" class="pd-empty">这个目录没有设置参数</div>
+                    <div v-else class="pd-grid">
+                        <template v-for="p in detailParams">
+                            <div :key="p.id + 'k'" class="pd-k">{{ p.title }}</div>
+                            <div :key="p.id + 'v'" class="pd-v">{{ p.value || '-' }}</div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+            <div class="pd-foot">
+                <span></span>
+                <a-button type="primary" size="small" @click="editFromDetail">编辑这个产品</a-button>
+            </div>
+        </a-modal>
+
         <a-modal :maskClosable="false" :title="modalTitle" :visible="visible" :confirm-loading="confirmLoading"
             @ok="handleOk" @cancel="handleCancel" width="980px"
             :okButtonProps="{ disabled: uploading || confirmLoading }"
@@ -227,6 +275,7 @@
 <script>
 import IconEdit from '@/components/IconEdit.vue';
 import IconDelete from '@/components/IconDelete.vue';
+import IconPrice from '@/components/IconPrice.vue';
 import { notifyError } from '@/utils/notify';
 import { getProducts, createProduct, deleteProduct, getCatalogs, updateProduct, deletePdfs } from '@/api';
 import { fileHref } from '@/utils/cloudUrl';
@@ -236,38 +285,28 @@ import { buildProductQuery, orphanFileIDs } from '@/utils/i18nData';
 // 定义表格列的配置
 const columns = [
     {
-        title: 'ID',
-        dataIndex: 'id',
-        width: '10%',
-    },
-    {
         title: '产品名称',
         dataIndex: 'name',
-        width: '20%',
         scopedSlots: { customRender: 'name' },
     },
     {
         title: '所属目录',
         dataIndex: 'catalog',
-        width: '20%',
         scopedSlots: { customRender: 'catalog' },
     },
     // {
     //     title: '产品参数',
     //     dataIndex: 'parameters',
-    //     width: '30%',
-    //     scopedSlots: { customRender: 'parameters' },
+    //     //     scopedSlots: { customRender: 'parameters' },
     // },
     {
         title: 'PDF文档',
         dataIndex: 'pdfUrl',
-        width: '20%',
         scopedSlots: { customRender: 'pdfUrl' },
     },
     {
         title: '排序',
         dataIndex: 'sort',
-        width: '8%',
         sorter: (a, b) => (a.sort || 0) - (b.sort || 0),
     },
     {
@@ -277,8 +316,12 @@ const columns = [
     },
 ];
 
+import fixedListLayout from '@/mixins/fixedListLayout'
+import { newPagination, applyTableChange } from '@/utils/pagination'
+
 export default {
-    components: { PdfUploader, IconEdit, IconDelete },
+	mixins: [fixedListLayout],
+    components: { PdfUploader, IconEdit, IconDelete, IconPrice },
     data() {
         return {
             modalTitle: "新增产品",
@@ -305,25 +348,34 @@ export default {
             // 两个上传控件各自的上传中状态
             uploadingZh: false,
             uploadingEn: false,
+            // 详情弹窗
+            detailVisible: false,
+            detailRecord: null,
+            // 从别的页面跳过来时要高亮的产品 ID
+            focusId: null,
             // 分页配置
-            pagination: {
-                current: 1,
-                pageSize: 10,
-                total: 0,
-                showSizeChanger: true,
-                showQuickJumper: true,
-                showTotal: (total) => `共 ${total} 条`,
-                pageSizeOptions: ['10', '20', '50', '100'],
-            },
+            pagination: newPagination(),
         };
     },
     computed: {
+        // 详情里的参数：按目录里的参数标题顺序，配上这个产品填的值
+        detailParams() {
+            const r = this.detailRecord;
+            const titles = (r && r.catalog && r.catalog.paramTitles) || [];
+            const values = (r && r.parameters) || {};
+            return titles.map((t) => (typeof t === 'string' ? { id: t, title: t, value: values[t] } : { id: t.id, title: t.title, value: values[t.id] }));
+        },
         // 任意一个 PDF 正在上传
         uploading() {
             return this.uploadingZh || this.uploadingEn;
         },
     },
     mounted() {
+        // 从「价格库存」等页面跳过来：?name=产品名&catalogId=目录ID&focus=产品ID（重名产品很多，所以要带上目录）
+        const q = this.$route.query || {};
+        if (q.name) this.searchForm.name = String(q.name);
+        if (q.catalogId && !isNaN(Number(q.catalogId))) this.searchForm.catalogId = Number(q.catalogId);
+        if (q.focus && !isNaN(Number(q.focus))) this.focusId = Number(q.focus);
         this.fetchCatalogs();
         this.fetchData();
     },
@@ -335,6 +387,25 @@ export default {
             }).catch(error => {
                 notifyError(this, error, '获取目录列表失败');
             });
+        },
+
+        openDetail(record) {
+            this.detailRecord = record;
+            this.detailVisible = true;
+        },
+        // 从详情直接进入编辑
+        editFromDetail() {
+            const r = this.detailRecord;
+            this.detailVisible = false;
+            if (r) this.showModal(r);
+        },
+
+        // 跳到「价格库存」页并定位到这个产品（重名产品很多，带上目录；再高亮这一行）
+        goShopProduct(record) {
+            const catalogId = record.catalogId || (record.catalog && record.catalog.id);
+            const query = { keyword: record.name, focus: String(record.id) };
+            if (catalogId) query.catalogId = String(catalogId);
+            this.$router.push({ path: '/shop/products', query });
         },
 
         // 搜索方法
@@ -356,8 +427,7 @@ export default {
 
         // 表格变化处理（分页、排序）
         handleTableChange(pagination) {
-            this.pagination.current = pagination.current;
-            this.pagination.pageSize = pagination.pageSize;
+            applyTableChange(this.pagination, pagination);
             this.fetchData();
         },
 
@@ -594,4 +664,18 @@ export default {
         this.uploadedFileInfoEn = null;
     },
 };
-</script> 
+</script>
+
+<style scoped>
+/* 详情弹窗样式（和价格库存页的详情弹窗一致） */
+.pd-foot { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: 16px; }
+.pd-title { font-weight: 600; margin: 18px 0 8px; }
+.pd-title:first-child { margin-top: 0; }
+.pd-cols { display: flex; gap: 28px; align-items: flex-start; }
+.pd-col { flex: 1; min-width: 0; }
+.pd-grid { display: grid; grid-template-columns: 110px 1fr; gap: 1px; background: #f0f0f0; border: 1px solid #f0f0f0; border-radius: 6px; overflow: hidden; }
+.pd-k, .pd-v { padding: 8px 12px; }
+.pd-k { background: #fafafa; color: #595959; }
+.pd-v { background: #fff; word-break: break-all; }
+.pd-empty { color: #bfbfbf; }
+</style>

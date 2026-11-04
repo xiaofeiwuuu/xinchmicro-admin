@@ -7,6 +7,7 @@ import Alert from 'ant-design-vue/lib/alert';
 import Breadcrumb from 'ant-design-vue/lib/breadcrumb';
 import Button from 'ant-design-vue/lib/button';
 import Card from 'ant-design-vue/lib/card';
+import Checkbox from 'ant-design-vue/lib/checkbox';
 import ConfigProvider from 'ant-design-vue/lib/config-provider';
 import DatePicker from 'ant-design-vue/lib/date-picker';
 import Divider from 'ant-design-vue/lib/divider';
@@ -39,6 +40,7 @@ import 'ant-design-vue/lib/alert/style/css';
 import 'ant-design-vue/lib/breadcrumb/style/css';
 import 'ant-design-vue/lib/button/style/css';
 import 'ant-design-vue/lib/card/style/css';
+import 'ant-design-vue/lib/checkbox/style/css';
 import 'ant-design-vue/lib/config-provider/style/css';
 import 'ant-design-vue/lib/date-picker/style/css';
 import 'ant-design-vue/lib/divider/style/css';
@@ -67,7 +69,7 @@ import 'ant-design-vue/lib/tooltip/style/css';
 import 'ant-design-vue/lib/upload/style/css';
 
 [
-  Affix, Alert, Breadcrumb, Button, Card, ConfigProvider, DatePicker, Divider, Form, FormModel,
+  Affix, Alert, Breadcrumb, Button, Card, Checkbox, ConfigProvider, DatePicker, Divider, Form, FormModel,
   Icon, Input, InputNumber, Layout, Menu, Modal, Popconfirm, Progress, Radio, Result, Select, Space,
   Spin, Statistic, Switch, Table, Tag, Tooltip, Upload,
 ].forEach(c => Vue.use(c));

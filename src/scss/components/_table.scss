@@ -5,14 +5,46 @@
 
 
 // Tables
+// 所有列表的列宽平均分配：固定布局 + 各页面的列定义里不再写死宽度（新增列表页也不要给列写 width）。
+// 内容太长时在单元格里换行，不会把某一列撑得特别宽：优先在空格处换（日期和时间分成两行），实在放不下才在字符间断开
+.ant-table table {
+	table-layout: fixed;
+}
+.ant-table-thead > tr > th, .ant-table-tbody > tr > td {
+	word-break: normal;
+	overflow-wrap: anywhere;
+}
 .ant-table-thead > tr > th {
 	color: $color-gray-7;
 	font-weight: $fw-bold;
-	background-color: transparent;
+	// 表头要有底色：数据区在表头下面单独滚动时，一眼能看出表头是固定的
+	background-color: #f5f7fa;
 	font-size: 12px;
+	border-bottom: 1px solid #e8eaed;
+}
+// 固定表头（数据区单独滚动时 antd 把表头和数据拆成两张表）。
+// antd 为了藏住表头自带的横向滚动条，给表头加了 margin-bottom: -15px，数据区因此往上顶，盖住表头底部 15px，
+// 表头看起来又矮、文字又偏下。这里没有横向滚动，所以去掉这个负边距和横向滚动条；
+// 表头右边要给数据区的竖向滚动条留同样宽的位置，列才和下面的数据对得齐：宽度因浏览器而异，
+// 由 src/mixins/fixedListLayout.js 量出来后写成表头的 padding-right
+.ant-table-scroll .ant-table-header,
+.ant-table-fixed-header .ant-table-scroll .ant-table-header {
+	margin-bottom: 0 !important;
+	padding-bottom: 0 !important;
+	overflow-x: hidden !important;
+	overflow-y: hidden !important;
+	background-color: #f5f7fa;
+	border-radius: 8px 8px 0 0;
+}
+.ant-table-thead > tr > th:first-child {
+	border-top-left-radius: 8px;
+}
+.ant-table-thead > tr > th:last-child {
+	border-top-right-radius: 8px;
 }
 .ant-table-thead > tr > th, .ant-table-tbody > tr > td {
-	padding: 16px 25px;
+	// 左右留 12px：列宽平均分配后每列不宽，空白太多会把内容挤成几行
+	padding: 16px 12px;
 }
 .ant-table-tbody > tr:last-child > td {
 	border-bottom: 0;
@@ -100,3 +132,37 @@
 	}
 }
 // / Tables
+
+// 列表页固定整页高度（见 src/mixins/fixedListLayout.js）：整个页面不滚动，只有表格数据区滚动。
+// 只在 fixedListLayout 判断「内容放得下」时才加这个类；放不下时退回普通的整页滚动，不会把内容截掉
+body.fixed-list-locked {
+	overflow: hidden;
+
+	#layout-dashboard.layout-dashboard {
+		height: 100vh;
+		overflow: hidden;
+	}
+}
+// 表格数据区的滚动条细一点，不抢眼
+.ant-table-body, .ant-table-scroll .ant-table-body {
+	scrollbar-width: thin;
+}
+// 数据行不够一屏时不要留一条空的滚动条轨道（antd 默认永远显示）；有没有滚动条的宽度差由 fixedListLayout 量出来补给表头
+.ant-table-scroll .ant-table-body {
+	overflow-y: auto !important;
+}
+
+// 从别的页面跳转过来定位到的那一行（如价格库存 → 产品详情）
+.ant-table-tbody > tr.row-focus > td {
+	background-color: #e6f7ff;
+}
+
+// 操作列：几个文字按钮并排，列窄放不下时整个按钮换到下一行（不会把按钮拆开，也不用分隔线）
+.row-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	.ant-btn-link {
+		padding: 0 6px;
+	}
+}

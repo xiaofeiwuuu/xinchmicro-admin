@@ -97,9 +97,9 @@ export default {
       committed: null,
       columns: [
         { title: '文件', dataIndex: 'path', key: 'path', ellipsis: true },
-        { title: '对应产品', key: 'product', scopedSlots: { customRender: 'product' }, width: 260 },
-        { title: '状态', key: 'status', scopedSlots: { customRender: 'status' }, width: 300 },
-        { title: '', key: 'action', scopedSlots: { customRender: 'action' }, width: 70 }
+        { title: '对应产品', key: 'product', scopedSlots: { customRender: 'product' } },
+        { title: '状态', key: 'status', scopedSlots: { customRender: 'status' } },
+        { title: '', key: 'action', scopedSlots: { customRender: 'action' } }
       ]
     };
   },

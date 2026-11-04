@@ -24,7 +24,7 @@
       </a-button>
     </div>
 
-    <a-table
+    <a-table :scroll="tableScroll"
       row-key="id"
       size="small"
       :columns="columns"
@@ -64,7 +64,11 @@ import { parseStorageListing, formatSize, parseSize } from '@/utils/storageListi
 
 const IMPORT_CHUNK = 1000; // 服务端一次最多导入 2000 个
 
+import fixedListLayout from '@/mixins/fixedListLayout'
+import { newPagination, applyTableChange } from '@/utils/pagination'
+
 export default {
+	mixins: [fixedListLayout],
   data() {
     return {
       status: 'all',
@@ -74,16 +78,16 @@ export default {
       deleting: false,
       list: [],
       summary: { total: 0, used: 0, unused: 0, unusedBytes: 0, unregisteredRefs: 0 },
-      pagination: { current: 1, pageSize: 20, total: 0, showTotal: (t) => `共 ${t} 个` },
+      pagination: newPagination({ showTotal: (t) => `共 ${t} 个` }),
       selectedRowKeys: [],
       selectedMap: {},
       result: null,
       columns: [
         { title: '文件名（点击打开链接）', dataIndex: 'name', scopedSlots: { customRender: 'name' } },
-        { title: '大小', dataIndex: 'size', width: 110, scopedSlots: { customRender: 'size' } },
-        { title: '上传时间', dataIndex: 'uploadedAt', width: 170 },
-        { title: '状态', key: 'status', width: 230, scopedSlots: { customRender: 'status' } },
-        { title: '操作', key: 'action', width: 150, scopedSlots: { customRender: 'action' } }
+        { title: '大小', dataIndex: 'size', scopedSlots: { customRender: 'size' } },
+        { title: '上传时间', dataIndex: 'uploadedAt' },
+        { title: '状态', key: 'status', scopedSlots: { customRender: 'status' } },
+        { title: '操作', key: 'action', scopedSlots: { customRender: 'action' } }
       ]
     };
   },

@@ -70,6 +70,30 @@
 								placeholder="请输入公司地址"
 							/>
 						</a-form-item>
+						<a-form-item label="地图位置" extra="小程序公司页的地图用。坐标要用腾讯/高德地图的坐标（GCJ-02），不要用手机 GPS 的坐标（会偏几百米）；可在腾讯位置服务的「坐标拾取器」（lbs.qq.com/getPoint）搜索地址后复制。两项要同时填写，留空则小程序不显示地图。">
+							<a-row :gutter="12">
+								<a-col :span="12">
+									<a-input-number
+										v-decorator="['latitude']"
+										:min="-90"
+										:max="90"
+										:precision="6"
+										placeholder="纬度，如 24.479800"
+										style="width: 100%"
+									/>
+								</a-col>
+								<a-col :span="12">
+									<a-input-number
+										v-decorator="['longitude']"
+										:min="-180"
+										:max="180"
+										:precision="6"
+										placeholder="经度，如 118.089400"
+										style="width: 100%"
+									/>
+								</a-col>
+							</a-row>
+						</a-form-item>
 					</a-col>
 					<a-col :xs="24" :md="12">
 						<a-form-item label="英文名称">
@@ -235,6 +259,14 @@ export default {
 			e.preventDefault()
 			this.form.validateFields(async (err, values) => {
 				if (!err) {
+					// 经纬度要同时填写或同时留空；清空时要明确传 null（不传服务端会保留旧值）
+					const isEmpty = (v) => v === undefined || v === null || v === ''
+					if (isEmpty(values.latitude) !== isEmpty(values.longitude)) {
+						this.$message.error('纬度和经度要同时填写或同时留空')
+						return
+					}
+					values.latitude = isEmpty(values.latitude) ? null : values.latitude
+					values.longitude = isEmpty(values.longitude) ? null : values.longitude
 					try {
 						this.loading = true
 						// 处理文件上传的返回结果
@@ -303,7 +335,7 @@ export default {
 					this.originalPdfFileID = data.safetyManualFileID
 				}
 				// 只设置表单里注册过的字段；把整条记录塞进去会让 id、createdAt、logoUrl 等每个多余的键各报一次警告
-				const FORM_FIELDS = ['name', 'nameEn', 'description', 'descriptionEn', 'contacts', 'email', 'website', 'address', 'addressEn']
+				const FORM_FIELDS = ['name', 'nameEn', 'description', 'descriptionEn', 'contacts', 'email', 'website', 'address', 'addressEn', 'latitude', 'longitude']
 				this.form.setFieldsValue(FORM_FIELDS.reduce((o, k) => (k in data ? { ...o, [k]: data[k] } : o), {}))
 				
 				// 设置预览图片

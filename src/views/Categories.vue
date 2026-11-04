@@ -22,8 +22,8 @@
         </a-button>
 
         <!-- 表格组件 -->
-        <a-table :columns="columns" :data-source="data" :loading="loading" rowKey="id"
-            @change="handleTableChange">
+        <a-table :scroll="tableScroll" :columns="columns" :data-source="data" :loading="loading" rowKey="id"
+            :pagination="pagination" @change="handleTableChange">
             <span slot="action" slot-scope="text, record">
                 <!-- 编辑按钮 -->
                 <a-button type="link" size="small" @click="showModal(record)">
@@ -95,25 +95,17 @@ import { getCategories, createCategory, updateCategory, deleteCategory } from '@
 // 定义表格列的配置
 const columns = [
     {
-        title: 'ID',
-        dataIndex: 'id',
-        width: '15%',
-    },
-    {
         title: '分类名称',
         dataIndex: 'name',
-        width: '25%',
     },
     {
         title: '英文名称',
         dataIndex: 'nameEn',
-        width: '20%',
         customRender: (text) => text || '-',
     },
     {
         title: '排序',
         dataIndex: 'sort_order',
-        width: '20%',
     },
     {
         title: '操作',
@@ -122,11 +114,16 @@ const columns = [
     },
 ];
 
+import fixedListLayout from '@/mixins/fixedListLayout'
+import { newPagination, applyTableChange } from '@/utils/pagination'
+
 export default {
+	mixins: [fixedListLayout],
     components: { IconEdit, IconDelete },
     data() {
         return {
             modalTitle: "新增分类",
+            pagination: newPagination(), // 数据一次取全，前端分页
             data: [],
             loading: false,
             columns,
@@ -175,6 +172,8 @@ export default {
             getCategories(query).then(res => {
                 this.loading = false;
                 this.data = res;
+                const last = Math.max(1, Math.ceil(res.length / this.pagination.pageSize));
+                if (this.pagination.current > last) this.pagination.current = last;
             }).catch(error => {
                 this.loading = false;
                 notifyError(this, error, '获取数据失败');
@@ -223,8 +222,8 @@ export default {
         },
 
         // 表格变化处理
-        handleTableChange() {
-            this.fetchData();
+        handleTableChange(p) {
+            applyTableChange(this.pagination, p);
         },
 
         // 确认模态框操作

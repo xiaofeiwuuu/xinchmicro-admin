@@ -38,7 +38,7 @@
 
 		<!-- 日志列表 -->
 		<a-card :bordered="false">
-			<a-table
+			<a-table :scroll="tableScroll"
 				rowKey="id"
 				:columns="columns"
 				:dataSource="logs"
@@ -63,7 +63,11 @@ import { getLogs, getLogActions, previewLogCleanup, cleanupLogs } from '@/api'
 import dateUtils from '@/utils/dateUtils'
 import fetchWrapper from '@/plugins/fetchWrapper'
 
+import fixedListLayout from '@/mixins/fixedListLayout'
+import { newPagination, applyTableChange } from '@/utils/pagination'
+
 export default {
+	mixins: [fixedListLayout],
 	data() {
 		return {
 			form: this.$form.createForm(this),
@@ -71,67 +75,54 @@ export default {
 			cleaning: false,
 			logs: [],
 			actions: [],
-			pagination: {
-				current: 1,
-				pageSize: 20,
-				total: 0
-			},
+			pagination: newPagination(),
 			columns: [
 				{
 					title: '用户名',
 					dataIndex: 'username',
 					key: 'username',
-					width: 120
 				},
 				{
 					title: '用户类型',
 					dataIndex: 'userType',
 					key: 'userType',
-					width: 100
 				},
 				{
 					title: '请求方法',
 					dataIndex: 'method',
 					key: 'method',
-					width: 100,
 					scopedSlots: { customRender: 'method' }
 				},
 				{
 					title: '操作类型',
 					dataIndex: 'action',
 					key: 'action',
-					width: 150
 				},
 				{
 					title: '请求路径',
 					dataIndex: 'path',
 					key: 'path',
-					width: 200
 				},
 				{
 					title: 'IP地址',
 					dataIndex: 'ip',
 					key: 'ip',
-					width: 120
 				},
 				{
 					title: '状态码',
 					dataIndex: 'status',
 					key: 'status',
-					width: 100,
 					scopedSlots: { customRender: 'status' }
 				},
 				{
 					title: '错误信息',
 					dataIndex: 'error',
 					key: 'error',
-					width: 200
 				},
 				{
 					title: '操作时间',
 					dataIndex: 'createdAt',
 					key: 'createdAt',
-					width: 180
 				}
 			],
 			methodColors: {
@@ -232,7 +223,7 @@ export default {
 			})
 		},
 		handleTableChange(pagination) {
-			this.pagination = pagination
+			applyTableChange(this.pagination, pagination)
 			this.fetchLogs()
 		}
 	},

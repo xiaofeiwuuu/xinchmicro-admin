@@ -432,3 +432,33 @@ export const deletePdfs = async (fileIDs) => {
     }
     return submitted;
 }
+
+// ---------- 商城（客户、订单、设置、产品价格库存） ----------
+const qs = (query = {}) => {
+  const clean = Object.fromEntries(Object.entries(query).filter(([, v]) => v !== undefined && v !== null && v !== ''));
+  const text = new URLSearchParams(clean).toString();
+  return text ? `?${text}` : '';
+};
+
+export const getShopCustomers = (query) => fetchWrapper.get(`${API_BASE_URL}/api/admin/customers${qs(query)}`);
+export const getShopCustomer = (id) => fetchWrapper.get(`${API_BASE_URL}/api/admin/customers/${id}`);
+export const setShopCustomerRemark = (id, remark) => fetchWrapper.put(`${API_BASE_URL}/api/admin/customers/${id}/remark`, { remark });
+export const setShopCustomerStatus = (id, status) => fetchWrapper.put(`${API_BASE_URL}/api/admin/customers/${id}/status`, { status });
+
+export const getShopOrders = (query) => fetchWrapper.get(`${API_BASE_URL}/api/admin/orders${qs(query)}`);
+export const getShopOrder = (id) => fetchWrapper.get(`${API_BASE_URL}/api/admin/orders/${id}`);
+export const shipShopOrder = (id, body) => fetchWrapper.post(`${API_BASE_URL}/api/admin/orders/${id}/ship`, body);
+export const cancelShopOrder = (id, reason) => fetchWrapper.post(`${API_BASE_URL}/api/admin/orders/${id}/cancel`, { reason });
+export const markShopOrderRefunded = (id, note) => fetchWrapper.post(`${API_BASE_URL}/api/admin/orders/${id}/refunded`, { note });
+export const issueShopInvoice = (id, invoiceNo) => fetchWrapper.post(`${API_BASE_URL}/api/admin/orders/${id}/invoice/issue`, { invoiceNo });
+export const rejectShopInvoice = (id, reason) => fetchWrapper.post(`${API_BASE_URL}/api/admin/orders/${id}/invoice/reject`, { reason });
+
+export const getShopSettings = () => fetchWrapper.get(`${API_BASE_URL}/api/admin/settings`);
+export const updateShopSettings = (body) => fetchWrapper.put(`${API_BASE_URL}/api/admin/settings`, body);
+
+export const getProductSales = (query) => fetchWrapper.get(`${API_BASE_URL}/api/admin/product-sales${qs(query)}`);
+export const updateProductSale = (productId, body) => fetchWrapper.put(`${API_BASE_URL}/api/admin/product-sales/${productId}`, body);
+// 批量保存：有不合法的行时服务端一行都不保存，错误里带 errors: [{ index, message }]
+// 批量设置一批产品：范围是 { productIds } 或 { query: { categoryId, catalogId, keyword, filter } }，set 是要改的内容；dryRun 只预览
+export const batchProductSales = (body) => fetchWrapper.post(`${API_BASE_URL}/api/admin/product-sales/batch`, body);
+export const bulkProductSales = (items) => fetchWrapper.post(`${API_BASE_URL}/api/admin/product-sales/bulk`, { items });

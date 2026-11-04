@@ -6,9 +6,10 @@ Vue.use(VueRouter)
 
 let routes = [
 	{
-		// will match everything
+		// 未知地址（删掉的页面、旧收藏夹、手输错误）一律回首页；首页再按登录状态跳到分类页或登录页。
+		// 原来指向的 404.vue 没有 <template> 根节点，渲染出来是空白页
 		path: '*',
-		component: () => import('../views/404.vue'),
+		redirect: '/',
 	},
 	{
 		path: '/',
@@ -117,6 +118,36 @@ let routes = [
 			requiresMainUser: true
 		},
 		component: () => import('@/views/UserManagement.vue'),
+	},
+	{
+		path: '/shop/customers',
+		name: 'ShopCustomers',
+		layout: "dashboard",
+		meta:{
+			name:'客户管理',
+			requiresAuth: true
+		},
+		component: () => import('@/views/ShopCustomers.vue'),
+	},
+	{
+		path: '/shop/orders',
+		name: 'ShopOrders',
+		layout: "dashboard",
+		meta:{
+			name:'订单管理',
+			requiresAuth: true
+		},
+		component: () => import('@/views/ShopOrders.vue'),
+	},
+	{
+		path: '/shop/products',
+		name: 'ShopProducts',
+		layout: "dashboard",
+		meta:{
+			name:'价格库存',
+			requiresAuth: true
+		},
+		component: () => import('@/views/ShopProducts.vue'),
 	},
 	{
 		path: '/manuals',

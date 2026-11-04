@@ -55,6 +55,37 @@
 					<span class="label">手册管理</span>
 				</router-link>
 			</a-menu-item>
+			<a-menu-item class="menu-item-header" disabled>商城</a-menu-item>
+			<a-menu-item>
+				<router-link to="/shop/orders">
+					<span class="icon">
+						<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+							<path fill-rule="evenodd" clip-rule="evenodd" d="M5 4C3.89543 4 3 4.89543 3 6V14C3 15.1046 3.89543 16 5 16H15C16.1046 16 17 15.1046 17 14V6C17 4.89543 16.1046 4 15 4H5ZM7 8C6.44772 8 6 8.44772 6 9C6 9.55228 6.44772 10 7 10H13C13.5523 10 14 9.55228 14 9C14 8.44772 13.5523 8 13 8H7ZM7 12C6.44772 12 6 12.4477 6 13C6 13.5523 6.44772 14 7 14H11C11.5523 14 12 13.5523 12 13C12 12.4477 11.5523 12 11 12H7Z" fill="#111827"/>
+						</svg>
+					</span>
+					<span class="label">订单管理</span>
+				</router-link>
+			</a-menu-item>
+			<a-menu-item>
+				<router-link to="/shop/customers">
+					<span class="icon">
+						<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+							<path d="M10 9a3 3 0 100-6 3 3 0 000 6zM6.5 10C5.67 10 5 10.67 5 11.5v1a3 3 0 003 3h4a3 3 0 003-3v-1c0-.83-.67-1.5-1.5-1.5h-7z" fill="#111827"/>
+						</svg>
+					</span>
+					<span class="label">客户管理</span>
+				</router-link>
+			</a-menu-item>
+			<a-menu-item>
+				<router-link to="/shop/products">
+					<span class="icon">
+						<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+							<path d="M10 2a8 8 0 100 16 8 8 0 000-16zm.75 4.5v.6c1.2.2 2 .95 2 2h-1.5c0-.45-.4-.8-1.25-.8s-1.25.3-1.25.75c0 .5.5.7 1.6 1 1.5.4 2.65.95 2.65 2.3 0 1.05-.8 1.8-2 2v.65h-1.5v-.65c-1.3-.2-2.1-1-2.15-2.1h1.5c.05.5.5.85 1.4.85.85 0 1.25-.35 1.25-.8 0-.5-.45-.75-1.55-1.05-1.5-.4-2.7-.95-2.7-2.3 0-1 .75-1.75 2-1.95v-.55h1.5z" fill="#111827"/>
+						</svg>
+					</span>
+					<span class="label">价格库存</span>
+				</router-link>
+			</a-menu-item>
 			<a-menu-item class="menu-item-header" disabled>公司</a-menu-item>
 			<a-menu-item>
 				<router-link to="/company">
@@ -77,6 +108,7 @@
 					<span class="label">轮播图管理</span>
 				</router-link>
 			</a-menu-item>
+			<a-menu-item class="menu-item-header" disabled v-if="isMainUser">系统</a-menu-item>
 			<a-menu-item v-if="isMainUser">
 				<router-link to="/logs">
 					<span class="icon">

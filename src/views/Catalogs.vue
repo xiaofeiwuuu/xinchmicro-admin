@@ -32,7 +32,7 @@
         </a-button>
 
         <!-- 表格组件 -->
-        <a-table :columns="columns" :data-source="data" :loading="loading" rowKey="id">
+        <a-table :scroll="tableScroll" :columns="columns" :data-source="data" :loading="loading" rowKey="id" :pagination="pagination" @change="onTableChange">
             <template slot="paramTitles" slot-scope="text">
                 <a-tag v-for="(item, index) in text" :key="item.id || index" color="blue">{{ item.title || item }}</a-tag>
             </template>
@@ -173,32 +173,23 @@ import { getCatalogs, createCatalog, updateCatalog, deleteCatalog, getCategories
 // 定义表格列的配置
 const columns = [
     {
-        title: 'ID',
-        dataIndex: 'id',
-        width: '10%',
-    },
-    {
         title: '目录名称',
         dataIndex: 'name',
-        width: '16%',
         scopedSlots: { customRender: 'name' },
     },
     {
         title: '所属分类',
         dataIndex: 'category',
-        width: '15%',
         scopedSlots: { customRender: 'category' },
     },
     {
         title: '参数标题',
         dataIndex: 'paramTitles',
-        width: '30%',
         scopedSlots: { customRender: 'paramTitles' },
     },
     {
         title: '排序',
         dataIndex: 'sort',
-        width: '8%',
         sorter: (a, b) => (a.sort || 0) - (b.sort || 0),
     },
     {
@@ -208,11 +199,16 @@ const columns = [
     },
 ];
 
+import fixedListLayout from '@/mixins/fixedListLayout'
+import { newPagination, applyTableChange } from '@/utils/pagination'
+
 export default {
+	mixins: [fixedListLayout],
     components: { IconEdit, IconDelete },
     data() {
         return {
             modalTitle: "新增目录",
+            pagination: newPagination(), // 数据一次取全，前端分页
             data: [],
             loading: false,
             columns,
@@ -236,6 +232,9 @@ export default {
         this.fetchData();
     },
     methods: {
+        onTableChange(p) {
+            applyTableChange(this.pagination, p);
+        },
         // 获取分类列表
         fetchCategories() {
             getCategories().then(res => {
@@ -275,6 +274,8 @@ export default {
             getCatalogs(query).then(res => {
                 this.loading = false;
                 this.data = res;
+                const last = Math.max(1, Math.ceil(res.length / this.pagination.pageSize));
+                if (this.pagination.current > last) this.pagination.current = last;
             }).catch(error => {
                 this.loading = false;
                 notifyError(this, error, '获取数据失败');

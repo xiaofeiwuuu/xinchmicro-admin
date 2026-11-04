@@ -30,7 +30,7 @@
     </a-button>
 
     <!-- 表格组件 -->
-    <a-table 
+    <a-table :scroll="tableScroll" 
       :columns="columns" 
       :data-source="manualsList" 
       :loading="loading" 
@@ -206,33 +206,29 @@ import {
 } from '@/api';
 import { LANG_OPTIONS, langLabel, buildManualQuery } from '@/utils/i18nData';
 
+import fixedListLayout from '@/mixins/fixedListLayout'
+import { newPagination, applyTableChange } from '@/utils/pagination'
+
 export default {
+	mixins: [fixedListLayout],
     components: { IconEdit, IconDelete },
   name: 'Manuals',
   data() {
     return {
       // 表格列定义
       columns: [
-        { title: 'ID', dataIndex: 'id', key: 'id', width: 80 },
         { title: '手册名称', dataIndex: 'name', key: 'name' },
         { title: '手册类型', dataIndex: 'type', key: 'type', scopedSlots: { customRender: 'type' }, minWidth: 120 },
         { title: '文件', dataIndex: 'lang', key: 'lang', scopedSlots: { customRender: 'lang' }, minWidth: 100 },
         { title: '排序', dataIndex: 'sort', key: 'sort', minWidth: 120, sorter: (a, b) => (a.sort || 0) - (b.sort || 0) },
         { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt', scopedSlots: { customRender: 'createdAt' }, minWidth: 180 },
         { title: '创建者', dataIndex: 'creator', key: 'creator', scopedSlots: { customRender: 'creator' }, minWidth: 120 },
-        { title: '操作', key: 'action', scopedSlots: { customRender: 'action' }, width: 200 }
+        { title: '操作', key: 'action', scopedSlots: { customRender: 'action' } }
       ],
       loading: false,
       submitLoading: false,
       manualsList: [],
-      pagination: {
-        current: 1,
-        pageSize: 10,
-        total: 0,
-        showSizeChanger: true,
-        showTotal: total => `共 ${total} 条记录`,
-        pageSizeOptions: ['10', '20', '50', '100']
-      },
+      pagination: newPagination({ showTotal: (total) => `共 ${total} 条记录` }),
       langOptions: LANG_OPTIONS,
       searchForm: {
         type: undefined,
@@ -302,8 +298,7 @@ export default {
     
     // 表格变化处理
     handleTableChange(pagination) {
-      this.pagination.current = pagination.current;
-      this.pagination.pageSize = pagination.pageSize;
+      applyTableChange(this.pagination, pagination);
       this.fetchManuals();
     },
     

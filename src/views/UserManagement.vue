@@ -30,7 +30,7 @@
 		</a-card>
 
 		<a-card :bordered="false">
-			<a-table
+			<a-table :scroll="tableScroll"
 				:columns="columns"
 				:dataSource="users"
 				:loading="loading"
@@ -139,7 +139,11 @@ import {
 } from '@/api'
 import dateUtils from '@/utils/dateUtils'
 
+import fixedListLayout from '@/mixins/fixedListLayout'
+import { newPagination, applyTableChange } from '@/utils/pagination'
+
 export default {
+	mixins: [fixedListLayout],
 	data() {
 		// 验证确认密码
 		const validateConfirmPassword = (rule, value, callback) => {
@@ -165,12 +169,7 @@ export default {
 			searchUsername: '',
 			searchUserType: undefined,
 			users: [],
-			pagination: {
-				current: 1,
-				pageSize: 10,
-				total: 0,
-				showTotal: total => `共 ${total} 条记录`
-			},
+			pagination: newPagination(),
 			columns: [
 				{
 					title: 'ID',
@@ -317,7 +316,7 @@ export default {
 			}
 		},
 		handleTableChange(pagination) {
-			this.pagination.current = pagination.current;
+			applyTableChange(this.pagination, pagination);
 			this.fetchUsers();
 		},
 		handleSearch() {

@@ -145,7 +145,10 @@ const fetchWrapper = {
         // 根据选项决定返回完整响应还是只返回data
         return returnFullResponse ? processedRes : processedRes.data;
       }
-      throw new Error(res.errmsg || res.message || '请求失败');
+      const failure = new Error(res.errmsg || res.message || '请求失败');
+      if (Array.isArray(res.errors)) failure.errors = res.errors; // 批量接口指出的逐行错误
+      if (res.errorCode) failure.errorCode = res.errorCode;
+      throw failure;
     } catch (error) {
       // 401 已在上面统一提示过，直接抛出避免重复弹错
       if (error.notified) {

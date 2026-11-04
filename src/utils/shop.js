@@ -25,6 +25,7 @@ export const LOG_ACTION = {
 	receive: '确认收货',
 	invoice_apply: '申请开票',
 	invoice_issue: '开具发票',
+	invoice_file: '上传发票文件',
 	invoice_reject: '驳回开票申请',
 	wechat_paid: '微信支付成功',
 	paid_but_not_payable: '订单已不能收款，但微信支付收了款（会自动退款）',

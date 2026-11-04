@@ -87,17 +87,15 @@
 						<div class="cd-pre">{{ a.region }} {{ a.detail }}</div>
 					</div>
 
-					<div class="cd-title">开票信息</div>
-					<div v-if="!detail.invoiceInfo" class="cd-empty">客户还没有填写开票信息</div>
-					<div v-else class="cd-card">
-						<div>{{ INVOICE_TYPE[detail.invoiceInfo.type] }}</div>
-						<div>抬头：{{ detail.invoiceInfo.title }}　税号：{{ detail.invoiceInfo.taxId }}</div>
-						<div v-if="detail.invoiceInfo.address">地址电话：{{ detail.invoiceInfo.address }} {{ detail.invoiceInfo.phone }}</div>
-						<div v-if="detail.invoiceInfo.bank">开户行账号：{{ detail.invoiceInfo.bank }} {{ detail.invoiceInfo.account }}</div>
-						<div>邮箱：{{ detail.invoiceInfo.email }}</div>
-					</div>
-
-					<a-divider />
+					<div class="cd-title">发票抬头</div>
+					<div v-if="!detail.invoiceTitles || !detail.invoiceTitles.length" class="cd-empty">客户还没有添加发票抬头</div>
+					<div v-for="t in detail.invoiceTitles" :key="t.id" class="cd-card">
+						<div>{{ t.title }} <a-tag v-if="t.isDefault" color="blue">默认</a-tag></div>
+						<div>税号：{{ t.taxId }}</div>
+						<div v-if="t.address">地址电话：{{ t.address }} {{ t.phone }}</div>
+						<div v-if="t.bank">开户行账号：{{ t.bank }} {{ t.account }}</div>
+						<div v-if="t.email">邮箱：{{ t.email }}</div>
+					</div>	<a-divider />
 					<a-button type="primary" @click="viewOrders">查看这个客户的订单</a-button>
 					<a-popconfirm :title="detail.status === 'active' ? BLOCK_TIP : '确定恢复这个客户吗？'" @confirm="toggle(detail)">
 						<a-button :type="detail.status === 'active' ? 'danger' : 'default'" ghost style="margin-left: 8px;">{{ detail.status === 'active' ? '拉黑这个客户' : '恢复这个客户' }}</a-button>
@@ -111,7 +109,6 @@
 <script>
 import { notifyError } from '@/utils/notify'
 import { getShopCustomers, getShopCustomer, setShopCustomerStatus, setShopCustomerRemark } from '@/api'
-import { INVOICE_TYPE } from '@/utils/shop'
 
 import fixedListLayout from '@/mixins/fixedListLayout'
 import { newPagination, applyTableChange } from '@/utils/pagination'
@@ -120,7 +117,6 @@ export default {
 	mixins: [fixedListLayout],
 	data() {
 		return {
-			INVOICE_TYPE,
 			BLOCK_TIP: '拉黑后，这个微信号不能再使用小程序：打开只会看到「账号已被限制」页面，不能登录、下单、支付。确定吗？',
 			keyword: '',
 			status: undefined,

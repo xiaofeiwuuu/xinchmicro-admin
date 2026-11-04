@@ -445,12 +445,18 @@ export const getShopCustomer = (id) => fetchWrapper.get(`${API_BASE_URL}/api/adm
 export const setShopCustomerRemark = (id, remark) => fetchWrapper.put(`${API_BASE_URL}/api/admin/customers/${id}/remark`, { remark });
 export const setShopCustomerStatus = (id, status) => fetchWrapper.put(`${API_BASE_URL}/api/admin/customers/${id}/status`, { status });
 
+// 统计数据（仅主账号）：range 为 today / 7d / 30d / 3m / 1y
+// custom：{ from, to } 北京时间日期（YYYY-MM-DD，含首尾，最长一年），只在 range 为 'custom' 时用
+export const getShopStats = (range, custom = {}) => fetchWrapper.get(`${API_BASE_URL}/api/admin/stats${qs({ range, ...(range === 'custom' ? custom : {}) })}`);
 export const getShopOrders = (query) => fetchWrapper.get(`${API_BASE_URL}/api/admin/orders${qs(query)}`);
 export const getShopOrder = (id) => fetchWrapper.get(`${API_BASE_URL}/api/admin/orders/${id}`);
 export const shipShopOrder = (id, body) => fetchWrapper.post(`${API_BASE_URL}/api/admin/orders/${id}/ship`, body);
 export const cancelShopOrder = (id, reason) => fetchWrapper.post(`${API_BASE_URL}/api/admin/orders/${id}/cancel`, { reason });
 export const markShopOrderRefunded = (id, note) => fetchWrapper.post(`${API_BASE_URL}/api/admin/orders/${id}/refunded`, { note });
-export const issueShopInvoice = (id, invoiceNo) => fetchWrapper.post(`${API_BASE_URL}/api/admin/orders/${id}/invoice/issue`, { invoiceNo });
+// file：{ fileID, filename }（可选，开具时一起上传电子发票）
+export const issueShopInvoice = (id, invoiceNo, file) => fetchWrapper.post(`${API_BASE_URL}/api/admin/orders/${id}/invoice/issue`, { invoiceNo, ...(file && file.fileID ? { fileID: file.fileID, fileName: file.filename } : {}) });
+// 已开具的订单补传 / 替换发票文件
+export const setShopInvoiceFile = (id, file) => fetchWrapper.post(`${API_BASE_URL}/api/admin/orders/${id}/invoice/file`, { fileID: file.fileID, fileName: file.filename });
 export const rejectShopInvoice = (id, reason) => fetchWrapper.post(`${API_BASE_URL}/api/admin/orders/${id}/invoice/reject`, { reason });
 
 export const getShopSettings = () => fetchWrapper.get(`${API_BASE_URL}/api/admin/settings`);

@@ -130,6 +130,17 @@ let routes = [
 		component: () => import('@/views/ShopCustomers.vue'),
 	},
 	{
+		path: '/shop/stats',
+		name: 'ShopStats',
+		layout: "dashboard",
+		meta:{
+			name:'数据统计',
+			requiresAuth: true,
+			requiresMainUser: true
+		},
+		component: () => import('@/views/ShopStats.vue'),
+	},
+	{
 		path: '/shop/orders',
 		name: 'ShopOrders',
 		layout: "dashboard",

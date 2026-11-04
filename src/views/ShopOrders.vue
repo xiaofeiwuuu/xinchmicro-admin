@@ -40,7 +40,14 @@
 					<a-tag :color="INVOICE_STATUS[text].color">{{ INVOICE_STATUS[text].text }}</a-tag>
 				</template>
 				<template slot="action" slot-scope="text, record">
-					<a @click="openDetail(record.id)">详情</a>
+					<div class="row-actions">
+						<a @click="openDetail(record.id)">详情</a>
+						<!-- 常用操作直接放在列表里，不用先打开详情；不同状态显示不同的按钮 -->
+						<a v-if="record.status === 'pending_ship'" @click="quickAction(record, 'ship')">发货</a>
+						<a v-if="record.refundPending" class="act-danger" @click="quickAction(record, 'refunded')">标记已退款</a>
+						<a v-if="record.invoiceStatus === 'requesting'" @click="quickAction(record, 'issue')">开发票</a>
+						<a v-if="['pending_payment', 'pending_ship'].includes(record.status)" class="act-danger" @click="quickAction(record, 'cancel')">取消</a>
+					</div>
 				</template>
 			</a-table>
 		</a-card>
@@ -95,9 +102,17 @@
 									<div>税号：{{ detail.invoice.taxId }}</div>
 									<div v-if="detail.invoice.address">地址电话：{{ detail.invoice.address }} {{ detail.invoice.phone }}</div>
 									<div v-if="detail.invoice.bank">开户行账号：{{ detail.invoice.bank }} {{ detail.invoice.account }}</div>
-									<div>邮箱：{{ detail.invoice.email }}</div>
+									<div v-if="detail.invoice.email">邮箱：{{ detail.invoice.email }}</div>
 								</div>
 								<div v-if="detail.invoiceNo">发票号码：{{ detail.invoiceNo }}</div>
+								<div v-if="detail.invoiceStatus === 'issued'">
+									发票文件：
+									<template v-if="detail.invoiceFileID">
+										<a @click="openInvoiceFile(detail.invoiceFileID)">{{ detail.invoiceFile && detail.invoiceFile.name }}</a>
+										<span class="od-sub">客户可在小程序里下载</span>
+									</template>
+									<span v-else class="od-sub">还没有上传，客户在小程序里下载不到发票</span>
+								</div>
 							</div>
 						</a-col>
 					</a-row>
@@ -117,6 +132,7 @@
 						<a-button v-if="detail.status === 'pending_ship'" type="primary" @click="openAction('ship')">发货</a-button>
 						<a-button v-if="detail.invoiceStatus === 'requesting'" type="primary" ghost @click="openAction('issue')">开具发票</a-button>
 						<a-button v-if="detail.invoiceStatus === 'requesting'" @click="openAction('reject')">驳回开票申请</a-button>
+						<a-button v-if="detail.invoiceStatus === 'issued'" type="primary" ghost @click="openAction('invoicefile')">{{ detail.invoiceFileID ? '替换发票文件' : '上传发票文件' }}</a-button>
 						<a-button v-if="detail.refundPending" @click="openAction('refunded')">标记已退款</a-button>
 						<a-button v-if="canCancel" type="danger" ghost @click="openAction('cancel')">取消订单</a-button>
 					</div>
@@ -125,10 +141,21 @@
 		</a-modal>
 
 		<!-- 操作确认 -->
-		<a-modal v-model="actionVisible" :title="ACTIONS[action.type] && ACTIONS[action.type].title" :confirmLoading="acting" okText="确定" cancelText="取消" @ok="submitAction">
+		<a-modal v-model="actionVisible" :title="ACTIONS[action.type] && ACTIONS[action.type].title" :confirmLoading="acting" okText="确定" cancelText="取消" :okButtonProps="{ props: { disabled: uploadingFile } }" @ok="submitAction" @cancel="discardUploaded">
 			<template v-if="action.type === 'ship'">
-				<a-input v-model="action.expressCompany" maxLength="50" placeholder="快递公司，如：顺丰速运" style="margin-bottom: 12px;" />
-				<a-input v-model="action.expressNo" maxLength="50" placeholder="运单号" />
+				<div v-if="detail" class="ship-sum">
+					<div>订单 {{ detail.orderNo }}　{{ money(detail.totalAmount) }}</div>
+					<template v-if="detail.address">
+						<div>收货人：{{ detail.address.consignee }}　{{ detail.address.phone }}</div>
+						<div>地址：{{ detail.address.region }} {{ detail.address.detail }}</div>
+					</template>
+				</div>
+				<a-select v-model="action.carrier" placeholder="选择快递公司" style="width: 100%; margin-bottom: 12px;">
+					<a-select-option v-for="c in CARRIERS" :key="c" :value="c">{{ c }}</a-select-option>
+					<a-select-option :value="OTHER_CARRIER">其他（手动填写）</a-select-option>
+				</a-select>
+				<a-input v-if="action.carrier === OTHER_CARRIER" v-model="action.customCarrier" maxLength="50" placeholder="快递公司名称" style="margin-bottom: 12px;" />
+				<a-input v-model="action.expressNo" maxLength="50" placeholder="运单号" @pressEnter="submitAction" />
 			</template>
 			<template v-else-if="action.type === 'cancel'">
 				<a-alert v-if="detail && detail.paidBy" type="warning" show-icon style="margin-bottom: 12px;"
@@ -136,7 +163,17 @@
 				<a-textarea v-model="action.reason" :rows="3" maxLength="100" placeholder="取消原因（必填，客户能看到）" />
 			</template>
 			<template v-else-if="action.type === 'issue'">
-				<a-input v-model="action.invoiceNo" maxLength="50" placeholder="发票号码（财务开具后填写）" />
+				<div v-if="detail && detail.invoice" class="ship-sum">
+					<div>{{ INVOICE_TYPE[detail.invoice.type] }}　{{ detail.invoice.title }}</div>
+					<div>税号：{{ detail.invoice.taxId }}</div>
+				</div>
+				<a-input v-model="action.invoiceNo" maxLength="50" placeholder="发票号码（财务在税务系统开具后填写）" style="margin-bottom: 12px;" />
+				<pdf-uploader :value="action.file" @change="(f) => (action.file = f)" button-text="上传电子发票（PDF，可选）" :removable="true" @uploading="(v) => (uploadingFile = v)" />
+				<div class="od-sub" style="margin: 8px 0 0;">上传后客户可以在小程序订单里直接下载；不上传也能开具，之后可以补传。</div>
+			</template>
+			<template v-else-if="action.type === 'invoicefile'">
+				<pdf-uploader :value="action.file" @change="(f) => (action.file = f)" button-text="选择发票文件（PDF）" :removable="true" @uploading="(v) => (uploadingFile = v)" />
+				<div class="od-sub" style="margin: 8px 0 0;">替换后客户下载到的就是新文件，旧文件会从云存储删除。</div>
 			</template>
 			<template v-else-if="action.type === 'reject'">
 				<a-textarea v-model="action.reason" :rows="3" maxLength="200" placeholder="驳回原因（如：税号不对），客户修改开票信息后可以重新申请" />
@@ -151,13 +188,22 @@
 
 <script>
 import { notifyError } from '@/utils/notify'
-import { getShopOrders, getShopOrder, shipShopOrder, cancelShopOrder, markShopOrderRefunded, issueShopInvoice, rejectShopInvoice } from '@/api'
+import PdfUploader from '@/components/PdfUploader.vue'
+import { getShopOrders, getShopOrder, shipShopOrder, cancelShopOrder, markShopOrderRefunded, issueShopInvoice, rejectShopInvoice, setShopInvoiceFile, getPdfDownloadUrl, deletePdfs } from '@/api'
 import { ORDER_STATUS, INVOICE_STATUS, INVOICE_TYPE, PAID_BY, LOG_ACTION, ACTOR, money } from '@/utils/shop'
+
+// 常用快递公司（发货时下拉选择；没有的选「其他」手动填）
+const CARRIERS = ['顺丰速运', '中通快递', '圆通速递', '申通快递', '韵达快递', '极兔速递', '京东物流', '德邦快递', 'EMS', '邮政包裹']
+const OTHER_CARRIER = '__other__'
+const LAST_CARRIER_KEY = 'shipCarrier'
+const lastCarrier = () => { try { return localStorage.getItem(LAST_CARRIER_KEY) || '' } catch (e) { return '' } }
+const rememberCarrier = (c) => { try { localStorage.setItem(LAST_CARRIER_KEY, c) } catch (e) { /* 存不了就算了 */ } }
 
 const ACTIONS = {
 	ship: { title: '发货' },
 	cancel: { title: '取消订单' },
 	issue: { title: '开具发票' },
+	invoicefile: { title: '发票文件' },
 	reject: { title: '驳回开票申请' },
 	refunded: { title: '标记已退款' }
 }
@@ -167,9 +213,11 @@ import { newPagination, applyTableChange } from '@/utils/pagination'
 
 export default {
 	mixins: [fixedListLayout],
+	components: { PdfUploader },
 	data() {
 		return {
-			ORDER_STATUS, INVOICE_STATUS, INVOICE_TYPE, PAID_BY, LOG_ACTION, ACTOR, ACTIONS,
+			uploadingFile: false,
+			ORDER_STATUS, INVOICE_STATUS, INVOICE_TYPE, PAID_BY, LOG_ACTION, ACTOR, ACTIONS, CARRIERS, OTHER_CARRIER,
 			filters: { keyword: '', status: undefined, invoice: undefined, refundPending: false },
 			// 从「客户管理 → 查看订单」进来时按这个客户筛选
 			customerId: this.$route.query.customerId || '',
@@ -250,8 +298,34 @@ export default {
 			}
 		},
 		openAction(type) {
-			this.action = { type, note: '', reason: '', expressCompany: '', expressNo: '', invoiceNo: '' }
+			const last = lastCarrier()
+			// 上次用的快递公司默认选上（常发一家的话少点一次）
+			this.action = { type, note: '', reason: '', carrier: CARRIERS.includes(last) ? last : undefined, customCarrier: '', expressNo: '', invoiceNo: '', file: null }
+			this.uploadingFile = false
 			this.actionVisible = true
+		},
+		// 发票文件是云存储文件：取一个临时链接再打开。先开空白窗口再改地址，避免异步请求后被浏览器当成弹窗拦截
+		async openInvoiceFile(fileID) {
+			const win = window.open('', '_blank')
+			try {
+				const res = await getPdfDownloadUrl(fileID)
+				const url = res && res.file_list && res.file_list[0] && res.file_list[0].download_url
+				if (!url) throw new Error('没有取到文件链接')
+				if (win) win.location.href = url
+			} catch (error) {
+				if (win) win.close()
+				notifyError(this, error, '打开发票文件失败')
+			}
+		},
+		// 取消弹窗时，本次新传、还没保存的发票文件要清掉（保存成功后 file 已经和订单关联，不会走到这里）
+		discardUploaded() {
+			const f = this.action && this.action.file
+			if (f && f.fileID) deletePdfs([f.fileID])
+		},
+		// 列表里直接操作（发货、取消、标记已退款、开发票）：不用先打开详情
+		quickAction(record, type) {
+			this.detail = record
+			this.openAction(type)
 		},
 		async submitAction() {
 			const a = this.action
@@ -259,14 +333,18 @@ export default {
 			const need = (v, msg) => { if (!String(v || '').trim()) { this.$message.warning(msg); return false } return true }
 			let call
 			if (a.type === 'ship') {
-				if (!need(a.expressCompany, '请填写快递公司') || !need(a.expressNo, '请填写运单号')) return
-				call = () => shipShopOrder(id, { expressCompany: a.expressCompany.trim(), expressNo: a.expressNo.trim() })
+				const company = a.carrier === OTHER_CARRIER ? String(a.customCarrier || '').trim() : a.carrier
+				if (!need(a.carrier, '请选择快递公司') || !need(company, '请填写快递公司名称') || !need(a.expressNo, '请填写运单号')) return
+				call = () => shipShopOrder(id, { expressCompany: company, expressNo: a.expressNo.trim() })
 			} else if (a.type === 'cancel') {
 				if (!need(a.reason, '请填写取消原因')) return
 				call = () => cancelShopOrder(id, a.reason.trim())
 			} else if (a.type === 'issue') {
 				if (!need(a.invoiceNo, '请填写发票号码')) return
-				call = () => issueShopInvoice(id, a.invoiceNo.trim())
+				call = () => issueShopInvoice(id, a.invoiceNo.trim(), a.file)
+			} else if (a.type === 'invoicefile') {
+				if (!a.file || !a.file.fileID) { this.$message.warning('请先选择发票文件'); return }
+				call = () => setShopInvoiceFile(id, a.file)
 			} else if (a.type === 'reject') {
 				if (!need(a.reason, '请填写驳回原因')) return
 				call = () => rejectShopInvoice(id, a.reason.trim())
@@ -275,6 +353,7 @@ export default {
 			try {
 				this.acting = true
 				this.detail = await call()
+				if (a.type === 'ship' && CARRIERS.includes(a.carrier)) rememberCarrier(a.carrier)
 				this.actionVisible = false
 				this.$message.success('操作成功')
 				this.fetch()
@@ -292,6 +371,9 @@ export default {
 </script>
 
 <style scoped>
+.row-actions { gap: 4px 14px; }
+.act-danger { color: #cf1322; }
+.ship-sum { background: #fafafa; border-radius: 6px; padding: 10px 12px; margin-bottom: 16px; line-height: 22px; color: #595959; }
 .od-head { display: flex; align-items: center; margin-bottom: 16px; }
 .od-total { font-size: 22px; font-weight: 600; margin-left: 16px; color: #fa8c16; }
 .od-sub { margin-left: 12px; color: #8c8c8c; }

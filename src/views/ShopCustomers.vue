@@ -41,18 +41,30 @@
 					<a-tag :color="text === 'active' ? 'green' : 'red'">{{ text === 'active' ? '正常' : '已拉黑' }}</a-tag>
 				</template>
 				<template slot="action" slot-scope="text, record">
-					<a style="margin-right: 12px;" @click="openDetail(record.id)">详情</a>
-					<a-popconfirm
-						:title="record.status === 'active' ? BLOCK_TIP : '确定恢复这个客户吗？'"
-						@confirm="toggle(record)"
-					>
-						<a :style="{ color: record.status === 'active' ? '#ff4d4f' : '#1890ff' }">{{ record.status === 'active' ? '拉黑' : '恢复' }}</a>
-					</a-popconfirm>
+					<div class="row-actions">
+						<a @click="openDetail(record.id)">详情</a>
+						<a @click="openRemark(record)">备注</a>
+						<a-popconfirm
+							:title="record.status === 'active' ? BLOCK_TIP : '确定恢复这个客户吗？'"
+							@confirm="toggle(record)"
+						>
+							<a :style="{ color: record.status === 'active' ? '#ff4d4f' : '#1890ff' }">{{ record.status === 'active' ? '拉黑' : '恢复' }}</a>
+						</a-popconfirm>
+					</div>
 				</template>
 			</a-table>
 		</a-card>
 
-		<!-- 客户详情：摘要条（头像、状态、联系方式、订单统计）→ 备注 → 收货地址 → 发票抬头；操作按钮固定在弹窗底部 -->
+		<!-- 修改备注：详情只看不改，备注在列表里改 -->
+		<a-modal v-model="remarkVisible" :title="'客户备注' + (remarkTarget ? '：' + (remarkTarget.nickname || '#' + remarkTarget.id) : '')" :width="520" okText="保存" :confirmLoading="remarkSaving" :destroyOnClose="true" @ok="saveRemark">
+			<a-textarea v-model="remarkDraft" :rows="4" maxLength="500" placeholder="记录这个客户是谁、公司、采购习惯、联系情况等" />
+			<div class="cd-remark-foot">
+				<span class="cd-hint">只有后台能看到，客户看不到</span>
+				<span class="cd-hint">{{ remarkDraft.length }} / 500</span>
+			</div>
+		</a-modal>
+
+		<!-- 客户详情（只看不改）：摘要条（头像、状态、联系方式、订单统计）→ 备注 → 收货地址 → 发票抬头；底部固定「关闭」和「查看这个客户的订单」 -->
 		<a-modal v-model="detailVisible" title="客户详情" :width="980" :destroyOnClose="true" :bodyStyle="{ maxHeight: '70vh', overflowY: 'auto', padding: '20px 24px' }">
 			<a-spin :spinning="detailLoading">
 				<div v-if="detail" class="cd">
@@ -79,11 +91,8 @@
 
 					<div class="cd-card">
 						<div class="cd-title">备注 <span class="cd-hint">只有后台能看到，客户看不到</span></div>
-						<a-textarea v-model="remarkDraft" :rows="2" maxLength="500" placeholder="记录这个客户是谁、公司、采购习惯、联系情况等" />
-						<div class="cd-remark-foot">
-							<span class="cd-hint">{{ remarkDraft.length }} / 500</span>
-							<a-button size="small" type="primary" :loading="remarkSaving" :disabled="remarkDraft.trim() === (detail.remark || '')" @click="saveRemark">保存备注</a-button>
-						</div>
+						<div v-if="detail.remark" class="cd-pre cd-remark">{{ detail.remark }}</div>
+						<div v-else class="cd-empty">没有备注</div>
 					</div>
 
 					<div class="cd-card">
@@ -116,12 +125,7 @@
 			<!-- 操作按钮固定在弹窗底部 -->
 			<template slot="footer">
 				<a-button @click="detailVisible = false">关闭</a-button>
-				<template v-if="detail">
-					<a-popconfirm :title="detail.status === 'active' ? BLOCK_TIP : '确定恢复这个客户吗？'" @confirm="toggle(detail)">
-						<a-button :type="detail.status === 'active' ? 'danger' : 'default'" ghost>{{ detail.status === 'active' ? '拉黑这个客户' : '恢复这个客户' }}</a-button>
-					</a-popconfirm>
-					<a-button type="primary" @click="viewOrders">查看这个客户的订单</a-button>
-				</template>
+				<a-button v-if="detail" type="primary" @click="viewOrders">查看这个客户的订单</a-button>
 			</template>
 		</a-modal>
 	</div>
@@ -143,6 +147,8 @@ export default {
 			status: undefined,
 			// 小程序一打开就自动登录，每个访客都有一条记录；默认只看有过动作的（填了资料、绑了手机、存了地址、下过单、被备注过）
 			scope: 'engaged',
+			remarkVisible: false,
+			remarkTarget: null,
 			remarkDraft: '',
 			remarkSaving: false,
 			detailVisible: false,
@@ -193,7 +199,6 @@ export default {
 			try {
 				this.detailLoading = true
 				this.detail = await getShopCustomer(id)
-				this.remarkDraft = this.detail.remark || ''
 			} catch (error) {
 				this.detailVisible = false
 				notifyError(this, error, '获取客户详情失败')
@@ -201,12 +206,16 @@ export default {
 				this.detailLoading = false
 			}
 		},
+		openRemark(record) {
+			this.remarkTarget = record
+			this.remarkDraft = record.remark || ''
+			this.remarkVisible = true
+		},
 		async saveRemark() {
 			try {
 				this.remarkSaving = true
-				const res = await setShopCustomerRemark(this.detail.id, this.remarkDraft.trim())
-				this.detail.remark = res.remark
-				this.remarkDraft = res.remark
+				await setShopCustomerRemark(this.remarkTarget.id, this.remarkDraft.trim())
+				this.remarkVisible = false
 				this.$message.success('备注已保存')
 				this.fetch()
 			} catch (error) {
@@ -223,7 +232,6 @@ export default {
 			try {
 				await setShopCustomerStatus(record.id, next)
 				this.$message.success(next === 'disabled' ? '已拉黑' : '已恢复')
-				if (this.detail && this.detail.id === record.id) this.detail.status = next
 				this.fetch()
 			} catch (error) {
 				notifyError(this, error, '操作失败')
@@ -237,6 +245,7 @@ export default {
 .avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; }
 .avatar-lg { width: 64px; height: 64px; font-size: 24px; flex-shrink: 0; }
 .avatar-empty { background: #e6f4ff; color: #1677ff; font-weight: 600; }
+.row-actions { gap: 4px 14px; }
 .remark-cell { display: inline-block; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
 .cd-sum { display: flex; justify-content: space-between; align-items: center; gap: 24px; padding: 16px 20px; margin-bottom: 16px; background: #f5f9ff; border-radius: 8px; }
 .cd-who { display: flex; align-items: center; min-width: 0; }
@@ -252,7 +261,8 @@ export default {
 .cd-card { padding: 14px 16px 10px; margin-bottom: 14px; border: 1px solid #f0f0f0; border-radius: 8px; }
 .cd-title { font-weight: 600; margin-bottom: 10px; }
 .cd-hint { margin-left: 8px; font-size: 12px; font-weight: 400; color: #8c8c8c; }
-.cd-remark-foot { display: flex; justify-content: space-between; align-items: center; margin: 8px 0 4px; }
+.cd-remark-foot { display: flex; justify-content: space-between; align-items: center; margin: 8px 0 0; }
+.cd-remark { padding-bottom: 6px; }
 .cd-remark-foot .cd-hint { margin-left: 0; }
 .cd-empty { color: #bfbfbf; padding: 4px 0 8px; }
 .cd-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 4px; }

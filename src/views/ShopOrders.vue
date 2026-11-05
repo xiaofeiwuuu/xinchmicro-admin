@@ -34,7 +34,7 @@
 				<template slot="amount" slot-scope="text">{{ money(text) }}</template>
 				<template slot="status" slot-scope="text, record">
 					<a-tag :color="ORDER_STATUS[text].color">{{ ORDER_STATUS[text].text }}</a-tag>
-					<a-tag v-if="record.refundPending" color="red">需要退款</a-tag>
+					<a-tag v-if="record.refundState" :color="REFUND_STATE[record.refundState].color">{{ REFUND_STATE[record.refundState].text }}</a-tag>
 				</template>
 				<template slot="invoice" slot-scope="text">
 					<a-tag :color="INVOICE_STATUS[text].color">{{ INVOICE_STATUS[text].text }}</a-tag>
@@ -52,92 +52,112 @@
 			</a-table>
 		</a-card>
 
-		<!-- 订单详情 -->
-		<a-modal v-model="detailVisible" :title="detail ? '订单 ' + detail.orderNo : '订单详情'" :footer="null" :width="760" :destroyOnClose="true">
+		<!-- 订单详情：摘要条 → 订单信息 → 商品 → 发票 → 操作记录（时间轴，最新在上）；操作按钮固定在弹窗底部 -->
+		<a-modal v-model="detailVisible" title="订单详情" :width="980" :destroyOnClose="true" :bodyStyle="{ maxHeight: '70vh', overflowY: 'auto', padding: '20px 24px' }">
 			<a-spin :spinning="detailLoading">
-				<div v-if="detail" class="order-detail">
-					<div class="od-head">
-						<a-tag :color="ORDER_STATUS[detail.status].color" style="font-size: 14px; padding: 2px 10px;">{{ ORDER_STATUS[detail.status].text }}</a-tag>
-						<a-tag v-if="detail.refundPending" color="red">需要退款</a-tag>
-						<span class="od-total">{{ money(detail.totalAmount) }}</span>
-						<span v-if="detail.paidBy" class="od-sub">已付款 · {{ PAID_BY[detail.paidBy] }}</span>
-					</div>
-
-					<a-alert v-if="detail.refundPending" type="error" show-icon style="margin-bottom: 16px;"
-						message="这个订单有一笔微信付款需要退还给客户。系统会自动向微信申请退款（见下方操作记录）；如果多次失败，请到微信商户平台手动退款，再点「标记已退款」。" />
-
-					<div class="od-block">
-						<div class="od-title">商品</div>
-						<table class="od-table">
-							<tr><th>名称</th><th style="width: 100px;">单价</th><th style="width: 70px;">数量</th><th style="width: 110px;">小计</th></tr>
-							<tr v-for="i in detail.items" :key="i.productId">
-								<td>{{ i.name }}</td><td>{{ money(i.price) }}</td><td>{{ i.qty }}</td><td>{{ money(i.subtotal) }}</td>
-							</tr>
-						</table>
-					</div>
-
-					<a-row :gutter="24">
-						<a-col :span="12">
-							<div class="od-block">
-								<div class="od-title">客户</div>
-								<div>{{ (detail.customer && detail.customer.nickname) || '（未设置）' }}　{{ detail.customer && detail.customer.phone }}</div>
+				<div v-if="detail" class="od">
+					<!-- 摘要：状态、金额、订单号、下单和付款时间 -->
+					<div class="od-sum">
+						<div class="od-sum-main">
+							<div class="od-tags">
+								<a-tag :color="ORDER_STATUS[detail.status].color" class="od-status">{{ ORDER_STATUS[detail.status].text }}</a-tag>
+								<a-tag v-if="detail.refundState" :color="REFUND_STATE[detail.refundState].color">{{ REFUND_STATE[detail.refundState].text }}</a-tag>
 							</div>
-							<div class="od-block">
-								<div class="od-title">收货信息</div>
-								<div>{{ detail.address.consignee }}　{{ detail.address.phone }}</div>
-								<div class="od-pre">{{ detail.address.region }} {{ detail.address.detail }}</div>
-								<div v-if="detail.remark" class="od-pre" style="color: #8c8c8c;">备注：{{ detail.remark }}</div>
-							</div>
-						</a-col>
-						<a-col :span="12">
-							<div v-if="detail.expressNo" class="od-block">
-								<div class="od-title">物流</div>
-								<div>{{ detail.expressCompany }}　{{ detail.expressNo }}</div>
-							</div>
-							<div v-if="detail.invoiceStatus !== 'none'" class="od-block">
-								<div class="od-title">发票 <a-tag :color="INVOICE_STATUS[detail.invoiceStatus].color">{{ INVOICE_STATUS[detail.invoiceStatus].text }}</a-tag></div>
-								<div v-if="detail.invoice">
-									<div>{{ INVOICE_TYPE[detail.invoice.type] }}</div>
-									<div>抬头：{{ detail.invoice.title }}</div>
-									<div>税号：{{ detail.invoice.taxId }}</div>
-									<div v-if="detail.invoice.address">地址电话：{{ detail.invoice.address }} {{ detail.invoice.phone }}</div>
-									<div v-if="detail.invoice.bank">开户行账号：{{ detail.invoice.bank }} {{ detail.invoice.account }}</div>
-									<div v-if="detail.invoice.email">邮箱：{{ detail.invoice.email }}</div>
-								</div>
-								<div v-if="detail.invoiceNo">发票号码：{{ detail.invoiceNo }}</div>
-								<div v-if="detail.invoiceStatus === 'issued'">
-									发票文件：
-									<template v-if="detail.invoiceFileID">
-										<a @click="openInvoiceFile(detail.invoiceFileID)">{{ detail.invoiceFile && detail.invoiceFile.name }}</a>
-										<span class="od-sub">客户可在小程序里下载</span>
-									</template>
-									<span v-else class="od-sub">还没有上传，客户在小程序里下载不到发票</span>
-								</div>
-							</div>
-						</a-col>
-					</a-row>
-
-					<div class="od-block">
-						<div class="od-title">操作记录</div>
-						<div v-for="l in detail.logs" :key="l.id" class="od-log">
-							<span class="od-log-time">{{ l.createdAt }}</span>
-							<a-tag>{{ ACTOR[l.actorType] }}</a-tag>
-							<span>{{ LOG_ACTION[l.action] || l.action }}</span>
-							<span v-if="l.note" class="od-log-note">{{ l.note }}</span>
+							<div class="od-total">{{ money(detail.totalAmount) }}</div>
+						</div>
+						<div class="od-sum-meta">
+							<div><span class="k">订单号</span>{{ detail.orderNo }}<a class="od-copy" @click="copyText(detail.orderNo)">复制</a></div>
+							<div><span class="k">下单时间</span>{{ detail.createdAt }}</div>
+							<div><span class="k">付款</span>{{ detail.paidBy ? PAID_BY[detail.paidBy] + (detail.paidAt ? '　' + detail.paidAt : '') : '未付款' }}</div>
 						</div>
 					</div>
 
-					<a-divider />
-					<div class="od-actions">
-						<a-button v-if="detail.status === 'pending_ship'" type="primary" @click="openAction('ship')">发货</a-button>
-						<a-button v-if="detail.invoiceStatus === 'requesting'" type="primary" ghost @click="openAction('issue')">开具发票</a-button>
-						<a-button v-if="detail.invoiceStatus === 'requesting'" @click="openAction('reject')">驳回开票申请</a-button>
-						<a-button v-if="detail.invoiceStatus === 'issued'" type="primary" ghost @click="openAction('invoicefile')">{{ detail.invoiceFileID ? '替换发票文件' : '上传发票文件' }}</a-button>
-						<a-button v-if="detail.refundPending" @click="openAction('refunded')">标记已退款</a-button>
-						<a-button v-if="canCancel" type="danger" ghost @click="openAction('cancel')">取消订单</a-button>
+					<a-alert v-if="detail.refundPending" type="error" show-icon class="od-alert"
+						message="这个订单有一笔微信付款需要退还给客户。系统会自动向微信申请退款（见下方操作记录）；如果多次失败，请到微信商户平台手动退款，再点「标记已退款」。" />
+
+					<!-- 订单进度：下单 → 付款 → 发货 → 收货 → 开票，所有步骤都显示。
+						没到的灰色、做完的绿色、正在进行的蓝色；取消、退款失败是红色。取消的订单只显示走过的步骤和取消、退款 -->
+					<div class="od-card">
+						<div class="od-title">订单进度</div>
+						<div class="st">
+							<div v-for="(p, i) in steps" :key="i" class="st-step" :class="'is-' + p.state">
+								<div class="st-top"><span class="st-dot"></span></div>
+								<div class="st-name">{{ p.name }}</div>
+								<div class="st-state">{{ p.stateText || STEP_STATE[p.state] }}</div>
+								<div v-if="p.note" class="st-note">{{ p.note }}</div>
+								<div v-if="p.time" class="st-time">{{ p.time }}</div>
+							</div>
+						</div>
+						<div class="od-logs-toggle"><a @click="showLogs = !showLogs">{{ showLogs ? '收起' : '查看' }}全部操作记录（{{ (detail.logs || []).length }} 条）</a></div>
+						<div v-if="showLogs" class="od-logs">
+							<div v-for="l in detail.logs || []" :key="l.id" class="od-log">
+								<span class="od-log-time">{{ l.createdAt }}</span>
+								<span class="od-log-actor">{{ ACTOR[l.actorType] }}</span>
+								<span>{{ LOG_ACTION[l.action] || l.action }}</span>
+								<span v-if="l.note" class="od-log-note">{{ l.note }}</span>
+							</div>
+						</div>
 					</div>
+
+					<!-- 订单信息：客户、收货、物流放在一张卡里，不再分左右两栏 -->
+					<div class="od-card">
+						<div class="od-title">订单信息</div>
+						<div class="od-kv"><span class="k">客户</span><span class="v">{{ (detail.customer && detail.customer.nickname) || '（未设置）' }}　{{ detail.customer && detail.customer.phone }}</span></div>
+						<div class="od-kv"><span class="k">收货人</span><span class="v">{{ detail.address.consignee }}　{{ detail.address.phone }}</span></div>
+						<div class="od-kv"><span class="k">收货地址</span><span class="v od-pre">{{ detail.address.region }} {{ detail.address.detail }}</span></div>
+						<div v-if="detail.remark" class="od-kv"><span class="k">客户备注</span><span class="v od-pre">{{ detail.remark }}</span></div>
+						<div v-if="detail.expressNo" class="od-kv"><span class="k">物流</span><span class="v">{{ detail.expressCompany }}　{{ detail.expressNo }}<a class="od-copy" @click="copyText(detail.expressNo)">复制</a></span></div>
+						<div v-if="detail.cancelReason" class="od-kv"><span class="k">取消原因</span><span class="v">{{ detail.cancelReason }}</span></div>
+					</div>
+
+					<div class="od-card">
+						<div class="od-title">商品（{{ detail.items.length }} 种）</div>
+						<table class="od-table">
+							<tr><th>名称</th><th class="r" style="width: 100px;">单价</th><th class="r" style="width: 70px;">数量</th><th class="r" style="width: 110px;">小计</th></tr>
+							<tr v-for="i in detail.items" :key="i.productId">
+								<td>{{ i.name }}</td><td class="r">{{ money(i.price) }}</td><td class="r">{{ i.qty }}</td><td class="r">{{ money(i.subtotal) }}</td>
+							</tr>
+							<tr class="sum"><td colspan="3" class="r">合计</td><td class="r">{{ money(detail.totalAmount) }}</td></tr>
+						</table>
+					</div>
+
+					<div v-if="detail.invoiceStatus !== 'none'" class="od-card">
+						<div class="od-title">发票 <a-tag :color="INVOICE_STATUS[detail.invoiceStatus].color" class="od-mini">{{ INVOICE_STATUS[detail.invoiceStatus].text }}</a-tag></div>
+						<template v-if="detail.invoice">
+							<div class="od-kv"><span class="k">类型</span><span class="v">{{ INVOICE_TYPE[detail.invoice.type] }}</span></div>
+							<div class="od-kv"><span class="k">抬头</span><span class="v">{{ detail.invoice.title }}</span></div>
+							<div class="od-kv"><span class="k">税号</span><span class="v">{{ detail.invoice.taxId }}</span></div>
+							<div v-if="detail.invoice.address" class="od-kv"><span class="k">地址电话</span><span class="v">{{ detail.invoice.address }} {{ detail.invoice.phone }}</span></div>
+							<div v-if="detail.invoice.bank" class="od-kv"><span class="k">开户行账号</span><span class="v">{{ detail.invoice.bank }} {{ detail.invoice.account }}</span></div>
+							<div v-if="detail.invoice.email" class="od-kv"><span class="k">邮箱</span><span class="v">{{ detail.invoice.email }}</span></div>
+						</template>
+						<div v-if="detail.invoiceNo" class="od-kv"><span class="k">发票号码</span><span class="v">{{ detail.invoiceNo }}</span></div>
+						<div v-if="detail.invoiceStatus === 'issued'" class="od-kv">
+							<span class="k">发票文件</span>
+							<span class="v">
+								<template v-if="detail.invoiceFileID">
+									<a @click="openInvoiceFile(detail.invoiceFileID)">{{ detail.invoiceFile && detail.invoiceFile.name }}</a>
+									<span class="od-sub">客户可在小程序里下载</span>
+								</template>
+								<span v-else class="od-sub" style="margin-left: 0;">还没有上传，客户在小程序里下载不到发票</span>
+							</span>
+						</div>
+					</div>
+
 				</div>
 			</a-spin>
+			<!-- 操作按钮固定在弹窗底部，不用滚到最下面才看到 -->
+			<template slot="footer">
+				<a-button @click="detailVisible = false">关闭</a-button>
+				<template v-if="detail">
+					<a-button v-if="detail.invoiceStatus === 'requesting'" @click="openAction('reject')">驳回开票申请</a-button>
+					<a-button v-if="detail.invoiceStatus === 'requesting'" type="primary" ghost @click="openAction('issue')">开具发票</a-button>
+					<a-button v-if="detail.invoiceStatus === 'issued'" type="primary" ghost @click="openAction('invoicefile')">{{ detail.invoiceFileID ? '替换发票文件' : '上传发票文件' }}</a-button>
+					<a-button v-if="detail.refundPending" @click="openAction('refunded')">标记已退款</a-button>
+					<a-button v-if="canCancel" type="danger" ghost @click="openAction('cancel')">取消订单</a-button>
+					<a-button v-if="detail.status === 'pending_ship'" type="primary" @click="openAction('ship')">发货</a-button>
+				</template>
+			</template>
 		</a-modal>
 
 		<!-- 操作确认 -->
@@ -190,7 +210,7 @@
 import { notifyError } from '@/utils/notify'
 import PdfUploader from '@/components/PdfUploader.vue'
 import { getShopOrders, getShopOrder, shipShopOrder, cancelShopOrder, markShopOrderRefunded, issueShopInvoice, rejectShopInvoice, setShopInvoiceFile, getPdfDownloadUrl, deletePdfs } from '@/api'
-import { ORDER_STATUS, INVOICE_STATUS, INVOICE_TYPE, PAID_BY, LOG_ACTION, ACTOR, money } from '@/utils/shop'
+import { ORDER_STATUS, REFUND_STATE, INVOICE_STATUS, INVOICE_TYPE, PAID_BY, LOG_ACTION, ACTOR, money } from '@/utils/shop'
 
 // 常用快递公司（发货时下拉选择；没有的选「其他」手动填）
 const CARRIERS = ['顺丰速运', '中通快递', '圆通速递', '申通快递', '韵达快递', '极兔速递', '京东物流', '德邦快递', 'EMS', '邮政包裹']
@@ -217,7 +237,9 @@ export default {
 	data() {
 		return {
 			uploadingFile: false,
-			ORDER_STATUS, INVOICE_STATUS, INVOICE_TYPE, PAID_BY, LOG_ACTION, ACTOR, ACTIONS, CARRIERS, OTHER_CARRIER,
+			showLogs: false,
+			STEP_STATE: { done: '已完成', current: '进行中', todo: '未开始', bad: '' },
+			ORDER_STATUS, REFUND_STATE, INVOICE_STATUS, INVOICE_TYPE, PAID_BY, LOG_ACTION, ACTOR, ACTIONS, CARRIERS, OTHER_CARRIER,
 			filters: { keyword: '', status: undefined, invoice: undefined, refundPending: false },
 			// 从「客户管理 → 查看订单」进来时按这个客户筛选
 			customerId: this.$route.query.customerId || '',
@@ -244,6 +266,42 @@ export default {
 		}
 	},
 	computed: {
+		// 订单进度。state：done 做完 / current 正在进行 / todo 没到 / bad 取消或失败
+		steps() {
+			const d = this.detail
+			if (!d) return []
+			const logs = d.logs || []
+			const at = (...acts) => { const l = [...logs].reverse().find((x) => acts.includes(x.action)); return l ? l.createdAt : '' }
+			const S = (name, state, time, note) => ({ name, state, time: time || '', note: note || '' })
+			const paid = !!d.paidBy
+			// 取消的订单：流程到这里就结束了，只显示走过的步骤，加上取消和退款
+			if (d.status === 'cancelled') {
+				const out = [S('提交订单', 'done', d.createdAt)]
+				if (paid) out.push(S('支付成功', 'done', d.paidAt || at('wechat_paid')))
+				const out2 = S('订单已取消', 'bad', at('cancel', 'expire'), d.cancelReason)
+				out2.stateText = '已取消'
+				out.push(out2)
+				if (paid) {
+					// 退款情况由服务端算好（refundState）：失败 / 处理中 / 等待发起 / 已退款
+					const rs = d.refundState
+					if (rs === 'failed') out.push(S('退款失败', 'bad', at('refund_failed'), '需要人工在微信商户平台退款'))
+					else if (rs === 'processing' || rs === 'pending') out.push(S('退款中', 'current', at('refund_requested'), rs === 'processing' ? '已向微信申请退款' : '等待系统发起退款'))
+					else out.push(S('已退款', 'done', at('wechat_refunded', 'refund_done')))
+				}
+				return out
+			}
+			const shipped = ['shipped', 'completed'].includes(d.status)
+			const inv = d.invoiceStatus
+			return [
+				S('提交订单', 'done', d.createdAt),
+				paid ? S('支付成功', 'done', d.paidAt || at('wechat_paid')) : S('等待付款', 'current', '', '超时会自动取消'),
+				shipped ? S('商家发货', 'done', at('ship'), d.expressNo ? `${d.expressCompany} ${d.expressNo}` : '') : S('商家发货', paid ? 'current' : 'todo'),
+				d.status === 'completed' ? S('确认收货', 'done', at('receive')) : S('确认收货', d.status === 'shipped' ? 'current' : 'todo'),
+				inv === 'issued' ? S('开具发票', 'done', at('invoice_issue'), d.invoiceNo ? `发票号码 ${d.invoiceNo}` : '')
+					: inv === 'requesting' ? S('开具发票', 'current', at('invoice_apply'), '客户已申请，等待开具')
+						: S('开具发票', 'todo', '', '客户未申请')
+			]
+		},
 		canCancel() {
 			return this.detail && ['pending_payment', 'pending_ship'].includes(this.detail.status)
 		}
@@ -286,6 +344,7 @@ export default {
 		},
 		async openDetail(id) {
 			this.detailVisible = true
+			this.showLogs = false
 			this.detail = null
 			try {
 				this.detailLoading = true
@@ -303,6 +362,22 @@ export default {
 			this.action = { type, note: '', reason: '', carrier: CARRIERS.includes(last) ? last : undefined, customCarrier: '', expressNo: '', invoiceNo: '', file: null }
 			this.uploadingFile = false
 			this.actionVisible = true
+		},
+		// 复制订单号、运单号：优先用剪贴板接口，不可用（非 https 等）时退回到临时文本框
+		copyText(text) {
+			const done = () => this.$message.success('已复制')
+			const fallback = () => {
+				const el = document.createElement('textarea')
+				el.value = text
+				el.style.position = 'fixed'
+				el.style.opacity = '0'
+				document.body.appendChild(el)
+				el.select()
+				try { document.execCommand('copy') && done() } catch (e) { this.$message.warning('复制失败，请手动选择复制') }
+				document.body.removeChild(el)
+			}
+			if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback)
+			else fallback()
 		},
 		// 发票文件是云存储文件：取一个临时链接再打开。先开空白窗口再改地址，避免异步请求后被浏览器当成弹窗拦截
 		async openInvoiceFile(fileID) {
@@ -374,17 +449,54 @@ export default {
 .row-actions { gap: 4px 14px; }
 .act-danger { color: #cf1322; }
 .ship-sum { background: #fafafa; border-radius: 6px; padding: 10px 12px; margin-bottom: 16px; line-height: 22px; color: #595959; }
-.od-head { display: flex; align-items: center; margin-bottom: 16px; }
-.od-total { font-size: 22px; font-weight: 600; margin-left: 16px; color: #fa8c16; }
-.od-sub { margin-left: 12px; color: #8c8c8c; }
-.od-block { margin-bottom: 16px; }
-.od-title { font-weight: 600; margin-bottom: 6px; }
+.od-sum { display: flex; justify-content: space-between; align-items: center; gap: 24px; padding: 16px 20px; margin-bottom: 16px; background: #f5f9ff; border-radius: 8px; }
+.od-tags { display: flex; align-items: center; margin-bottom: 4px; }
+.od-status { font-size: 14px; padding: 2px 12px; }
+.od-total { font-size: 28px; font-weight: 600; line-height: 38px; color: #262626; }
+.od-sum-meta { line-height: 24px; color: #262626; font-size: 13px; }
+.od-sum-meta .k { display: inline-block; width: 64px; color: #8c8c8c; }
+.od-copy { margin-left: 10px; font-size: 12px; }
+.od-alert { margin-bottom: 16px; }
+.od-card { padding: 14px 16px 6px; margin-bottom: 14px; border: 1px solid #f0f0f0; border-radius: 8px; }
+.od-title { font-weight: 600; margin-bottom: 8px; }
+.od-kv { display: flex; padding: 4px 0; line-height: 22px; }
+.od-kv .k { flex: 0 0 84px; color: #8c8c8c; }
+.od-kv .v { flex: 1; min-width: 0; word-break: break-all; }
+.od-sub { margin-left: 12px; color: #8c8c8c; font-size: 12px; }
+.od-mini { margin-left: 6px; }
 .od-pre { white-space: pre-wrap; }
-.od-table { width: 100%; border-collapse: collapse; }
-.od-table th, .od-table td { padding: 6px 8px; border-bottom: 1px solid #f0f0f0; text-align: left; }
-.od-table th { color: #8c8c8c; font-weight: 500; }
-.od-log { padding: 3px 0; font-size: 13px; }
+.od-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+.od-table th, .od-table td { padding: 8px 4px; border-bottom: 1px solid #f5f5f5; text-align: left; }
+.od-table th { color: #8c8c8c; font-weight: 500; font-size: 12px; }
+.od-table .r { text-align: right; }
+.od-table tr.sum td { border-bottom: 0; font-weight: 600; }
+/* 订单进度步骤条：灰色（没到）、绿色（做完）、蓝色（进行中）、红色（取消/失败）。线的颜色看左边这一步是不是做完了 */
+.st { display: flex; padding: 6px 0 4px; }
+.st-step { position: relative; flex: 1 1 0; min-width: 0; padding: 0 8px 0 0; }
+.st-top { position: relative; height: 22px; }
+.st-step::before { content: ''; position: absolute; left: 26px; right: 4px; top: 10px; height: 2px; background: #e5e5e5; }
+.st-step.is-done::before { background: #52c41a; }
+.st-step:last-child::before { display: none; }
+.st-dot { position: relative; display: block; width: 22px; height: 22px; box-sizing: border-box; border-radius: 50%; border: 2px solid #d9d9d9; background: #fff; }
+.is-done .st-dot { border-color: #52c41a; background: #52c41a; }
+.is-done .st-dot::after { content: ''; position: absolute; left: 6px; top: 2px; width: 5px; height: 10px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.is-current .st-dot { border-color: #1890ff; background: #1890ff; box-shadow: 0 0 0 4px #e6f4ff; }
+.is-current .st-dot::after { content: ''; position: absolute; left: 5px; top: 5px; width: 8px; height: 8px; border-radius: 50%; background: #fff; }
+.is-bad .st-dot { border-color: #cf1322; background: #cf1322; box-shadow: 0 0 0 4px #fff1f0; }
+.is-bad .st-dot::after { content: '!'; position: absolute; left: 0; right: 0; top: 0; text-align: center; color: #fff; font-weight: 700; font-size: 13px; line-height: 18px; }
+.st-name { margin-top: 8px; font-weight: 600; line-height: 22px; }
+.is-todo .st-name { color: #bfbfbf; font-weight: 500; }
+.st-state { font-size: 12px; line-height: 20px; color: #8c8c8c; }
+.is-done .st-state { color: #52c41a; }
+.is-current .st-state { color: #1890ff; }
+.is-bad .st-state, .is-bad .st-name { color: #cf1322; }
+.st-note { margin-top: 2px; color: #595959; font-size: 12px; line-height: 18px; word-break: break-all; }
+.st-time { color: #8c8c8c; font-size: 12px; line-height: 18px; }
+.is-todo .st-note, .is-todo .st-time { color: #bfbfbf; }
+.od-logs-toggle { margin: 6px 0 8px; font-size: 12px; }
+.od-logs { margin-bottom: 8px; padding: 8px 12px; background: #fafafa; border-radius: 6px; }
+.od-log { padding: 3px 0; font-size: 12px; line-height: 20px; }
 .od-log-time { color: #8c8c8c; margin-right: 8px; }
+.od-log-actor { display: inline-block; margin-right: 8px; padding: 0 6px; color: #8c8c8c; border: 1px solid #e8e8e8; border-radius: 4px; line-height: 16px; }
 .od-log-note { color: #8c8c8c; margin-left: 8px; }
-.od-actions .ant-btn { margin-right: 8px; }
 </style>

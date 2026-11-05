@@ -52,56 +52,77 @@
 			</a-table>
 		</a-card>
 
-		<!-- 客户详情 -->
-		<a-modal v-model="detailVisible" title="客户详情" :footer="null" :width="680" :destroyOnClose="true">
+		<!-- 客户详情：摘要条（头像、状态、联系方式、订单统计）→ 备注 → 收货地址 → 发票抬头；操作按钮固定在弹窗底部 -->
+		<a-modal v-model="detailVisible" title="客户详情" :width="980" :destroyOnClose="true" :bodyStyle="{ maxHeight: '70vh', overflowY: 'auto', padding: '20px 24px' }">
 			<a-spin :spinning="detailLoading">
 				<div v-if="detail" class="cd">
-					<div class="cd-head">
-						<img v-if="detail.avatar" :src="detail.avatar" class="avatar avatar-lg" />
-						<span v-else class="avatar avatar-lg avatar-empty">{{ (detail.nickname || '客').slice(0, 1) }}</span>
-						<div class="cd-head-text">
-							<div class="cd-name">{{ detail.nickname || '（未设置昵称）' }}
-								<a-tag :color="detail.status === 'active' ? 'green' : 'red'" style="margin-left: 8px;">{{ detail.status === 'active' ? '正常' : '已拉黑' }}</a-tag>
+					<div class="cd-sum">
+						<div class="cd-who">
+							<img v-if="detail.avatar" :src="detail.avatar" class="avatar avatar-lg" />
+							<span v-else class="avatar avatar-lg avatar-empty">{{ (detail.nickname || '客').slice(0, 1) }}</span>
+							<div class="cd-who-text">
+								<div class="cd-name">
+									{{ detail.nickname || '（未设置昵称）' }}
+									<a-tag :color="detail.status === 'active' ? 'green' : 'red'" class="cd-tag">{{ detail.status === 'active' ? '正常' : '已拉黑' }}</a-tag>
+								</div>
+								<div class="cd-line"><span class="k">手机号</span>{{ detail.phone || '未绑定' }}</div>
+								<div class="cd-line"><span class="k">注册</span>{{ detail.createdAt }}</div>
+								<div class="cd-line"><span class="k">最近登录</span>{{ detail.lastLoginAt || '-' }}</div>
 							</div>
-							<div class="cd-sub">手机号：{{ detail.phone || '未绑定' }}</div>
-							<div class="cd-sub">注册：{{ detail.createdAt }}　最近登录：{{ detail.lastLoginAt || '-' }}</div>
+						</div>
+						<div class="cd-nums">
+							<div class="cd-num"><div class="n">{{ detail.stats.orderCount }}</div><div class="l">订单数</div></div>
+							<div class="cd-num"><div class="n">{{ detail.stats.paidCount }}</div><div class="l">已付款订单</div></div>
+							<div class="cd-num"><div class="n">¥{{ Number(detail.stats.paidAmount).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</div><div class="l">累计付款</div></div>
 						</div>
 					</div>
 
-					<a-row :gutter="16" class="cd-stats">
-						<a-col :span="8"><a-statistic title="订单数" :value="detail.stats.orderCount" /></a-col>
-						<a-col :span="8"><a-statistic title="已付款订单" :value="detail.stats.paidCount" /></a-col>
-						<a-col :span="8"><a-statistic title="累计付款（元）" :value="detail.stats.paidAmount" :precision="2" /></a-col>
-					</a-row>
-
-					<div class="cd-title">备注（只有后台能看到，客户看不到）</div>
-					<a-textarea v-model="remarkDraft" :rows="2" maxLength="500" placeholder="记录这个客户是谁、公司、采购习惯、联系情况等" />
-					<div style="margin-top: 8px;">
-						<a-button size="small" type="primary" :loading="remarkSaving" :disabled="remarkDraft.trim() === (detail.remark || '')" @click="saveRemark">保存备注</a-button>
+					<div class="cd-card">
+						<div class="cd-title">备注 <span class="cd-hint">只有后台能看到，客户看不到</span></div>
+						<a-textarea v-model="remarkDraft" :rows="2" maxLength="500" placeholder="记录这个客户是谁、公司、采购习惯、联系情况等" />
+						<div class="cd-remark-foot">
+							<span class="cd-hint">{{ remarkDraft.length }} / 500</span>
+							<a-button size="small" type="primary" :loading="remarkSaving" :disabled="remarkDraft.trim() === (detail.remark || '')" @click="saveRemark">保存备注</a-button>
+						</div>
 					</div>
 
-					<div class="cd-title">收货地址（{{ detail.addresses.length }}）</div>
-					<div v-if="!detail.addresses.length" class="cd-empty">客户还没有保存收货地址</div>
-					<div v-for="a in detail.addresses" :key="a.id" class="cd-card">
-						<div>{{ a.consignee }}　{{ a.phone }} <a-tag v-if="a.isDefault" color="blue">默认</a-tag></div>
-						<div class="cd-pre">{{ a.region }} {{ a.detail }}</div>
+					<div class="cd-card">
+						<div class="cd-title">收货地址（{{ detail.addresses.length }}）</div>
+						<div v-if="!detail.addresses.length" class="cd-empty">客户还没有保存收货地址</div>
+						<div v-else class="cd-grid">
+							<div v-for="a in detail.addresses" :key="a.id" class="cd-tile">
+								<div class="cd-tile-head">{{ a.consignee }}　{{ a.phone }}<a-tag v-if="a.isDefault" color="blue" class="cd-tag">默认</a-tag></div>
+								<div class="cd-pre">{{ a.region }} {{ a.detail }}</div>
+							</div>
+						</div>
 					</div>
 
-					<div class="cd-title">发票抬头</div>
-					<div v-if="!detail.invoiceTitles || !detail.invoiceTitles.length" class="cd-empty">客户还没有添加发票抬头</div>
-					<div v-for="t in detail.invoiceTitles" :key="t.id" class="cd-card">
-						<div>{{ t.title }} <a-tag v-if="t.isDefault" color="blue">默认</a-tag></div>
-						<div>税号：{{ t.taxId }}</div>
-						<div v-if="t.address">地址电话：{{ t.address }} {{ t.phone }}</div>
-						<div v-if="t.bank">开户行账号：{{ t.bank }} {{ t.account }}</div>
-						<div v-if="t.email">邮箱：{{ t.email }}</div>
-					</div>	<a-divider />
-					<a-button type="primary" @click="viewOrders">查看这个客户的订单</a-button>
-					<a-popconfirm :title="detail.status === 'active' ? BLOCK_TIP : '确定恢复这个客户吗？'" @confirm="toggle(detail)">
-						<a-button :type="detail.status === 'active' ? 'danger' : 'default'" ghost style="margin-left: 8px;">{{ detail.status === 'active' ? '拉黑这个客户' : '恢复这个客户' }}</a-button>
-					</a-popconfirm>
+					<div class="cd-card">
+						<div class="cd-title">发票抬头（{{ (detail.invoiceTitles || []).length }}）</div>
+						<div v-if="!detail.invoiceTitles || !detail.invoiceTitles.length" class="cd-empty">客户还没有添加发票抬头</div>
+						<div v-else class="cd-grid">
+							<div v-for="t in detail.invoiceTitles" :key="t.id" class="cd-tile">
+								<div class="cd-tile-head">{{ t.title }}<a-tag v-if="t.isDefault" color="blue" class="cd-tag">默认</a-tag></div>
+								<div class="cd-line"><span class="k">税号</span>{{ t.taxId }}</div>
+								<div v-if="t.address" class="cd-line"><span class="k">地址电话</span>{{ t.address }} {{ t.phone }}</div>
+								<div v-if="t.bank" class="cd-line"><span class="k">开户行账号</span>{{ t.bank }} {{ t.account }}</div>
+								<div v-if="t.email" class="cd-line"><span class="k">邮箱</span>{{ t.email }}</div>
+								<div v-if="!(t.address && t.phone && t.bank && t.account)" class="cd-warn">信息不全，只能开普通发票</div>
+							</div>
+						</div>
+					</div>
 				</div>
 			</a-spin>
+			<!-- 操作按钮固定在弹窗底部 -->
+			<template slot="footer">
+				<a-button @click="detailVisible = false">关闭</a-button>
+				<template v-if="detail">
+					<a-popconfirm :title="detail.status === 'active' ? BLOCK_TIP : '确定恢复这个客户吗？'" @confirm="toggle(detail)">
+						<a-button :type="detail.status === 'active' ? 'danger' : 'default'" ghost>{{ detail.status === 'active' ? '拉黑这个客户' : '恢复这个客户' }}</a-button>
+					</a-popconfirm>
+					<a-button type="primary" @click="viewOrders">查看这个客户的订单</a-button>
+				</template>
+			</template>
 		</a-modal>
 	</div>
 </template>
@@ -217,13 +238,26 @@ export default {
 .avatar-lg { width: 64px; height: 64px; font-size: 24px; flex-shrink: 0; }
 .avatar-empty { background: #e6f4ff; color: #1677ff; font-weight: 600; }
 .remark-cell { display: inline-block; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
-.cd-head { display: flex; align-items: center; margin-bottom: 16px; }
-.cd-head-text { margin-left: 16px; }
-.cd-name { font-size: 18px; font-weight: 600; }
-.cd-sub { color: #8c8c8c; margin-top: 2px; }
-.cd-stats { margin-bottom: 8px; }
-.cd-title { font-weight: 600; margin: 16px 0 8px; }
-.cd-empty { color: #8c8c8c; }
-.cd-card { padding: 10px 12px; border: 1px solid #f0f0f0; border-radius: 6px; margin-bottom: 8px; }
-.cd-pre { white-space: pre-wrap; color: #595959; }
+.cd-sum { display: flex; justify-content: space-between; align-items: center; gap: 24px; padding: 16px 20px; margin-bottom: 16px; background: #f5f9ff; border-radius: 8px; }
+.cd-who { display: flex; align-items: center; min-width: 0; }
+.cd-who-text { margin-left: 16px; min-width: 0; }
+.cd-name { font-size: 18px; font-weight: 600; line-height: 28px; }
+.cd-tag { margin-left: 8px; vertical-align: 2px; }
+.cd-line { line-height: 22px; font-size: 13px; color: #262626; }
+.cd-line .k { display: inline-block; min-width: 56px; margin-right: 8px; color: #8c8c8c; }
+.cd-nums { display: flex; gap: 28px; flex-shrink: 0; }
+.cd-num { text-align: right; }
+.cd-num .n { font-size: 24px; font-weight: 600; line-height: 34px; color: #262626; }
+.cd-num .l { font-size: 12px; color: #8c8c8c; }
+.cd-card { padding: 14px 16px 10px; margin-bottom: 14px; border: 1px solid #f0f0f0; border-radius: 8px; }
+.cd-title { font-weight: 600; margin-bottom: 10px; }
+.cd-hint { margin-left: 8px; font-size: 12px; font-weight: 400; color: #8c8c8c; }
+.cd-remark-foot { display: flex; justify-content: space-between; align-items: center; margin: 8px 0 4px; }
+.cd-remark-foot .cd-hint { margin-left: 0; }
+.cd-empty { color: #bfbfbf; padding: 4px 0 8px; }
+.cd-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 4px; }
+.cd-tile { padding: 10px 12px; background: #fafafa; border-radius: 6px; min-width: 0; }
+.cd-tile-head { font-weight: 500; line-height: 24px; margin-bottom: 2px; word-break: break-all; }
+.cd-pre { white-space: pre-wrap; color: #595959; font-size: 13px; line-height: 20px; word-break: break-all; }
+.cd-warn { margin-top: 4px; font-size: 12px; color: #d46b08; }
 </style>

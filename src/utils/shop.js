@@ -7,6 +7,14 @@ export const ORDER_STATUS = {
 	cancelled: { text: '已取消', color: '' }
 }
 
+// 已取消且付过款的订单的退款情况。订单状态始终是「已取消」，退款是单独的一件事，所以单独显示
+export const REFUND_STATE = {
+	pending: { text: '需要退款', color: 'red' },
+	processing: { text: '退款中', color: 'blue' },
+	failed: { text: '退款失败', color: 'red' },
+	refunded: { text: '已退款', color: 'green' }
+}
+
 export const INVOICE_STATUS = {
 	none: { text: '未开票', color: '' },
 	requesting: { text: '开票中', color: 'blue' },
@@ -26,6 +34,7 @@ export const LOG_ACTION = {
 	invoice_apply: '申请开票',
 	invoice_issue: '开具发票',
 	invoice_file: '上传发票文件',
+	invoice_withdraw: '开票申请已撤销',
 	invoice_reject: '驳回开票申请',
 	wechat_paid: '微信支付成功',
 	paid_but_not_payable: '订单已不能收款，但微信支付收了款（会自动退款）',

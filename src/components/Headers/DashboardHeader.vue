@@ -39,6 +39,8 @@
 						</svg>
 						<span>{{ username }}</span><span style="margin-left: 5px;">退出</span>
 					</a-button>
+					<!-- 通知铃铛（有人下单等）。.header-control 是反向排列，写在用户名按钮后面就显示在它左边 -->
+					<notification-bell />
 					<!-- / 头部控制按钮 -->
 
 				</a-col>
@@ -55,8 +57,10 @@
 
 <script>
 	import { clearAuth, getUserInfo } from '@/utils/auth';
+	import NotificationBell from '@/components/NotificationBell.vue';
 
 	export default ({
+		components: { NotificationBell },
 		props: {
 			// 头部固定状态。
 			navbarFixed: {

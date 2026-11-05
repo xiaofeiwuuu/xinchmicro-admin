@@ -478,3 +478,8 @@ export const updateAnnouncement = async (id, data) =>
     fetchWrapper.put(`${API_BASE_URL}/api/announcements/${id}`, data, { returnFullResponse: true });
 export const deleteAnnouncement = async (id) =>
     fetchWrapper.delete(`${API_BASE_URL}/api/announcements/${id}`, { returnFullResponse: true });
+
+// 后台通知（右上角铃铛）。轮询用 silent：断网时不弹错误提示
+export const getAdminNotifications = () => fetchWrapper.get(`${API_BASE_URL}/api/admin/notifications`, { silent: true, timeout: 10000 });
+export const readAdminNotifications = (ids) => fetchWrapper.post(`${API_BASE_URL}/api/admin/notifications/read`, { ids });
+export const readAllAdminNotifications = () => fetchWrapper.post(`${API_BASE_URL}/api/admin/notifications/read-all`, {});

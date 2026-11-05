@@ -70,7 +70,8 @@ const fetchWrapper = {
 
   async request(url, method, data = null, options = {}) {
     // timeout / returnFullResponse 是本封装自己的选项，不能传给 fetch
-    const { timeout = DEFAULT_TIMEOUT, returnFullResponse, ...fetchOptions } = options;
+    // silent：失败时不弹错误提示（后台右上角的通知每隔几十秒自动轮询一次，断网时不能一直弹窗）
+    const { timeout = DEFAULT_TIMEOUT, returnFullResponse, silent, ...fetchOptions } = options;
 
     const defaultOptions = {
       method: method,
@@ -152,6 +153,10 @@ const fetchWrapper = {
     } catch (error) {
       // 401 已在上面统一提示过，直接抛出避免重复弹错
       if (error.notified) {
+        throw error;
+      }
+      if (silent) {
+        error.notified = true;
         throw error;
       }
 

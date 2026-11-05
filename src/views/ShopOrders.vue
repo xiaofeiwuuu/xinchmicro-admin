@@ -22,7 +22,7 @@
 		</a-card>
 
 		<a-card :bordered="false">
-			<a-table :scroll="tableScroll" rowKey="id" :columns="columns" :dataSource="orders" :pagination="pagination" :loading="loading" @change="handleTableChange">
+			<a-table class="orders-table" :scroll="tableScroll" rowKey="id" :columns="columns" :dataSource="orders" :pagination="pagination" :loading="loading" :rowClassName="rowClass" @change="handleTableChange">
 				<template slot="customer" slot-scope="text, record">
 					{{ (record.customer && record.customer.nickname) || '（未设置）' }}
 					<div style="color: #8c8c8c; font-size: 12px;">{{ record.customer && record.customer.phone }}</div>
@@ -241,6 +241,9 @@ export default {
 			STEP_STATE: { done: '已完成', current: '进行中', todo: '未开始', bad: '' },
 			ORDER_STATUS, REFUND_STATE, INVOICE_STATUS, INVOICE_TYPE, PAID_BY, LOG_ACTION, ACTOR, ACTIONS, CARRIERS, OTHER_CARRIER,
 			filters: { keyword: '', status: undefined, invoice: undefined, refundPending: false },
+			// 从右上角通知点进来：要让这一单的整行闪几下（订单号）；flashNo 是正在闪的那一行
+			wantFlash: this.$route.query.highlight || '',
+			flashNo: '',
 			// 从「客户管理 → 查看订单」进来时按这个客户筛选
 			customerId: this.$route.query.customerId || '',
 			customerName: this.$route.query.name || '',
@@ -306,6 +309,27 @@ export default {
 			return this.detail && ['pending_payment', 'pending_ship'].includes(this.detail.status)
 		}
 	},
+	beforeDestroy() {
+		clearTimeout(this.flashTimer)
+	},
+	watch: {
+		// 地址上的查询条件变了：点了右上角通知（highlight），或「客户管理 → 查看订单」/清除客户筛选（customerId）
+		'$route.query'(q, old) {
+			if (q.highlight) {
+				// 通知：回到完整的订单列表（清掉筛选），找到这一单让它闪
+				this.wantFlash = q.highlight
+				this.filters = { keyword: '', status: undefined, invoice: undefined, refundPending: false }
+				this.customerId = ''
+				this.customerName = ''
+				return this.handleSearch()
+			}
+			if (old.highlight && !q.highlight) return // 闪完后我们自己把地址里的 highlight 清掉了，不用重新查
+			if (q.customerId === old.customerId) return
+			this.customerId = q.customerId || ''
+			this.customerName = q.name || ''
+			this.handleSearch()
+		}
+	},
 	created() {
 		this.fetch()
 	},
@@ -322,10 +346,38 @@ export default {
 				})
 				this.orders = data.list
 				this.pagination.total = data.total
+				this.flashIfWanted()
 			} catch (error) {
 				notifyError(this, error, '获取订单列表失败')
 			} finally {
 				this.loading = false
+			}
+		},
+		rowClass(record) {
+			return record.orderNo === this.flashNo ? 'row-flash' : ''
+		},
+		// 列表加载完，如果是从通知点进来的：滚到这一行并让它闪几下。
+		// 这一单不在当前这一页（比如是几页之前下的单）时，退一步：把订单号填进搜索框，只查它，再闪
+		flashIfWanted() {
+			const no = this.wantFlash
+			if (!no) return
+			if (this.orders.some((o) => o.orderNo === no)) {
+				this.wantFlash = ''
+				this.flashNo = no
+				// 地址里的 highlight 用完就清掉，刷新页面不会再闪
+				if (this.$route.query.highlight) this.$router.replace({ path: '/shop/orders' }).catch(() => {})
+				this.$nextTick(() => {
+					const el = document.querySelector('.orders-table tr.row-flash')
+					if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+				})
+				clearTimeout(this.flashTimer)
+				this.flashTimer = setTimeout(() => { this.flashNo = '' }, 3600)
+			} else if (this.filters.keyword !== no) {
+				this.filters.keyword = no
+				this.pagination.current = 1
+				this.fetch()
+			} else {
+				this.wantFlash = '' // 搜订单号也没有（已经不存在）：不闪了
 			}
 		},
 		handleSearch() {
@@ -446,6 +498,12 @@ export default {
 </script>
 
 <style scoped>
+/* 从通知点进来：这一行的背景色闪几下（蓝 → 透明，循环 3 次，共约 3.6 秒） */
+.orders-table >>> tr.row-flash > td { animation: rowFlash 1.2s ease-in-out 3; }
+@keyframes rowFlash {
+	0%, 100% { background-color: transparent; }
+	50% { background-color: #bae0ff; }
+}
 .row-actions { gap: 4px 14px; }
 .act-danger { color: #cf1322; }
 .ship-sum { background: #fafafa; border-radius: 6px; padding: 10px 12px; margin-bottom: 16px; line-height: 22px; color: #595959; }

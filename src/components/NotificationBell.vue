@@ -178,7 +178,16 @@ export default {
 		go(n) {
 			this.markRead([n.id])
 			this.open = false
-			this.$router.push({ path: '/shop/orders', query: n.orderNo ? { highlight: n.orderNo, n: String(n.id) } : {} }).catch(() => {}) // 已经在这个地址上会抛「重复导航」，忽略
+			// 库存通知跳到价格库存页并搜这个产品；其它的跳到订单管理并让这一单闪
+			// 「N 个订单超过 24 小时没发货」这种汇总通知没有具体订单：跳到订单管理，只看待发货的
+			const to = n.keyword && !n.orderNo
+				? { path: '/shop/products', query: { keyword: n.keyword, n: String(n.id) } }
+				: n.orderNo
+				? { path: '/shop/orders', query: { highlight: n.orderNo, n: String(n.id) } }
+				: n.type === 'ship_overdue'
+				? { path: '/shop/orders', query: { status: 'pending_ship', n: String(n.id) } }
+				: { path: '/shop/orders', query: {} }
+			this.$router.push(to).catch(() => {}) // 已经在这个地址上会抛「重复导航」，忽略
 		}
 	}
 }
@@ -203,8 +212,9 @@ export default {
 .bell-item:hover { background: #f7faff; }
 .bell-dot { flex: 0 0 8px; width: 8px; height: 8px; margin: 7px 10px 0 0; border-radius: 50%; background: #1890ff; }
 .bell-dot.t-order_paid { background: #52c41a; }
-.bell-dot.t-invoice_requested { background: #fa8c16; }
-.bell-dot.t-refund_needed, .bell-dot.t-refund_failed { background: #f5222d; }
+.bell-dot.t-invoice_requested, .bell-dot.t-after_sales_requested, .bell-dot.t-after_sales_returning { background: #fa8c16; }
+.bell-dot.t-low_stock { background: #fa8c16; }
+.bell-dot.t-refund_needed, .bell-dot.t-refund_failed, .bell-dot.t-out_of_stock, .bell-dot.t-ship_overdue { background: #f5222d; }
 .bell-main { flex: 1; min-width: 0; }
 .bell-title { color: #262626; font-weight: 500; line-height: 22px; word-break: break-all; }
 .bell-content { color: #8c8c8c; font-size: 12px; line-height: 18px; margin-top: 2px; word-break: break-all; }

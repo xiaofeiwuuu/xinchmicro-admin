@@ -451,12 +451,19 @@ export const getShopStats = (range, custom = {}) => fetchWrapper.get(`${API_BASE
 export const getShopOrders = (query) => fetchWrapper.get(`${API_BASE_URL}/api/admin/orders${qs(query)}`);
 export const getShopOrder = (id) => fetchWrapper.get(`${API_BASE_URL}/api/admin/orders/${id}`);
 export const shipShopOrder = (id, body) => fetchWrapper.post(`${API_BASE_URL}/api/admin/orders/${id}/ship`, body);
+// 批量发货（导入快递单号）：items 是 [{ orderNo, expressCompany, expressNo }]；dryRun 只检查不发货。返回每一行的结果
+export const bulkShipShopOrders = (items, dryRun) => fetchWrapper.post(`${API_BASE_URL}/api/admin/orders/bulk-ship`, { items, dryRun: !!dryRun });
 export const cancelShopOrder = (id, reason) => fetchWrapper.post(`${API_BASE_URL}/api/admin/orders/${id}/cancel`, { reason });
 export const markShopOrderRefunded = (id, note) => fetchWrapper.post(`${API_BASE_URL}/api/admin/orders/${id}/refunded`, { note });
 // file：{ fileID, filename }（可选，开具时一起上传电子发票）
 export const issueShopInvoice = (id, invoiceNo, file) => fetchWrapper.post(`${API_BASE_URL}/api/admin/orders/${id}/invoice/issue`, { invoiceNo, ...(file && file.fileID ? { fileID: file.fileID, fileName: file.filename } : {}) });
 // 已开具的订单补传 / 替换发票文件
 export const setShopInvoiceFile = (id, file) => fetchWrapper.post(`${API_BASE_URL}/api/admin/orders/${id}/invoice/file`, { fileID: file.fileID, fileName: file.filename });
+// 售后：同意（仅退款要带 amount 元；退货退款/换货要带 note 退货地址）、拒绝、确认收到、退款失败重试。都返回处理后的订单详情
+export const approveAfterSale = (id, body) => fetchWrapper.post(`${API_BASE_URL}/api/admin/after-sales/${id}/approve`, body);
+export const rejectAfterSale = (id, reason) => fetchWrapper.post(`${API_BASE_URL}/api/admin/after-sales/${id}/reject`, { reason });
+export const receivedAfterSale = (id, body) => fetchWrapper.post(`${API_BASE_URL}/api/admin/after-sales/${id}/received`, body);
+export const retryAfterSaleRefund = (id, amount) => fetchWrapper.post(`${API_BASE_URL}/api/admin/after-sales/${id}/retry-refund`, { amount });
 export const rejectShopInvoice = (id, reason) => fetchWrapper.post(`${API_BASE_URL}/api/admin/orders/${id}/invoice/reject`, { reason });
 
 export const getShopSettings = () => fetchWrapper.get(`${API_BASE_URL}/api/admin/settings`);

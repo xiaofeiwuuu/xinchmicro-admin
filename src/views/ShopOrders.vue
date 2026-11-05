@@ -18,11 +18,19 @@
 			<span style="margin-right: 16px;">
 				<a-switch v-model="filters.refundPending" size="small" @change="handleSearch" /> 只看需要退款
 			</span>
+			<span style="margin-right: 16px;">
+				<a-switch v-model="filters.afterSales" size="small" @change="handleSearch" /> 只看售后待处理
+			</span>
 			<a-button type="primary" @click="handleSearch"><a-icon type="search" /> 搜索</a-button>
+			<span class="tool-btns">
+				<a-button :loading="exporting" @click="exportOrders">导出订单</a-button>
+				<a-button @click="openBulk">批量发货</a-button>
+				<a-button :disabled="!selectedKeys.length" @click="printSelected">打印发货单{{ selectedKeys.length ? '（' + selectedKeys.length + '）' : '' }}</a-button>
+			</span>
 		</a-card>
 
 		<a-card :bordered="false">
-			<a-table class="orders-table" :scroll="tableScroll" rowKey="id" :columns="columns" :dataSource="orders" :pagination="pagination" :loading="loading" :rowClassName="rowClass" @change="handleTableChange">
+			<a-table class="orders-table" :scroll="tableScroll" rowKey="id" :columns="columns" :dataSource="orders" :pagination="pagination" :loading="loading" :rowClassName="rowClass" :rowSelection="{ selectedRowKeys: selectedKeys, onChange: onSelect }" @change="handleTableChange">
 				<template slot="customer" slot-scope="text, record">
 					{{ (record.customer && record.customer.nickname) || '（未设置）' }}
 					<div style="color: #8c8c8c; font-size: 12px;">{{ record.customer && record.customer.phone }}</div>
@@ -35,6 +43,7 @@
 				<template slot="status" slot-scope="text, record">
 					<a-tag :color="ORDER_STATUS[text].color">{{ ORDER_STATUS[text].text }}</a-tag>
 					<a-tag v-if="record.refundState" :color="REFUND_STATE[record.refundState].color">{{ REFUND_STATE[record.refundState].text }}</a-tag>
+					<a-tag v-if="activeSale(record)" :color="AFTER_SALE_STATUS[activeSale(record).status].color">售后：{{ AFTER_SALE_STATUS[activeSale(record).status].short }}</a-tag>
 				</template>
 				<template slot="invoice" slot-scope="text">
 					<a-tag :color="INVOICE_STATUS[text].color">{{ INVOICE_STATUS[text].text }}</a-tag>
@@ -121,6 +130,39 @@
 						</table>
 					</div>
 
+					<!-- 售后：发货后的退款、退货退款、换货。每条申请一块，按状态给出能做的操作 -->
+					<div v-if="detail.afterSales && detail.afterSales.length" class="od-card">
+						<div class="od-title">售后（{{ detail.afterSales.length }}）</div>
+						<div v-for="s in detail.afterSales" :key="s.id" class="as-block">
+							<div class="as-head">
+								<a-tag color="purple">{{ AFTER_SALE_TYPE[s.type] }}</a-tag>
+								<a-tag :color="AFTER_SALE_STATUS[s.status].color">{{ AFTER_SALE_STATUS[s.status].text }}</a-tag>
+								<span class="od-sub" style="margin-left: 0;">{{ s.createdAt }}</span>
+							</div>
+							<div class="od-kv"><span class="k">原因</span><span class="v">{{ s.reason }}</span></div>
+							<div v-if="s.description" class="od-kv"><span class="k">客户说明</span><span class="v od-pre">{{ s.description }}</span></div>
+							<div v-if="s.returnNo" class="od-kv"><span class="k">客户寄回</span><span class="v">{{ s.returnCompany }}　{{ s.returnNo }}<a class="od-copy" @click="copyText(s.returnNo)">复制</a></span></div>
+							<div v-if="s.refundAmount" class="od-kv"><span class="k">退款金额</span><span class="v">{{ money(s.refundAmount) }}<span v-if="s.refundState" class="od-sub">{{ AFTER_SALE_REFUND_STATE[s.refundState] }}</span></span></div>
+							<div v-if="s.replaceNo" class="od-kv"><span class="k">寄出新货</span><span class="v">{{ s.replaceCompany }}　{{ s.replaceNo }}</span></div>
+							<div v-if="s.adminNote" class="od-kv"><span class="k">{{ s.status === 'rejected' ? '拒绝原因' : '处理说明' }}</span><span class="v od-pre">{{ s.adminNote }}</span></div>
+							<div class="as-actions">
+								<template v-if="s.status === 'requested'">
+									<a-button size="small" type="primary" @click="openAction('as_approve', s)">{{ s.type === 'refund' ? '同意并退款' : '同意' }}</a-button>
+									<a-button size="small" @click="openAction('as_reject', s)">拒绝</a-button>
+								</template>
+								<template v-else-if="s.status === 'returning'">
+									<a-button size="small" type="primary" @click="openAction('as_received', s)">{{ s.type === 'exchange' ? '确认收到，寄出新货' : '确认收到，退款' }}</a-button>
+									<a-button size="small" @click="openAction('as_reject', s)">验货不通过，拒绝</a-button>
+								</template>
+								<a-button v-else-if="s.status === 'refund_failed'" size="small" type="primary" @click="openAction('as_retry', s)">重试退款</a-button>
+								<span v-else-if="s.status === 'refunding'" class="od-sub" style="margin-left: 0;">微信正在退款，到账后会自动变成「已退款」</span>
+								<span v-else-if="s.status === 'approved'" class="od-sub" style="margin-left: 0;">等客户按你写的地址寄回，寄出后这里会出现快递单号</span>
+							</div>
+						</div>
+						<a-alert v-if="detail.invoiceStatus === 'issued' && detail.afterSales.some((x) => ['refunding', 'refunded'].includes(x.status))" type="warning" show-icon class="od-alert"
+							message="这个订单已经开具发票，退款后需要财务做红字发票冲销（系统不处理）。" />
+					</div>
+
 					<div v-if="detail.invoiceStatus !== 'none'" class="od-card">
 						<div class="od-title">发票 <a-tag :color="INVOICE_STATUS[detail.invoiceStatus].color" class="od-mini">{{ INVOICE_STATUS[detail.invoiceStatus].text }}</a-tag></div>
 						<template v-if="detail.invoice">
@@ -150,6 +192,7 @@
 			<template slot="footer">
 				<a-button @click="detailVisible = false">关闭</a-button>
 				<template v-if="detail">
+					<a-button @click="printOne(detail)">打印发货单</a-button>
 					<a-button v-if="detail.invoiceStatus === 'requesting'" @click="openAction('reject')">驳回开票申请</a-button>
 					<a-button v-if="detail.invoiceStatus === 'requesting'" type="primary" ghost @click="openAction('issue')">开具发票</a-button>
 					<a-button v-if="detail.invoiceStatus === 'issued'" type="primary" ghost @click="openAction('invoicefile')">{{ detail.invoiceFileID ? '替换发票文件' : '上传发票文件' }}</a-button>
@@ -157,6 +200,36 @@
 					<a-button v-if="canCancel" type="danger" ghost @click="openAction('cancel')">取消订单</a-button>
 					<a-button v-if="detail.status === 'pending_ship'" type="primary" @click="openAction('ship')">发货</a-button>
 				</template>
+			</template>
+		</a-modal>
+
+		<!-- 批量发货：上传 CSV（订单号、快递公司、运单号），先预览每一行能不能发，再确认。一行一行发，哪行失败不影响别的行 -->
+		<a-modal v-model="bulkVisible" title="批量发货（导入快递单号）" :width="760" :footer="null" :destroyOnClose="true">
+			<div class="bulk-top">
+				<a-button @click="downloadTemplate">下载模板</a-button>
+				<a-button type="primary" @click="$refs.bulkFile.click()">选择 CSV 文件</a-button>
+				<input ref="bulkFile" type="file" accept=".csv,text/csv" style="display: none;" @change="onBulkFile" />
+				<span class="od-sub">表头要有「订单号、快递公司、运单号」，一次最多 200 行；Excel 另存为 CSV 即可</span>
+			</div>
+			<a-alert v-if="bulk.error" type="error" show-icon :message="bulk.error" style="margin-top: 12px;" />
+			<template v-if="bulk.rows.length">
+				<div class="bulk-sum">
+					<template v-if="!bulk.done">预览：共 {{ bulk.rows.length }} 行，<b style="color: #389e0d;">{{ bulk.okCount }} 行可以发货</b>，<b v-if="bulk.failCount" style="color: #cf1322;">{{ bulk.failCount }} 行有问题（不会发货）</b></template>
+					<template v-else>已处理：<b style="color: #389e0d;">{{ bulk.okCount }} 单已发货</b><template v-if="bulk.failCount">，<b style="color: #cf1322;">{{ bulk.failCount }} 行失败</b></template></template>
+				</div>
+				<div class="bulk-list">
+					<table class="od-table">
+						<tr><th style="width: 46px;">行</th><th>订单号</th><th>快递</th><th>运单号</th><th style="width: 220px;">结果</th></tr>
+						<tr v-for="r in bulk.rows" :key="r.index">
+							<td>{{ r.line }}</td><td>{{ r.orderNo }}</td><td>{{ r.expressCompany }}</td><td>{{ r.expressNo }}</td>
+							<td :style="{ color: r.ok ? '#389e0d' : '#cf1322' }">{{ r.ok ? (bulk.done ? '已发货' : '可以发货') : r.message }}</td>
+						</tr>
+					</table>
+				</div>
+				<div class="bulk-foot">
+					<a-button @click="bulkVisible = false">{{ bulk.done ? '完成' : '取消' }}</a-button>
+					<a-button v-if="!bulk.done" type="primary" :disabled="!bulk.okCount" :loading="bulk.running" @click="runBulk">确认发货 {{ bulk.okCount }} 单</a-button>
+				</div>
 			</template>
 		</a-modal>
 
@@ -198,6 +271,35 @@
 			<template v-else-if="action.type === 'reject'">
 				<a-textarea v-model="action.reason" :rows="3" maxLength="200" placeholder="驳回原因（如：税号不对），客户修改开票信息后可以重新申请" />
 			</template>
+			<!-- 售后：同意 / 拒绝 / 确认收到 / 重试退款 -->
+			<template v-else-if="action.type && action.type.startsWith('as_') && action.sale">
+				<div class="ship-sum">
+					<div>订单 {{ detail.orderNo }}　订单金额 {{ money(detail.totalAmount) }}　还能退 {{ money(refundable) }}</div>
+					<div>{{ AFTER_SALE_TYPE[action.sale.type] }}：{{ action.sale.reason }}</div>
+				</div>
+				<a-alert v-if="detail.invoiceStatus === 'issued' && action.type !== 'as_reject'" type="warning" show-icon style="margin-bottom: 12px;"
+					message="这个订单已经开具发票，退款后需要财务做红字发票冲销（系统不处理）。" />
+				<template v-if="action.type === 'as_approve' && action.sale.type !== 'refund'">
+					<a-textarea v-model="action.note" :rows="4" maxLength="200" placeholder="退货地址、联系人和电话（必填，客户会按这个地址寄回）" />
+				</template>
+				<template v-else-if="action.type === 'as_approve' || action.type === 'as_retry' || (action.type === 'as_received' && action.sale.type === 'return_refund')">
+					<a-input v-model="action.amount" addon-before="退款金额 ¥" placeholder="例如 50 或 50.00" style="margin-bottom: 12px;" />
+					<a-alert type="info" show-icon style="margin-bottom: 12px;" message="确定后会立即向微信申请退款，原路退回给客户；可以只退一部分。" />
+					<a-textarea v-if="action.type !== 'as_retry'" v-model="action.note" :rows="2" maxLength="200" placeholder="处理说明（可选，客户能看到）" />
+				</template>
+				<template v-else-if="action.type === 'as_received'">
+					<a-select v-model="action.carrier" placeholder="寄出新货的快递公司" style="width: 100%; margin-bottom: 12px;">
+						<a-select-option v-for="c in CARRIERS" :key="c" :value="c">{{ c }}</a-select-option>
+						<a-select-option :value="OTHER_CARRIER">其他（手动填写）</a-select-option>
+					</a-select>
+					<a-input v-if="action.carrier === OTHER_CARRIER" v-model="action.customCarrier" maxLength="50" placeholder="快递公司名称" style="margin-bottom: 12px;" />
+					<a-input v-model="action.expressNo" maxLength="50" placeholder="运单号" style="margin-bottom: 12px;" />
+					<a-textarea v-model="action.note" :rows="2" maxLength="200" placeholder="处理说明（可选）" />
+				</template>
+				<template v-else-if="action.type === 'as_reject'">
+					<a-textarea v-model="action.reason" :rows="3" maxLength="200" placeholder="拒绝原因（必填，客户能看到）" />
+				</template>
+			</template>
 			<template v-else-if="action.type === 'refunded'">
 				<p>确认已经在微信商户平台把款项退还给客户？确认后会去掉「需要退款」标记。</p>
 				<a-textarea v-model="action.note" :rows="2" maxLength="200" placeholder="备注（可选）" />
@@ -209,8 +311,10 @@
 <script>
 import { notifyError } from '@/utils/notify'
 import PdfUploader from '@/components/PdfUploader.vue'
-import { getShopOrders, getShopOrder, shipShopOrder, cancelShopOrder, markShopOrderRefunded, issueShopInvoice, rejectShopInvoice, setShopInvoiceFile, getPdfDownloadUrl, deletePdfs } from '@/api'
-import { ORDER_STATUS, REFUND_STATE, INVOICE_STATUS, INVOICE_TYPE, PAID_BY, LOG_ACTION, ACTOR, money } from '@/utils/shop'
+import { getShopOrders, getShopOrder, shipShopOrder, cancelShopOrder, markShopOrderRefunded, issueShopInvoice, rejectShopInvoice, setShopInvoiceFile, approveAfterSale, rejectAfterSale, receivedAfterSale, retryAfterSaleRefund, bulkShipShopOrders, getCompanyInfo, getPdfDownloadUrl, deletePdfs } from '@/api'
+import { ordersCsv, bulkShipTemplate, deliveryNotesHtml, openPrint, downloadText } from '@/utils/orderTools'
+import { parseCsv } from '@/utils/shop'
+import { ORDER_STATUS, REFUND_STATE, INVOICE_STATUS, INVOICE_TYPE, PAID_BY, LOG_ACTION, ACTOR, AFTER_SALE_TYPE, AFTER_SALE_STATUS, AFTER_SALE_REFUND_STATE, money } from '@/utils/shop'
 
 // 常用快递公司（发货时下拉选择；没有的选「其他」手动填）
 const CARRIERS = ['顺丰速运', '中通快递', '圆通速递', '申通快递', '韵达快递', '极兔速递', '京东物流', '德邦快递', 'EMS', '邮政包裹']
@@ -225,8 +329,14 @@ const ACTIONS = {
 	issue: { title: '开具发票' },
 	invoicefile: { title: '发票文件' },
 	reject: { title: '驳回开票申请' },
-	refunded: { title: '标记已退款' }
+	refunded: { title: '标记已退款' },
+	as_approve: { title: '同意售后' },
+	as_reject: { title: '拒绝售后' },
+	as_received: { title: '确认收到退货' },
+	as_retry: { title: '重试退款' }
 }
+// 还在进行中的售后（订单列表里显示这个标签）
+const ACTIVE_SALE = ['requested', 'approved', 'returning', 'refunding', 'refund_failed']
 
 import fixedListLayout from '@/mixins/fixedListLayout'
 import { newPagination, applyTableChange } from '@/utils/pagination'
@@ -237,10 +347,15 @@ export default {
 	data() {
 		return {
 			uploadingFile: false,
+			exporting: false,
+			selectedKeys: [],
+			selectedMap: {}, // 勾选的订单（翻页后也保留）：id → 订单
+			bulkVisible: false,
+			bulk: { rows: [], okCount: 0, failCount: 0, done: false, running: false, error: '' },
 			showLogs: false,
 			STEP_STATE: { done: '已完成', current: '进行中', todo: '未开始', bad: '' },
-			ORDER_STATUS, REFUND_STATE, INVOICE_STATUS, INVOICE_TYPE, PAID_BY, LOG_ACTION, ACTOR, ACTIONS, CARRIERS, OTHER_CARRIER,
-			filters: { keyword: '', status: undefined, invoice: undefined, refundPending: false },
+			ORDER_STATUS, REFUND_STATE, INVOICE_STATUS, INVOICE_TYPE, PAID_BY, LOG_ACTION, ACTOR, ACTIONS, CARRIERS, OTHER_CARRIER, AFTER_SALE_TYPE, AFTER_SALE_STATUS, AFTER_SALE_REFUND_STATE,
+			filters: { keyword: '', status: this.$route.query.status || undefined, invoice: undefined, refundPending: false, afterSales: false },
 			// 从右上角通知点进来：要让这一单的整行闪几下（订单号）；flashNo 是正在闪的那一行
 			wantFlash: this.$route.query.highlight || '',
 			flashNo: '',
@@ -299,11 +414,18 @@ export default {
 				S('提交订单', 'done', d.createdAt),
 				paid ? S('支付成功', 'done', d.paidAt || at('wechat_paid')) : S('等待付款', 'current', '', '超时会自动取消'),
 				shipped ? S('商家发货', 'done', at('ship'), d.expressNo ? `${d.expressCompany} ${d.expressNo}` : '') : S('商家发货', paid ? 'current' : 'todo'),
-				d.status === 'completed' ? S('确认收货', 'done', at('receive')) : S('确认收货', d.status === 'shipped' ? 'current' : 'todo'),
+				d.status === 'completed' ? S('确认收货', 'done', at('receive', 'auto_receive')) : S('确认收货', d.status === 'shipped' ? 'current' : 'todo'),
 				inv === 'issued' ? S('开具发票', 'done', at('invoice_issue'), d.invoiceNo ? `发票号码 ${d.invoiceNo}` : '')
 					: inv === 'requesting' ? S('开具发票', 'current', at('invoice_apply'), '客户已申请，等待开具')
 						: S('开具发票', 'todo', '', '客户未申请')
 			]
+		},
+		// 这个订单还能退多少钱：订单金额 − 已经退了和正在退的售后退款
+		refundable() {
+			const d = this.detail
+			if (!d) return 0
+			const used = (d.afterSales || []).filter((s) => ['refunding', 'refunded'].includes(s.status)).reduce((n, s) => n + Math.round((s.refundAmount || 0) * 100), 0)
+			return Math.max(0, Math.round(d.totalAmount * 100) - used) / 100
 		},
 		canCancel() {
 			return this.detail && ['pending_payment', 'pending_ship'].includes(this.detail.status)
@@ -315,10 +437,17 @@ export default {
 	watch: {
 		// 地址上的查询条件变了：点了右上角通知（highlight），或「客户管理 → 查看订单」/清除客户筛选（customerId）
 		'$route.query'(q, old) {
+			if (q.status && (q.status !== old.status || q.n !== old.n)) {
+				// 汇总通知（N 个订单超时没发货）：按状态筛
+				this.filters = { keyword: '', status: q.status, invoice: undefined, refundPending: false, afterSales: false }
+				this.customerId = ''
+				this.customerName = ''
+				return this.handleSearch()
+			}
 			if (q.highlight) {
 				// 通知：回到完整的订单列表（清掉筛选），找到这一单让它闪
 				this.wantFlash = q.highlight
-				this.filters = { keyword: '', status: undefined, invoice: undefined, refundPending: false }
+				this.filters = { keyword: '', status: undefined, invoice: undefined, refundPending: false, afterSales: false }
 				this.customerId = ''
 				this.customerName = ''
 				return this.handleSearch()
@@ -338,12 +467,7 @@ export default {
 		async fetch() {
 			try {
 				this.loading = true
-				const f = this.filters
-				const data = await getShopOrders({
-					customerId: this.customerId || undefined, keyword: f.keyword.trim(), status: f.status, invoice: f.invoice,
-					refundPending: f.refundPending ? 'true' : undefined,
-					page: this.pagination.current, pageSize: this.pagination.pageSize
-				})
+				const data = await getShopOrders({ ...this.queryParams(), page: this.pagination.current, pageSize: this.pagination.pageSize })
 				this.orders = data.list
 				this.pagination.total = data.total
 				this.flashIfWanted()
@@ -352,6 +476,112 @@ export default {
 			} finally {
 				this.loading = false
 			}
+		},
+		// ---- 导出、批量发货、打印发货单 ----
+		queryParams() {
+			const f = this.filters
+			return { customerId: this.customerId || undefined, keyword: f.keyword.trim(), status: f.status, invoice: f.invoice, refundPending: f.refundPending ? 'true' : undefined, afterSales: f.afterSales ? 'pending' : undefined }
+		},
+		// 导出当前筛选条件下的全部订单（最多 5000 单）。分页取，不一次拉太多
+		async exportOrders() {
+			const MAX = 5000
+			try {
+				this.exporting = true
+				const all = []
+				for (let page = 1; all.length < MAX; page++) {
+					const data = await getShopOrders({ ...this.queryParams(), page, pageSize: 100 })
+					all.push(...data.list)
+					if (page * 100 >= data.total || !data.list.length) break
+				}
+				if (!all.length) return this.$message.warning('当前条件下没有订单')
+				const stamp = new Date().toISOString().slice(0, 10)
+				downloadText(ordersCsv(all.slice(0, MAX)), `订单导出-${stamp}.csv`)
+				this.$message.success(`已导出 ${Math.min(all.length, MAX)} 单${all.length > MAX ? `（超过 ${MAX} 单，请缩小筛选范围分批导出）` : ''}`)
+			} catch (error) {
+				notifyError(this, error, '导出失败')
+			} finally {
+				this.exporting = false
+			}
+		},
+		downloadTemplate() {
+			downloadText(bulkShipTemplate(), '批量发货模板.csv')
+		},
+		openBulk() {
+			this.bulk = { rows: [], okCount: 0, failCount: 0, done: false, running: false, error: '' }
+			this.bulkVisible = true
+		},
+		onBulkFile(e) {
+			const file = e.target.files[0]
+			e.target.value = ''
+			if (!file) return
+			if (file.size > 1024 * 1024) return this.$message.error('文件太大（最多 1MB）')
+			const reader = new FileReader()
+			reader.onload = () => this.previewBulk(String(reader.result))
+			reader.onerror = () => this.$message.error('读取文件失败')
+			reader.readAsText(file, 'utf-8')
+		},
+		// 解析 CSV → 服务端 dryRun 检查每一行 → 显示预览
+		async previewBulk(text) {
+			const rows = parseCsv(text)
+			const fail = (msg) => { this.bulk = { rows: [], okCount: 0, failCount: 0, done: false, running: false, error: msg } }
+			if (rows.length < 2) return fail('表格里没有数据')
+			const head = rows[0].map((h) => h.trim())
+			const col = (name) => head.findIndex((h) => h.startsWith(name))
+			const idx = { no: col('订单号'), company: col('快递公司'), express: col('运单号') }
+			if (idx.no < 0 || idx.company < 0 || idx.express < 0) return fail('第一行必须有「订单号」「快递公司」「运单号」三列（建议先下载模板）')
+			if (rows.length - 1 > 200) return fail('一次最多导入 200 行，请分批导入')
+			const cell = (r, k) => (r[idx[k]] !== undefined ? r[idx[k]].trim() : '')
+			const items = rows.slice(1).map((r) => ({ orderNo: cell(r, 'no'), expressCompany: cell(r, 'company'), expressNo: cell(r, 'express') }))
+			try {
+				const res = await bulkShipShopOrders(items, true)
+				this.bulk = { rows: res.results.map((r) => ({ ...r, line: r.index + 2, expressCompany: items[r.index].expressCompany, expressNo: items[r.index].expressNo })), okCount: res.okCount, failCount: res.failCount, done: false, running: false, error: '', items }
+			} catch (error) {
+				fail('检查失败：' + (error.message || '请重试'))
+			}
+		},
+		async runBulk() {
+			try {
+				this.bulk.running = true
+				// 只发预览里没问题的行（有问题的行服务端本来也会拒绝）
+				const items = this.bulk.items.filter((_, i) => this.bulk.rows[i].ok)
+				const res = await bulkShipShopOrders(items, false)
+				const byNo = new Map(res.results.map((r) => [r.orderNo, r]))
+				this.bulk.rows = this.bulk.rows.map((r) => (r.ok ? { ...r, ...byNo.get(r.orderNo), line: r.line, expressCompany: r.expressCompany, expressNo: r.expressNo } : r))
+				this.bulk.okCount = res.okCount
+				this.bulk.failCount = this.bulk.rows.filter((r) => !r.ok).length
+				this.bulk.done = true
+				this.$message.success(`已发货 ${res.okCount} 单`)
+				this.fetch()
+			} catch (error) {
+				notifyError(this, error, '批量发货失败')
+			} finally {
+				this.bulk.running = false
+			}
+		},
+		onSelect(keys, rows) {
+			// 翻页后 rows 只有当前页：用 id → 订单 的表保留之前页勾选的
+			const map = {}
+			keys.forEach((k) => { map[k] = this.selectedMap[k] || rows.find((r) => r.id === k) })
+			this.selectedMap = map
+			this.selectedKeys = keys
+		},
+		async print(orders) {
+			let name = ''
+			try {
+				const c = await getCompanyInfo()
+				name = (c && c.data && c.data.name) || ''
+			} catch (e) { /* 取不到公司名就不印 */ }
+			if (!openPrint(deliveryNotesHtml(orders, name))) this.$message.warning('浏览器拦截了打印窗口，请允许本页面弹出窗口后重试')
+		},
+		printOne(o) {
+			this.print([o])
+		},
+		printSelected() {
+			this.print(this.selectedKeys.map((k) => this.selectedMap[k]).filter(Boolean))
+		},
+		// 这个订单现在进行中的售后（列表里显示标签）
+		activeSale(record) {
+			return (record.afterSales || []).find((s) => ACTIVE_SALE.includes(s.status)) || null
 		},
 		rowClass(record) {
 			return record.orderNo === this.flashNo ? 'row-flash' : ''
@@ -408,10 +638,10 @@ export default {
 				this.detailLoading = false
 			}
 		},
-		openAction(type) {
+		openAction(type, sale) {
 			const last = lastCarrier()
-			// 上次用的快递公司默认选上（常发一家的话少点一次）
-			this.action = { type, note: '', reason: '', carrier: CARRIERS.includes(last) ? last : undefined, customCarrier: '', expressNo: '', invoiceNo: '', file: null }
+			// 上次用的快递公司默认选上（常发一家的话少点一次）。售后的操作带上这条售后，退款金额默认填还能退的全部
+			this.action = { type, sale: sale || null, amount: sale ? String(this.refundable) : '', note: '', reason: '', carrier: CARRIERS.includes(last) ? last : undefined, customCarrier: '', expressNo: '', invoiceNo: '', file: null }
 			this.uploadingFile = false
 			this.actionVisible = true
 		},
@@ -475,6 +705,23 @@ export default {
 			} else if (a.type === 'reject') {
 				if (!need(a.reason, '请填写驳回原因')) return
 				call = () => rejectShopInvoice(id, a.reason.trim())
+			} else if (a.type === 'as_approve' && a.sale.type !== 'refund') {
+				if (!need(a.note, '请填写退货地址、联系人和电话')) return
+				call = () => approveAfterSale(a.sale.id, { note: a.note.trim() })
+			} else if (['as_approve', 'as_retry'].includes(a.type) || (a.type === 'as_received' && a.sale.type === 'return_refund')) {
+				if (!/^\d+(\.\d{1,2})?$/.test(String(a.amount).trim()) || !(Number(a.amount) > 0)) { this.$message.warning('请填写退款金额（大于 0，最多两位小数）'); return }
+				if (Number(a.amount) > this.refundable + 1e-9) { this.$message.warning(`退款金额不能超过还能退的 ${money(this.refundable)}`); return }
+				const amount = String(a.amount).trim()
+				if (a.type === 'as_retry') call = () => retryAfterSaleRefund(a.sale.id, amount)
+				else if (a.type === 'as_approve') call = () => approveAfterSale(a.sale.id, { amount, note: a.note.trim() })
+				else call = () => receivedAfterSale(a.sale.id, { amount, note: a.note.trim() })
+			} else if (a.type === 'as_received') {
+				const company = a.carrier === OTHER_CARRIER ? String(a.customCarrier || '').trim() : a.carrier
+				if (!need(a.carrier, '请选择快递公司') || !need(company, '请填写快递公司名称') || !need(a.expressNo, '请填写运单号')) return
+				call = () => receivedAfterSale(a.sale.id, { replaceCompany: company, replaceNo: a.expressNo.trim(), note: a.note.trim() })
+			} else if (a.type === 'as_reject') {
+				if (!need(a.reason, '请填写拒绝原因')) return
+				call = () => rejectAfterSale(a.sale.id, a.reason.trim())
 			} else if (a.type === 'refunded') call = () => markShopOrderRefunded(id, a.note.trim())
 			else return
 			try {
@@ -504,8 +751,20 @@ export default {
 	0%, 100% { background-color: transparent; }
 	50% { background-color: #bae0ff; }
 }
+.tool-btns { float: right; }
+.tool-btns .ant-btn { margin-left: 8px; }
+.bulk-top { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+.bulk-sum { margin: 14px 0 8px; }
+.bulk-list { max-height: 360px; overflow-y: auto; border: 1px solid #f0f0f0; border-radius: 6px; padding: 0 10px; }
+.bulk-foot { margin-top: 14px; text-align: right; }
+.bulk-foot .ant-btn { margin-left: 8px; }
 .row-actions { gap: 4px 14px; }
 .act-danger { color: #cf1322; }
+.as-block { padding: 10px 0 4px; border-top: 1px dashed #f0f0f0; }
+.as-block:first-of-type { border-top: 0; padding-top: 0; }
+.as-head { display: flex; align-items: center; margin-bottom: 6px; }
+.as-actions { padding: 8px 0 8px 0; }
+.as-actions .ant-btn { margin-right: 8px; }
 .ship-sum { background: #fafafa; border-radius: 6px; padding: 10px 12px; margin-bottom: 16px; line-height: 22px; color: #595959; }
 .od-sum { display: flex; justify-content: space-between; align-items: center; gap: 24px; padding: 16px 20px; margin-bottom: 16px; background: #f5f9ff; border-radius: 8px; }
 .od-tags { display: flex; align-items: center; margin-bottom: 4px; }

@@ -21,6 +21,22 @@ export const INVOICE_STATUS = {
 	issued: { text: '已开票', color: 'green' }
 }
 
+// 售后（发货后的退款、退货退款、换货）
+export const AFTER_SALE_TYPE = { refund: '仅退款', return_refund: '退货退款', exchange: '换货' }
+export const AFTER_SALE_STATUS = {
+	requested: { text: '待审核', short: '待审核', color: 'orange' },
+	approved: { text: '已同意，等客户寄回', short: '待寄回', color: 'blue' },
+	returning: { text: '客户已寄回，待确认', short: '待收货', color: 'orange' },
+	refunding: { text: '退款中', short: '退款中', color: 'blue' },
+	refund_failed: { text: '退款失败', short: '退款失败', color: 'red' },
+	refunded: { text: '已退款', short: '已退款', color: 'green' },
+	completed: { text: '已换货', short: '已换货', color: 'green' },
+	rejected: { text: '已拒绝', short: '已拒绝', color: '' },
+	cancelled: { text: '客户已撤销', short: '已撤销', color: '' }
+}
+// 微信那边这笔售后退款现在的状态
+export const AFTER_SALE_REFUND_STATE = { processing: '微信处理中', success: '微信退款成功', failed: '微信退款失败' }
+
 export const INVOICE_TYPE = { normal: '增值税普通发票', special: '增值税专用发票' }
 export const PAID_BY = { wechat: '微信支付' }
 
@@ -41,7 +57,16 @@ export const LOG_ACTION = {
 	refund_requested: '已向微信申请退款',
 	refund_failed: '自动退款失败（超过 3 次需要人工在微信商户平台处理）',
 	refund_done: '已手动退款',
-	wechat_refunded: '微信退款成功'
+	wechat_refunded: '微信退款成功',
+	auto_receive: '发货超过期限，系统自动确认收货',
+	after_sales_apply: '客户申请售后',
+	after_sales_approve: '同意售后',
+	after_sales_reject: '拒绝售后',
+	after_sales_cancel: '客户撤销售后',
+	after_sales_return: '客户寄回商品',
+	after_sales_refund: '售后退款（已向微信申请）',
+	after_sales_refunded: '售后退款已到账',
+	after_sales_exchange: '换货已寄出'
 }
 
 export const ACTOR = { customer: '客户', admin: '后台', system: '系统' }

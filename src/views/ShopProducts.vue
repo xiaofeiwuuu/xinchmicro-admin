@@ -328,6 +328,16 @@ export default {
 			}
 		}
 	},
+	watch: {
+		// 已经在这个页面时点了右上角的库存通知：按通知里的产品名重新搜
+		'$route.query'(q, old) {
+			if (!q.keyword || (q.keyword === old.keyword && q.n === old.n)) return
+			this.keyword = String(q.keyword)
+			this.catalogId = undefined
+			this.focusId = null
+			this.handleSearch()
+		}
+	},
 	created() {
 		// 从「产品详情」页跳过来：?keyword=产品名&catalogId=目录ID&focus=产品ID
 		const q = this.$route.query || {}

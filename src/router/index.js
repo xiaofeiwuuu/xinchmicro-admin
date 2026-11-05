@@ -98,6 +98,16 @@ let routes = [
 		component: () => import('@/views/Carousels.vue'),
 	},
 	{
+		path: '/announcements',
+		name: 'Announcements',
+		layout: "dashboard",
+		meta:{
+			name:'公告管理',
+			requiresAuth: true
+		},
+		component: () => import('@/views/Announcements.vue'),
+	},
+	{
 		path: '/logs',
 		name: 'Logs',
 		layout: "dashboard",

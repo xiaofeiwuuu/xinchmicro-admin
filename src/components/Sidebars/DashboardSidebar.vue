@@ -118,6 +118,18 @@
 					<span class="label">轮播图管理</span>
 				</router-link>
 			</a-menu-item>
+			<a-menu-item>
+				<router-link to="/announcements">
+					<span class="icon">
+						<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+							<path d="M3 8C3 7.44772 3.44772 7 4 7H6L12 3.5V16.5L6 13H4C3.44772 13 3 12.5523 3 12V8Z" fill="#111827"/>
+							<path d="M15 7.5C15.8 8.2 16.3 9.05 16.3 10C16.3 10.95 15.8 11.8 15 12.5" stroke="#111827" stroke-width="1.6" stroke-linecap="round"/>
+							<path d="M5.5 13.5L6.3 17H8.3L7.6 14" fill="#111827"/>
+						</svg>
+					</span>
+					<span class="label">公告管理</span>
+				</router-link>
+			</a-menu-item>
 			<a-menu-item class="menu-item-header" disabled v-if="isMainUser">系统</a-menu-item>
 			<a-menu-item v-if="isMainUser">
 				<router-link to="/logs">

@@ -468,3 +468,13 @@ export const updateProductSale = (productId, body) => fetchWrapper.put(`${API_BA
 // 批量设置一批产品：范围是 { productIds } 或 { query: { categoryId, catalogId, keyword, filter } }，set 是要改的内容；dryRun 只预览
 export const batchProductSales = (body) => fetchWrapper.post(`${API_BASE_URL}/api/admin/product-sales/batch`, body);
 export const bulkProductSales = (items) => fetchWrapper.post(`${API_BASE_URL}/api/admin/product-sales/bulk`, { items });
+
+// 公告
+export const getAnnouncements = async (query = {}) =>
+    fetchWrapper.get(`${API_BASE_URL}/api/announcements/manage?${new URLSearchParams(query)}`, { returnFullResponse: true });
+export const createAnnouncement = async (data) =>
+    fetchWrapper.post(`${API_BASE_URL}/api/announcements`, data, { returnFullResponse: true });
+export const updateAnnouncement = async (id, data) =>
+    fetchWrapper.put(`${API_BASE_URL}/api/announcements/${id}`, data, { returnFullResponse: true });
+export const deleteAnnouncement = async (id) =>
+    fetchWrapper.delete(`${API_BASE_URL}/api/announcements/${id}`, { returnFullResponse: true });

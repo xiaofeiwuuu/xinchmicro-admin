@@ -5,7 +5,8 @@
 		:collapsed="sidebarCollapsed" @collapse="$emit('toggleSidebar', !sidebarCollapsed)" :trigger="null"
 		:class="['ant-layout-sider-' + sidebarColor, 'ant-layout-sider-' + sidebarTheme]" theme="light"
 		:style="{ backgroundColor: 'transparent', }">
-		<div class="brand"> <span>芯辰微电子</span></div>
+		<!-- 连点 5 次标题会显示隐藏的「配置助手」菜单（平时不放在菜单里，免得乱） -->
+		<div class="brand" @click="onBrandClick"> <span>芯辰微电子</span></div>
 		<hr>
 
 		<!-- 侧边栏导航菜单 -->
@@ -239,6 +240,18 @@
 				</router-link>
 				</a-tooltip>
 			</a-menu-item>
+			<a-menu-item v-if="isMainUser && showEnv">
+				<a-tooltip placement="right" :title="mini ? '配置助手' : ''">
+					<router-link to="/env">
+					<span class="icon">
+						<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+							<path fill-rule="evenodd" clip-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.53 1.53 0 01-2.29.95c-1.37-.84-2.94.73-2.1 2.1.54.9.05 2.07-.95 2.3-1.56.38-1.56 2.6 0 2.98a1.53 1.53 0 01.95 2.29c-.84 1.37.73 2.94 2.1 2.1a1.53 1.53 0 012.3.95c.38 1.56 2.6 1.56 2.98 0a1.53 1.53 0 012.29-.95c1.37.84 2.94-.73 2.1-2.1a1.53 1.53 0 01.95-2.3c1.56-.38 1.56-2.6 0-2.98a1.53 1.53 0 01-.95-2.29c.84-1.37-.73-2.94-2.1-2.1a1.53 1.53 0 01-2.3-.95zM10 13a3 3 0 100-6 3 3 0 000 6z" fill="#111827"/>
+						</svg>
+					</span>
+					<span class="label">配置助手</span>
+				</router-link>
+				</a-tooltip>
+			</a-menu-item>
 		</a-menu>
 		<!-- / 侧边栏导航菜单 -->
 
@@ -295,11 +308,29 @@ export default ({
 		},
 	},
 	data() {
+		let shown = false
+		try { shown = sessionStorage.getItem('envMenu') === '1' } catch (e) { /* 读不了就当没显示 */ }
 		return {
-			// sidebarCollapsedModel: this.sidebarCollapsed,
+			// 隐藏的「配置助手」菜单：连点 5 次标题才显示，关掉浏览器标签页后又会藏起来
+			showEnv: shown,
+			brandCount: 0,
+			brandLast: 0,
 		}
 	},
 	methods: {
+		// 连点标题 5 次（每两次之间不超过 1.5 秒）：显示「配置助手」
+		onBrandClick() {
+			if (!this.isMainUser || this.showEnv) return
+			const now = Date.now()
+			// 两次点击间隔超过 1.5 秒就重新数
+			this.brandCount = now - this.brandLast <= 1500 ? this.brandCount + 1 : 1
+			this.brandLast = now
+			if (this.brandCount < 5) return
+			this.brandCount = 0
+			this.showEnv = true
+			try { sessionStorage.setItem('envMenu', '1') } catch (e) { /* 存不了也行，只是刷新后又藏起来 */ }
+			this.$message.success('已显示「配置助手」')
+		},
 		can(key) {
 			return this.isMainUser || this.perms === '*' || (Array.isArray(this.perms) && this.perms.includes(key));
 		},

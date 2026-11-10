@@ -143,6 +143,15 @@
 							</template>
 						</span></div>
 						<div v-if="detail.expressNo" class="od-kv"><span class="k">物流</span><span class="v">{{ detail.expressCompany }}　{{ detail.expressNo }}<a class="od-copy" @click="copyText(detail.expressNo)">复制</a></span></div>
+						<div v-if="detail.waybillToken" class="od-kv"><span class="k">物流状态</span><span class="v">
+							<template v-if="logi && logi.status !== null"><a-tag :color="logiColor(logi.status)">{{ logi.statusText }}</a-tag><a class="od-copy" @click="loadLogi(detail.id)">刷新</a></template>
+							<template v-else-if="logiLoading"><a-icon type="loading" /> 查询中…</template>
+							<template v-else><span class="od-muted">暂时查不到</span><a class="od-copy" @click="loadLogi(detail.id)">重试</a></template>
+						</span></div>
+						<div v-if="logi && logi.traces && logi.traces.length" class="od-kv"><span class="k">物流进度</span><span class="v">
+							<div v-for="(t, i) in (logiAll ? logi.traces : logi.traces.slice(0, 3))" :key="i" class="od-trace" :class="{ 'is-first': i === 0 }">{{ t.text }}</div>
+							<a v-if="logi.traces.length > 3" @click="logiAll = !logiAll">{{ logiAll ? '收起' : '查看全部 ' + logi.traces.length + ' 条' }}</a>
+						</span></div>
 						<div v-if="detail.expressNo" class="od-kv"><span class="k">发货凭证</span><span class="v">
 							<a v-if="detail.shipPhotoFileID" @click="openInvoiceFile(detail.shipPhotoFileID)">查看照片</a>
 							<span v-else style="color: #8c8c8c;">未上传（选填，仅后台可见）</span>
@@ -359,7 +368,7 @@ import { notifyError } from '@/utils/notify'
 import { can } from '@/utils/auth'
 import PdfUploader from '@/components/PdfUploader.vue'
 import ImagePicker from '@/components/ImagePicker.vue'
-import { getShopOrders, getShopOrder, shipShopOrder, cancelShopOrder, markShopOrderRefunded, issueShopInvoice, rejectShopInvoice, setShopOrderRemark, approveShopCancelRequest, rejectShopCancelRequest, setShopInvoiceFile, approveAfterSale, rejectAfterSale, receivedAfterSale, retryAfterSaleRefund, bulkShipShopOrders, setShopShipPhoto, checkExpressNo, getCompanyInfo, getPdfDownloadUrl, deletePdfs } from '@/api'
+import { getShopOrders, getShopOrder, getShopOrderLogistics, shipShopOrder, retraceShopOrder, cancelShopOrder, markShopOrderRefunded, issueShopInvoice, rejectShopInvoice, setShopOrderRemark, approveShopCancelRequest, rejectShopCancelRequest, setShopInvoiceFile, approveAfterSale, rejectAfterSale, receivedAfterSale, retryAfterSaleRefund, bulkShipShopOrders, setShopShipPhoto, checkExpressNo, getCompanyInfo, getPdfDownloadUrl, deletePdfs } from '@/api'
 import { ordersCsv, bulkShipTemplate, deliveryNotesHtml, openPrint, downloadText } from '@/utils/orderTools'
 import { parseCsv } from '@/utils/shop'
 import DateRangeQuick from '@/components/DateRangeQuick.vue'
@@ -403,6 +412,9 @@ export default {
 	components: { DateRangeQuick, PdfUploader, ImagePicker },
 	data() {
 		return {
+			logi: null,
+			logiAll: false,
+			logiLoading: false,
 			uploadingFile: false,
 			exporting: false,
 			selectedKeys: [],
@@ -821,12 +833,31 @@ export default {
 			try {
 				this.detailLoading = true
 				this.detail = await getShopOrder(id)
+				this.loadLogi(id)
 			} catch (error) {
 				this.detailVisible = false
 				notifyError(this, error, '获取订单详情失败')
 			} finally {
 				this.detailLoading = false
 			}
+		},
+		// 物流状态：向微信查（服务端缓存 3 分钟），只有传过运单的订单有；查不到不报错，显示「暂时查不到」
+		async loadLogi(id) {
+			this.logi = null
+			this.logiAll = false
+			if (!this.detail || !this.detail.waybillToken) return
+			this.logiLoading = true
+			try {
+				const r = await getShopOrderLogistics(id)
+				if (this.detail && this.detail.id === id) this.logi = r
+			} catch (e) {
+				/* 查不到就显示「暂时查不到」 */
+			} finally {
+				this.logiLoading = false
+			}
+		},
+		logiColor(s) {
+			return { 0: 'default', 1: 'blue', 2: 'blue', 3: 'orange', 4: 'green', 5: 'red', 6: 'green' }[s] || 'default'
 		},
 		openAction(type, sale) {
 			const last = lastCarrier()
@@ -855,7 +886,7 @@ export default {
 		// 每个菜单项需要的功能权限；没有权限的项不显示（服务端也会拦）。没写的（打印发货单）谁都可以
 		menuPerm(key) {
 			return {
-				ship: 'order.ship', shipphoto: 'order.ship', remark: 'order.remark',
+				ship: 'order.ship', retrace: 'order.ship', shipphoto: 'order.ship', remark: 'order.remark',
 				cancel: 'order.cancel', cancel_ok: 'order.cancel', cancel_no: 'order.cancel', refunded: 'order.cancel',
 				as_approve: 'aftersales.handle', as_reject: 'aftersales.handle', as_received: 'aftersales.handle', as_retry: 'aftersales.handle',
 				issue: 'invoice.handle', reject: 'invoice.handle', invoicefile: 'invoice.handle'
@@ -886,6 +917,8 @@ export default {
 			add('remark', '商家备注')
 			if (r.invoiceStatus === 'issued') add('invoicefile', '发票文件')
 			if (r.expressNo) add('shipphoto', '发货凭证')
+			// 发货时没传成功（微信繁忙、当时没开通）的订单：客户在小程序里看不到「查看物流」，可以补传
+			if (['shipped', 'completed'].includes(r.status) && r.expressNo && !r.waybillToken) add('retrace', '补传物流')
 			add('print', '打印发货单')
 			if (['pending_payment', 'pending_ship'].includes(r.status)) {
 				out.push({ key: 'd2', divider: true })
@@ -906,8 +939,20 @@ export default {
 		onMore(r, key) {
 			if (key === 'cancel_ok') return this.approveCancel(r)
 			if (key === 'print') return this.printOne(r)
+			if (key === 'retrace') return this.retrace(r)
 			if (key.startsWith('as_')) return this.quickAction(r, key, this.activeSale(r))
 			this.quickAction(r, key)
+		},
+		// 补传物流：把运单再传给微信物流查询组件，成功后客户在小程序里就能看到「查看物流轨迹」
+		async retrace(order) {
+			try {
+				const res = await retraceShopOrder(order.id)
+				if (res.trace && res.trace.ok) this.$message.success('已传给微信，客户可以在小程序里查看物流轨迹了')
+				else this.$message.warning('没有传成功：' + ((res.trace && res.trace.reason) || '原因不明'), 6)
+				this.fetch()
+			} catch (error) {
+				notifyError(this, error, '补传物流失败')
+			}
 		},
 		// 同意客户的取消申请：订单会被取消，已付款的金额自动原路退回，库存回补
 		approveCancel(order) {
@@ -1110,6 +1155,9 @@ export default {
 .od-total { font-size: 28px; font-weight: 600; line-height: 38px; color: #262626; }
 .od-sum-meta { line-height: 24px; color: #262626; font-size: 13px; }
 .od-sum-meta .k { display: inline-block; width: 64px; color: #8c8c8c; }
+.od-muted { color: #8c8c8c; }
+.od-trace { line-height: 20px; color: #8c8c8c; margin-bottom: 4px; word-break: break-all; }
+.od-trace.is-first { color: #262626; }
 .od-copy { margin-left: 10px; font-size: 12px; }
 .ret-addr-tip { color: #8c8c8c; font-size: 12px; margin-bottom: 10px; }
 .rm {

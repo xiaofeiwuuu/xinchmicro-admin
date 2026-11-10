@@ -149,6 +149,17 @@ let routes = [
 		component: () => import('@/views/Roles.vue'),
 	},
 	{
+		path: '/env',
+		name: 'EnvConfig',
+		layout: "dashboard",
+		meta:{
+			name:'配置助手',
+			requiresAuth: true,
+			requiresMainUser: true
+		},
+		component: () => import('@/views/EnvConfig.vue'),
+	},
+	{
 		path: '/no-permission',
 		name: 'NoPermission',
 		layout: "dashboard",

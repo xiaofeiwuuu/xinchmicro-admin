@@ -216,7 +216,7 @@ export default {
 .bell-dot.t-order_paid { background: #52c41a; }
 .bell-dot.t-invoice_requested, .bell-dot.t-after_sales_requested, .bell-dot.t-after_sales_returning { background: #fa8c16; }
 .bell-dot.t-low_stock { background: #fa8c16; }
-.bell-dot.t-refund_needed, .bell-dot.t-cancel_requested, .bell-dot.t-refund_failed, .bell-dot.t-out_of_stock, .bell-dot.t-ship_overdue { background: #f5222d; }
+.bell-dot.t-refund_needed, .bell-dot.t-cancel_requested, .bell-dot.t-refund_failed, .bell-dot.t-out_of_stock, .bell-dot.t-pay_callback_failed, .bell-dot.t-logistics_failed, .bell-dot.t-login_locked, .bell-dot.t-ship_overdue { background: #f5222d; }
 .bell-main { flex: 1; min-width: 0; }
 .bell-title { color: #262626; font-weight: 500; line-height: 22px; word-break: break-all; }
 .bell-content { color: #8c8c8c; font-size: 12px; line-height: 18px; margin-top: 2px; word-break: break-all; }

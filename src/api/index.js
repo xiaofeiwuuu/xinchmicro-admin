@@ -473,9 +473,15 @@ export const downloadWxBill = async (query) => {
 // custom：{ from, to } 北京时间日期（YYYY-MM-DD，含首尾，最长一年），只在 range 为 'custom' 时用
 export const getShopStats = (range, custom = {}) => fetchWrapper.get(`${API_BASE_URL}/api/admin/stats${qs({ range, ...(range === 'custom' ? custom : {}) })}`);
 export const getShopOrders = (query) => fetchWrapper.get(`${API_BASE_URL}/api/admin/orders${qs(query)}`);
+// 物流状态（微信物流查询组件的运单状态，只有传过运单的订单有；返回 { status, statusText }，查不到 status 为 null）
+export const getShopOrderLogistics = (id) => fetchWrapper.get(`${API_BASE_URL}/api/admin/orders/${id}/logistics`, { silent: true });
+// 服务端配置助手：每个环境变量的说明和线上有没有设置（机密项只给有/无，不给值；仅主账号）
+export const getEnvCatalog = () => fetchWrapper.get(`${API_BASE_URL}/api/admin/env-catalog`);
 export const getShopOrder = (id) => fetchWrapper.get(`${API_BASE_URL}/api/admin/orders/${id}`);
 // body: { expressCompany, expressNo, photoFileID? }；发货凭证照片选填，仅后台可见
 export const shipShopOrder = (id, body) => fetchWrapper.post(`${API_BASE_URL}/api/admin/orders/${id}/ship`, body);
+// 补传物流：发货时没传给微信物流查询组件的订单，再传一次（返回 { order, trace: { ok, reason } }）
+export const retraceShopOrder = (id) => fetchWrapper.post(`${API_BASE_URL}/api/admin/orders/${id}/retrace`, {});
 // 发货后补传 / 替换发货凭证；fileID 传空字符串 = 清除
 // 商家备注（后台自己看，客户看不到）；空串清除
 // 产品销量（仅主账号）：from / to 是 YYYY-MM-DD（北京时间，含首尾，最长一年），excludeRefund 为真时排除全额退款的订单；返回 { products, summary, from, to, days }

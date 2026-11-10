@@ -8,6 +8,9 @@ export { default as AndroidOutline } from '@ant-design/icons/lib/outline/Android
 export { default as AndroidFill } from '@ant-design/icons/lib/fill/AndroidFill';
 export { default as BarsOutline } from '@ant-design/icons/lib/outline/BarsOutline';
 export { default as BlockOutline } from '@ant-design/icons/lib/outline/BlockOutline';
+export { default as CopyOutline } from '@ant-design/icons/lib/outline/CopyOutline';
+export { default as ImportOutline } from '@ant-design/icons/lib/outline/ImportOutline';
+export { default as LockOutline } from '@ant-design/icons/lib/outline/LockOutline';
 export { default as CalendarOutline } from '@ant-design/icons/lib/outline/CalendarOutline';
 export { default as CalendarFill } from '@ant-design/icons/lib/fill/CalendarFill';
 export { default as CaretDownOutline } from '@ant-design/icons/lib/outline/CaretDownOutline';

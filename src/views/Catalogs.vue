@@ -4,13 +4,13 @@
         <div style="margin-bottom: 16px;">
             <a-form layout="inline">
                 <a-form-item>
-                    <a-input v-model="searchForm.name" placeholder="请输入目录名称" size="small" />
+                    <a-input v-model="searchForm.name" placeholder="请输入目录名称" size="small" style="width: 160px" />
                 </a-form-item>
                 <a-form-item>
                     <a-select
                         v-model="searchForm.categoryId"
                         placeholder="请选择分类"
-                        style="width: 200px"
+                        style="width: 160px"
                         size="small"
                         allowClear
                     >
@@ -27,7 +27,7 @@
         </div>
 
         <!-- 新增目录按钮 -->
-        <a-button type="primary" icon="plus" size="small" @click="showModal()" style="margin-bottom: 16px;">
+        <a-button v-can="'catalog.edit'" type="primary" icon="plus" size="small" @click="showModal()" style="margin-bottom: 16px;">
             新增目录
         </a-button>
 
@@ -37,21 +37,25 @@
                 <a-tag v-for="(item, index) in text" :key="item.id || index" color="blue">{{ item.title || item }}</a-tag>
             </template>
             <template slot="name" slot-scope="text, record">
-                {{ text }}
-                <div v-if="record.nameEn" style="color: #999; font-size: 12px;">{{ record.nameEn }}</div>
+                <span class="copy-cell" title="点击复制" @click="copyName(text)">{{ text }}</span>
+                <div v-if="record.nameEn" style="color: #999; font-size: 12px;"><span class="copy-cell" title="点击复制" @click="copyName(record.nameEn)">{{ record.nameEn }}</span></div>
+            </template>
+            <template slot="showInMall" slot-scope="text">
+                <a-tag v-if="text === false" color="orange">不展示</a-tag>
+                <a-tag v-else color="green">展示</a-tag>
             </template>
             <template slot="category" slot-scope="text">
                 {{ text ? text.name : '-' }}
             </template>
             <span slot="action" slot-scope="text, record">
                 <!-- 编辑按钮 -->
-                <a-button type="link" size="small" @click="showModal(record)">
+                <a-button v-can="'catalog.edit'" type="link" size="small" @click="showModal(record)">
                     <icon-edit />
                     <span class="text-dark">编辑</span>
                 </a-button>
-                <a-divider type="vertical" />
+                <a-divider v-can="'catalog.edit'" type="vertical" />
                 <!-- 删除按钮 -->
-                <a-button type="link" size="small" @click="handleDelete(record)">
+                <a-button v-can="'catalog.edit'" type="link" size="small" @click="handleDelete(record)">
                     <icon-delete />
                     <span class="text-danger">删除</span>
                 </a-button>
@@ -104,6 +108,20 @@
                                     {{ category.name }}
                                 </a-select-option>
                             </a-select>
+                        </a-form-item>
+                        <a-form-item label="在商城展示" :colon="false" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+                            <a-switch
+                                v-decorator="[
+                                    'showInMall',
+                                    {
+                                        valuePropName: 'checked',
+                                        initialValue: currentRecord ? currentRecord.showInMall !== false : true
+                                    }
+                                ]"
+                            />
+                            <div style="color: #999; font-size: 12px; line-height: 1.5; margin-top: 5px;">
+                                关闭后，这个目录下的产品不出现在商城里，也不能下单；产品页的浏览、查看文档不受影响
+                            </div>
                         </a-form-item>
                         <a-form-item label="排序" :colon="false" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
                             <a-input-number
@@ -168,6 +186,7 @@
 import IconEdit from '@/components/IconEdit.vue';
 import IconDelete from '@/components/IconDelete.vue';
 import { notifyError } from '@/utils/notify';
+import { copyToClipboard } from '@/utils/copy';
 import { getCatalogs, createCatalog, updateCatalog, deleteCatalog, getCategories } from '@/api';
 
 // 定义表格列的配置
@@ -186,6 +205,11 @@ const columns = [
         title: '参数标题',
         dataIndex: 'paramTitles',
         scopedSlots: { customRender: 'paramTitles' },
+    },
+    {
+        title: '商城展示',
+        dataIndex: 'showInMall',
+        scopedSlots: { customRender: 'showInMall' },
     },
     {
         title: '排序',
@@ -232,6 +256,10 @@ export default {
         this.fetchData();
     },
     methods: {
+        async copyName(text) {
+            if (await copyToClipboard(text)) this.$message.success('已复制：' + text);
+            else this.$message.warning('复制失败，请手动复制');
+        },
         onTableChange(p) {
             applyTableChange(this.pagination, p);
         },
@@ -305,6 +333,7 @@ export default {
                     nameEn: record.nameEn || '',
                     categoryId: record.categoryId,
                     sort: record.sort != null ? record.sort : 999,
+                    showInMall: record.showInMall !== false,
                 });
                 // 复制 paramTitles 数组（保留 id）
                 this.paramTitlesList = (record.paramTitles || []).map(p => ({
@@ -360,6 +389,7 @@ export default {
                             nameEn: values.nameEn || '',
                             categoryId: values.categoryId,
                             sort: values.sort,
+                            showInMall: !!values.showInMall,
                             paramTitles: validParamTitles.map(p => ({
                                 id: p.id,  // 保留 id（新增时为 undefined，后端会自动生成）
                                 title: p.title.trim(),
@@ -397,4 +427,9 @@ export default {
         },
     },
 };
-</script> 
+</script>
+
+<style scoped>
+.copy-cell { cursor: pointer; }
+.copy-cell:hover { color: #1890ff; }
+</style>

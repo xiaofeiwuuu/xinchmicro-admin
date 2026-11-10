@@ -16,7 +16,7 @@
         <a-radio-button value="unused">未使用</a-radio-button>
         <a-radio-button value="used">使用中</a-radio-button>
       </a-radio-group>
-      <a-input-search v-model="keyword" placeholder="搜索文件名" allow-clear style="width: 220px;" @search="onFilterChange" />
+      <a-input-search v-model="keyword" placeholder="搜索文件名" allow-clear style="width: 160px;" @search="onFilterChange" />
       <a-button :loading="importing" @click="$refs.importInput.click()">导入历史文件</a-button>
       <input ref="importInput" type="file" accept=".html,.htm,.csv,.txt" style="display: none;" @change="onImportFile" />
       <a-button :disabled="!selectedRowKeys.length || deleting" :loading="deleting" @click="confirmDelete(selectedRowKeys)">
@@ -108,7 +108,7 @@ export default {
   },
   methods: {
     formatSize,
-    typeLabel: (t) => ({ product: '产品', manual: '手册', carousel: '轮播图', company: '公司', live: '线上' }[t] || t),
+    typeLabel: (t) => ({ product: '产品', manual: '手册', carousel: '轮播图', company: '公司', customer: '客户', order: '订单', legal: '协议与规则', live: '线上' }[t] || t),
     checkboxProps(record) {
       return { props: { disabled: !record.deletable } };
     },

@@ -1,4 +1,4 @@
-<!-- 后台右上角的通知铃铛：有人下单、订单付款、申请开票、需要退款时推送。
+<!-- 后台右上角的通知铃铛：订单付款、申请开票、需要退款时推送。
      通知要点「已读」（或点进去）才会消失；每个账号各自记已读。点一条通知跳到订单管理，这一单整行背景色闪几下。
      实现：每 20 秒向服务端取一次未读（没有 WebSocket，云托管多实例下轮询最稳）；切回这个标签页时立刻取一次；
      有新的就弹一条提示、标签页标题前面加未读数。 -->
@@ -180,7 +180,9 @@ export default {
 			this.open = false
 			// 库存通知跳到价格库存页并搜这个产品；其它的跳到订单管理并让这一单闪
 			// 「N 个订单超过 24 小时没发货」这种汇总通知没有具体订单：跳到订单管理，只看待发货的
-			const to = n.keyword && !n.orderNo
+			const to = n.type === 'bill_diff'
+				? { path: '/shop/bills', query: { date: n.keyword, n: String(n.id) } }
+				: n.keyword && !n.orderNo
 				? { path: '/shop/products', query: { keyword: n.keyword, n: String(n.id) } }
 				: n.orderNo
 				? { path: '/shop/orders', query: { highlight: n.orderNo, n: String(n.id) } }
@@ -214,7 +216,7 @@ export default {
 .bell-dot.t-order_paid { background: #52c41a; }
 .bell-dot.t-invoice_requested, .bell-dot.t-after_sales_requested, .bell-dot.t-after_sales_returning { background: #fa8c16; }
 .bell-dot.t-low_stock { background: #fa8c16; }
-.bell-dot.t-refund_needed, .bell-dot.t-refund_failed, .bell-dot.t-out_of_stock, .bell-dot.t-ship_overdue { background: #f5222d; }
+.bell-dot.t-refund_needed, .bell-dot.t-cancel_requested, .bell-dot.t-refund_failed, .bell-dot.t-out_of_stock, .bell-dot.t-ship_overdue { background: #f5222d; }
 .bell-main { flex: 1; min-width: 0; }
 .bell-title { color: #262626; font-weight: 500; line-height: 22px; word-break: break-all; }
 .bell-content { color: #8c8c8c; font-size: 12px; line-height: 18px; margin-top: 2px; word-break: break-all; }

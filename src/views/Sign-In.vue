@@ -86,11 +86,15 @@ export default ({
 						saveAuth(res.data.token, {
 							id: res.data.user.id,
 							username: res.data.user.username,
-							userType: res.data.user.userType
+							userType: res.data.user.userType,
+							roleId: res.data.user.roleId || null,
+							permissions: res.data.user.permissions
 						});
 						
 						this.$message.success(res.message || '登录成功');
-						this.$router.push('/');
+						// 登录前想访问的页面（地址里的 redirect）：只认站内路径，防止被人构造链接登录后跳到别的网站
+						const r = this.$route.query.redirect;
+						this.$router.push(typeof r === 'string' && /^\/(?!\/)/.test(r) && !r.startsWith('/login') ? r : '/');
 					} catch (error) {
 						notifyError(this, error, '', '登录失败');
 					} finally {

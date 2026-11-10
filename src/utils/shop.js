@@ -46,12 +46,16 @@ export const LOG_ACTION = {
 	cancel: '取消订单',
 	expire: '超时未支付，系统自动取消',
 	ship: '发货',
+	ship_photo: '发货凭证',
 	receive: '确认收货',
 	invoice_apply: '申请开票',
 	invoice_issue: '开具发票',
 	invoice_file: '上传发票文件',
 	invoice_withdraw: '开票申请已撤销',
 	invoice_reject: '驳回开票申请',
+	admin_remark: '商家备注',
+	cancel_request: '客户申请取消订单',
+	cancel_reject: '拒绝取消申请',
 	wechat_paid: '微信支付成功',
 	paid_but_not_payable: '订单已不能收款，但微信支付收了款（会自动退款）',
 	refund_requested: '已向微信申请退款',
@@ -108,3 +112,20 @@ export function parseCsv(text) {
 	if (row.some((x) => x !== '')) rows.push(row)
 	return rows
 }
+
+// 阶梯价在表格里的写法：一个单元格，几档用分号隔开，例「10件起8元;100件起6元」（也认「10=8;100=6」「10 8」）。
+// 不用「10:8」：Excel 会把它当成时间（10:08）。返回 { tiers: [{ minQty, price }] } 或 { error }
+export function parseTierText(text) {
+	const parts = String(text || '').split(/[;；\r\n]+/).map((x) => x.trim()).filter(Boolean)
+	if (!parts.length) return { error: '没有内容' }
+	const tiers = []
+	for (const part of parts) {
+		const m = part.match(/^(\d+)\s*(?:件起|件|起)?\s*(?:=|:|：|@|,|，)?\s*(\d+(?:\.\d+)?)\s*元?$/)
+		if (!m) return { error: `「${part}」看不懂，请写成 10件起8元;100件起6元` }
+		tiers.push({ minQty: Number(m[1]), price: m[2] })
+	}
+	return { tiers }
+}
+
+// 反过来：导出时把阶梯写成上面的格式
+export const tierText = (tiers) => (tiers || []).map((t) => `${t.minQty}件起${Number(t.price)}元`).join(';')

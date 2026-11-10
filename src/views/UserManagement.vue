@@ -5,13 +5,13 @@
 				<div>
 					<a-input-search
 						placeholder="搜索用户名"
-						style="width: 200px; margin-right: 16px;"
+						style="width: 160px; margin-right: 16px;"
 						@search="handleSearch"
 						v-model="searchUsername"
 					/>
 					<a-select
 						placeholder="账号类型"
-						style="width: 120px; margin-right: 16px;"
+						style="width: 160px; margin-right: 16px;"
 						allowClear
 						@change="handleTypeChange"
 						v-model="searchUserType"
@@ -38,13 +38,25 @@
 				@change="handleTableChange"
 				rowKey="id"
 			>
-				<template slot="userType" slot-scope="text">
+				<template slot="username" slot-scope="text">
+					<span class="copy-cell" title="点击复制" @click="copyText(text)">{{ text }}</span>
+				</template>
+				<template slot="userType" slot-scope="text, record">
 					<a-tag :color="text === 'main' ? 'blue' : 'green'">
 						{{ text === 'main' ? '主账号' : '子账号' }}
 					</a-tag>
+					<div class="role-line">
+						<span v-if="record.userType === 'main'" class="muted">全部功能</span>
+						<span v-else-if="record.roleName">{{ record.roleName }}</span>
+						<span v-else class="muted">原有权限（没有设置角色）</span>
+					</div>
+				</template>
+				<template slot="remark" slot-scope="text">
+					<span v-if="text" class="remark-text" :title="text">{{ text }}</span>
+					<span v-else class="muted">-</span>
 				</template>
 				<template slot="action" slot-scope="text, record">
-					<a-space>
+					<a-space :style="{ flexWrap: 'wrap' }">
 						<a @click="showEditUserModal(record)">编辑</a>
 						<a-divider type="vertical" />
 						<a @click="showChangePasswordModal(record)">修改密码</a>
@@ -79,6 +91,16 @@
 				</a-form-model-item>
 				<a-form-model-item label="密码" prop="password" v-if="!userForm.id">
 					<a-input-password v-model="userForm.password" placeholder="请输入密码" />
+				</a-form-model-item>
+				<a-form-model-item label="备注（选填）" v-if="currentUser.userType === 'main'">
+					<a-input v-model="userForm.remark" :maxLength="200" placeholder="比如：仓库小王在用" />
+				</a-form-model-item>
+				<!-- 角色：只有主账号能设置，只能设在子账号上（主账号拥有全部功能） -->
+				<a-form-model-item label="角色" v-if="showRoleField">
+					<a-select v-model="userForm.roleId" allowClear placeholder="不选择：保持原有权限" style="width: 100%">
+						<a-select-option v-for="r in roles" :key="r.id" :value="r.id">{{ r.name }}</a-select-option>
+					</a-select>
+					<div class="role-hint">选了角色，这个账号只能使用角色里勾选的功能；不选则保持原来子账号的权限。角色在「角色管理」里配置。</div>
 				</a-form-model-item>
 			</a-form-model>
 		</a-modal>
@@ -126,6 +148,7 @@
 
 <script>
 import { notifyError } from '@/utils/notify';
+import { copyToClipboard } from '@/utils/copy';
 import { getUserInfo } from '@/utils/auth';
 import { 
 	createMainUser, 
@@ -135,7 +158,8 @@ import {
 	getUserById, 
 	updateUser, 
 	deleteUser, 
-	resetUserPassword 
+	resetUserPassword,
+	getRoles
 } from '@/api'
 import dateUtils from '@/utils/dateUtils'
 
@@ -172,20 +196,22 @@ export default {
 			pagination: newPagination(),
 			columns: [
 				{
-					title: 'ID',
-					dataIndex: 'id',
-					key: 'id'
-				},
-				{
 					title: '用户名',
 					dataIndex: 'username',
-					key: 'username'
+					key: 'username',
+					scopedSlots: { customRender: 'username' }
 				},
 				{
-					title: '账号类型',
+					title: '账号类型 / 角色',
 					dataIndex: 'userType',
 					key: 'userType',
 					scopedSlots: { customRender: 'userType' }
+				},
+				{
+					title: '备注',
+					dataIndex: 'remark',
+					key: 'remark',
+					scopedSlots: { customRender: 'remark' }
 				},
 				{
 					title: '创建时间',
@@ -201,10 +227,14 @@ export default {
 			],
 			userModalVisible: false,
 			userModalType: 'edit', // 'main', 'sub' 或 'edit'
+			roles: [],
 			userForm: {
 				id: null,
 				username: '',
-				password: ''
+				password: '',
+				roleId: undefined,
+				remark: '',
+				userType: ''
 			},
 			userRules: {
 				username: [
@@ -259,6 +289,11 @@ export default {
 		}
 	},
 	computed: {
+		// 创建子账号、编辑子账号时显示角色；编辑主账号不显示（主账号拥有全部功能）。只有主账号能打开这个页面设置
+		showRoleField() {
+			if (this.currentUser.userType !== 'main') return false;
+			return this.userModalType === 'sub' || (this.userModalType === 'edit' && this.userForm.userType === 'sub');
+		},
 		userModalTitle() {
 			if (this.userModalType === 'main') return '创建主账号';
 			if (this.userModalType === 'sub') return '创建子账号';
@@ -272,8 +307,22 @@ export default {
 			this.currentUser = { id: userInfo.id, username: userInfo.username, userType: userInfo.userType };
 		}
 		this.fetchUsers();
+		this.fetchRoles();
 	},
 	methods: {
+		// 点击复制（页面文字默认不能选中，需要复制的字段用点击复制）
+		async copyText(text) {
+			if (await copyToClipboard(text)) this.$message.success('已复制：' + text);
+			else this.$message.warning('复制失败，请手动复制');
+		},
+		async fetchRoles() {
+			if (this.currentUser.userType !== 'main') return;
+			try {
+				this.roles = await getRoles();
+			} catch (error) {
+				// 取不到角色只是少了下拉选项，不影响账号管理
+			}
+		},
 		// 格式化时间
 		formatDateTime(dateTime) {
 			if (!dateTime) return '-';
@@ -332,7 +381,10 @@ export default {
 			this.userForm = {
 				id: null,
 				username: '',
-				password: ''
+				password: '',
+				roleId: undefined,
+				remark: '',
+				userType: type
 			};
 			this.userModalVisible = true;
 		},
@@ -340,7 +392,10 @@ export default {
 			this.userModalType = 'edit';
 			this.userForm = {
 				id: user.id,
-				username: user.username
+				username: user.username,
+				roleId: user.roleId || undefined,
+				remark: user.remark || '',
+				userType: user.userType
 			};
 			this.userModalVisible = true;
 		},
@@ -376,12 +431,15 @@ export default {
 							this.$message.success(res.message || '主账号创建成功');
 							this.fetchUsers();
 						} else if (this.userModalType === 'sub') {
-							const res = await createSubUser(this.userForm);
+							const res = await createSubUser({ username: this.userForm.username, password: this.userForm.password, roleId: this.userForm.roleId || null, remark: (this.userForm.remark || '').trim() });
 							this.$message.success(res.message || '子账号创建成功');
 							this.fetchUsers();
 						} else {
 							// 编辑用户
-							const res = await updateUser(this.userForm.id, { username: this.userForm.username });
+							const body = { username: this.userForm.username, remark: (this.userForm.remark || '').trim() };
+							// 角色只有主账号能改，只能改子账号的；清空 = 取消角色（回到原有权限）
+							if (this.showRoleField) body.roleId = this.userForm.roleId || null;
+							const res = await updateUser(this.userForm.id, body);
 							this.$message.success(res.message || '用户信息更新成功');
 							this.fetchUsers();
 						}
@@ -459,4 +517,11 @@ export default {
 .text-danger {
 	color: #f5222d;
 }
+.muted { color: #8c8c8c; }
+.copy-cell { cursor: pointer; }
+.copy-cell:hover { color: #1890ff; }
+.role-line { margin-top: 2px; font-size: 13px; }
+.remark-text { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-all; }
+>>> .ant-table a { white-space: nowrap; }
+.role-hint { color: #8c8c8c; font-size: 12.5px; line-height: 1.6; margin-top: 4px; }
 </style> 

@@ -2,6 +2,7 @@
 	<div>
 		<a-card :bordered="false">
 			<a-form class="co-form" layout="vertical" :form="form" @submit="handleSubmit">
+				<fieldset :disabled="!canEdit" class="co-fieldset">
 				<a-form-item label="公司Logo">
 					<a-upload
 						name="file"
@@ -213,10 +214,11 @@
 					</div>
 				</a-form-item> -->
 				<a-form-item>
-					<a-button type="primary" html-type="submit" :loading="loading">
+					<a-button v-can="'company.edit'" type="primary" html-type="submit" :loading="loading">
 						保存
 					</a-button>
 				</a-form-item>
+				</fieldset>
 			</a-form>
 		</a-card>
 	</div>
@@ -224,12 +226,14 @@
 
 <script>
 import { notifyError } from '@/utils/notify';
+import { can } from '@/utils/auth';
 import { toDisplayUrl } from '@/utils/cloudUrl';
 import { getCompanyInfo, updateCompanyInfo, uploadFile, uploadPdf, deletePdf, getPdfDownloadUrl } from '@/api'
 
 export default {
 	data() {
 		return {
+			canEdit: can('company.edit'), // 只有查看权限时整张表单是只读的
 			form: this.$form.createForm(this),
 			loading: false,
 			previewVisible: false,
@@ -666,4 +670,5 @@ export default {
 	margin-top: 8px;
 	color: #666;
 }
+.co-fieldset { border: none; margin: 0; padding: 0; min-width: 0; }
 </style> 

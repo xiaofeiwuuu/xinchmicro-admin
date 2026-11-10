@@ -4,13 +4,13 @@
         <div style="margin-bottom: 16px;">
             <a-form layout="inline">
                 <a-form-item>
-                    <a-input v-model="searchForm.name" placeholder="请输入产品名称" size="small" />
+                    <a-input v-model="searchForm.name" placeholder="请输入产品名称" size="small" style="width: 160px" />
                 </a-form-item>
                 <a-form-item>
                     <a-select
                         v-model="searchForm.catalogId"
                         placeholder="请选择目录"
-                        style="width: 200px"
+                        style="width: 160px"
                         size="small"
                         allowClear
                     >
@@ -23,7 +23,7 @@
                     <a-select
                         v-model="searchForm.enFile"
                         placeholder="英文版"
-                        style="width: 130px"
+                        style="width: 160px"
                         size="small"
                         allowClear
                     >
@@ -39,10 +39,10 @@
         </div>
 
         <!-- 新增产品按钮 -->
-        <a-button type="primary" icon="plus" size="small" @click="showModal()" style="margin-bottom: 16px;">
+        <a-button v-can="'product.edit'" type="primary" icon="plus" size="small" @click="showModal()" style="margin-bottom: 16px;">
             新增产品
         </a-button>
-        <a-button icon="cloud-upload" size="small" @click="$router.push('/products/bulk-en')" style="margin-bottom: 16px; margin-left: 8px;">
+        <a-button v-can="'product.edit'" icon="cloud-upload" size="small" @click="$router.push('/products/bulk-en')" style="margin-bottom: 16px; margin-left: 8px;">
             批量关联英文PDF
         </a-button>
 
@@ -57,8 +57,8 @@
                 </div>
             </template>
             <template slot="name" slot-scope="text, record">
-                {{ text }}
-                <div v-if="record.nameEn" style="color: #999; font-size: 12px;">{{ record.nameEn }}</div>
+                <span class="copy-cell" title="点击复制" @click="copyName(text)">{{ text }}</span>
+                <div v-if="record.nameEn" style="color: #999; font-size: 12px;"><span class="copy-cell" title="点击复制" @click="copyName(record.nameEn)">{{ record.nameEn }}</span></div>
             </template>
             <template slot="catalog" slot-scope="text">
                 {{ text ? text.name : '-' }}
@@ -76,21 +76,21 @@
             <span slot="action" slot-scope="text, record" class="row-actions">
                 <!-- 详情按钮：只看，不改 -->
                 <a-button type="link" size="small" @click="openDetail(record)">
-                    <a-icon type="eye" />
+                    <a-icon type="eye" style="color: #111827" />
                     <span class="text-dark">详情</span>
                 </a-button>
                 <!-- 编辑按钮 -->
-                <a-button type="link" size="small" @click="showModal(record)">
+                <a-button v-can="'product.edit'" type="link" size="small" @click="showModal(record)">
                     <icon-edit />
                     <span class="text-dark">编辑</span>
                 </a-button>
                 <!-- 去价格库存页：带上产品名和目录，在那边定位到这个产品 -->
-                <a-button type="link" size="small" @click="goShopProduct(record)">
+                <a-button v-can="'price.view'" type="link" size="small" @click="goShopProduct(record)">
                     <icon-price />
                     <span class="text-dark">价格库存</span>
                 </a-button>
                 <!-- 删除按钮 -->
-                <a-button type="link" size="small" @click="handleDelete(record)">
+                <a-button v-can="'product.edit'" type="link" size="small" @click="handleDelete(record)">
                     <icon-delete />
                     <span class="text-danger">删除</span>
                 </a-button>
@@ -104,7 +104,8 @@
                 <div class="pd-col">
                     <div class="pd-title">基本信息</div>
                     <div class="pd-grid">
-                        <div class="pd-k">产品名称</div><div class="pd-v">{{ detailRecord.name }}</div>
+                        <div class="pd-k">产品名称</div><div class="pd-v"><span class="copy-cell" title="点击复制" @click="copyName(detailRecord.name)">{{ detailRecord.name }}</span></div>
+                        <template v-if="detailRecord.nameEn"><div class="pd-k">英文名称</div><div class="pd-v"><span class="copy-cell" title="点击复制" @click="copyName(detailRecord.nameEn)">{{ detailRecord.nameEn }}</span></div></template>
                         <div class="pd-k">所属分类</div><div class="pd-v">{{ detailRecord.catalog && detailRecord.catalog.category ? detailRecord.catalog.category.name : '-' }}</div>
                         <div class="pd-k">所属目录</div><div class="pd-v">{{ detailRecord.catalog ? detailRecord.catalog.name : '-' }}</div>
                         <div class="pd-k">排序</div><div class="pd-v">{{ detailRecord.sort }}</div>
@@ -133,7 +134,7 @@
             </div>
             <div class="pd-foot">
                 <span></span>
-                <a-button type="primary" size="small" @click="editFromDetail">编辑这个产品</a-button>
+                <a-button v-can="'product.edit'" type="primary" size="small" @click="editFromDetail">编辑这个产品</a-button>
             </div>
         </a-modal>
 
@@ -277,6 +278,7 @@ import IconEdit from '@/components/IconEdit.vue';
 import IconDelete from '@/components/IconDelete.vue';
 import IconPrice from '@/components/IconPrice.vue';
 import { notifyError } from '@/utils/notify';
+import { copyToClipboard } from '@/utils/copy';
 import { getProducts, createProduct, deleteProduct, getCatalogs, updateProduct, deletePdfs } from '@/api';
 import { fileHref } from '@/utils/cloudUrl';
 import PdfUploader from '@/components/PdfUploader.vue';
@@ -380,6 +382,10 @@ export default {
         this.fetchData();
     },
     methods: {
+        async copyName(text) {
+            if (await copyToClipboard(text)) this.$message.success('已复制：' + text);
+            else this.$message.warning('复制失败，请手动复制');
+        },
         // 获取目录列表
         fetchCatalogs() {
             getCatalogs().then(res => {
@@ -678,4 +684,6 @@ export default {
 .pd-k { background: #fafafa; color: #595959; }
 .pd-v { background: #fff; word-break: break-all; }
 .pd-empty { color: #bfbfbf; }
+.copy-cell { cursor: pointer; }
+.copy-cell:hover { color: #1890ff; }
 </style>

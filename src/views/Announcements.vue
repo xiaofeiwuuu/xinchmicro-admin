@@ -3,7 +3,7 @@
 <template>
 	<div>
 		<a-card :bordered="false" class="mb-24">
-			<a-button type="primary" icon="plus" @click="openAdd">新增公告</a-button>
+			<a-button v-can="'announcement.edit'" type="primary" icon="plus" @click="openAdd">新增公告</a-button>
 			<span class="hint">客户打开小程序时弹窗显示；每条公告每台设备只弹一次，修改内容后会再弹一次。</span>
 		</a-card>
 
@@ -21,7 +21,7 @@
 				</template>
 				<template slot="updatedAt" slot-scope="text">{{ fmt(text, '-') }}</template>
 				<template slot="action" slot-scope="text, record">
-					<div class="row-actions">
+					<div class="row-actions" v-can="'announcement.edit'">
 						<a @click="openEdit(record)">编辑</a>
 						<a v-if="record.status === 'active'" @click="toggle(record)">停用</a>
 						<a v-else @click="toggle(record)">启用</a>

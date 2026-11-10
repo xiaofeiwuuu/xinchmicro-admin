@@ -4,18 +4,18 @@
     <div style="margin-bottom: 16px;">
       <a-form layout="inline">
         <a-form-item>
-          <a-select v-model="searchForm.type" placeholder="手册类型" style="width: 150px;" allowClear>
+          <a-select v-model="searchForm.type" placeholder="手册类型" style="width: 160px;" allowClear>
             <a-select-option value="product">产品手册</a-select-option>
             <a-select-option value="safety">安全手册</a-select-option>
           </a-select>
         </a-form-item>
         <a-form-item>
-          <a-select v-model="searchForm.lang" placeholder="全部语言" style="width: 130px;" allowClear>
+          <a-select v-model="searchForm.lang" placeholder="全部语言" style="width: 160px;" allowClear>
             <a-select-option v-for="item in langOptions" :key="item.value" :value="item.value">{{ item.label }}</a-select-option>
           </a-select>
         </a-form-item>
         <a-form-item>
-          <a-input v-model="searchForm.keyword" placeholder="搜索手册名称" style="width: 200px;" />
+          <a-input v-model="searchForm.keyword" placeholder="搜索手册名称" style="width: 160px;" />
         </a-form-item>
         <a-form-item>
           <a-button type="primary" size="small" @click="handleSearch">查询</a-button>
@@ -25,7 +25,7 @@
     </div>
 
     <!-- 新增手册按钮 -->
-    <a-button type="primary" icon="plus" size="small" @click="handleAdd" style="margin-bottom: 16px;">
+    <a-button v-can="'manual.edit'" type="primary" icon="plus" size="small" @click="handleAdd" style="margin-bottom: 16px;">
       新增手册
     </a-button>
 
@@ -61,13 +61,13 @@
       <template slot="action" slot-scope="text, record">
        <span style="white-space: nowrap;">
         <!-- 编辑按钮 -->
-        <a-button type="link" size="small" @click="handleEdit(record)">
+        <a-button v-can="'manual.edit'" type="link" size="small" @click="handleEdit(record)">
           <icon-edit />
           <span class="text-dark">编辑</span>
         </a-button>
-        <a-divider type="vertical" />
+        <a-divider v-can="'manual.edit'" type="vertical" />
         <!-- 删除按钮 -->
-        <a-button type="link" size="small" @click="handleDelete(record)">
+        <a-button v-can="'manual.edit'" type="link" size="small" @click="handleDelete(record)">
           <icon-delete />
           <span class="text-danger">删除</span>
         </a-button>

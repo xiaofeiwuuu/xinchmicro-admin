@@ -4,10 +4,10 @@
         <div style="margin-bottom: 16px;">
             <a-form layout="inline">
                 <a-form-item>
-                    <a-input v-model="searchForm.name" placeholder="请输入分类名称" size="small" />
+                    <a-input v-model="searchForm.name" placeholder="请输入分类名称" size="small" style="width: 160px" />
                 </a-form-item>
                 <a-form-item>
-                    <a-input-number v-model="searchForm.sort_order" placeholder="排序值" size="small" :min="0" style="width: 100px" />
+                    <a-input-number v-model="searchForm.sort_order" placeholder="排序值" size="small" :min="0" style="width: 160px" />
                 </a-form-item>
                 <a-form-item>
                     <a-button type="primary" size="small" @click="handleSearch">查询</a-button>
@@ -17,22 +17,26 @@
         </div>
 
         <!-- 新增分类按钮 -->
-        <a-button type="primary" icon="plus" size="small" @click="showModal()" style="margin-bottom: 16px;">
+        <a-button v-can="'category.edit'" type="primary" icon="plus" size="small" @click="showModal()" style="margin-bottom: 16px;">
             新增分类
         </a-button>
 
         <!-- 表格组件 -->
         <a-table :scroll="tableScroll" :columns="columns" :data-source="data" :loading="loading" rowKey="id"
             :pagination="pagination" @change="handleTableChange">
+            <template slot="copy" slot-scope="text">
+                <span v-if="text" class="copy-cell" title="点击复制" @click="copyName(text)">{{ text }}</span>
+                <span v-else>-</span>
+            </template>
             <span slot="action" slot-scope="text, record">
                 <!-- 编辑按钮 -->
-                <a-button type="link" size="small" @click="showModal(record)">
+                <a-button v-can="'category.edit'" type="link" size="small" @click="showModal(record)">
                     <icon-edit />
                     <span class="text-dark">编辑</span>
                 </a-button>
-                <a-divider type="vertical" />
+                <a-divider v-can="'category.edit'" type="vertical" />
                 <!-- 删除按钮 -->
-                <a-button type="link" size="small" @click="handleDelete(record)">
+                <a-button v-can="'category.edit'" type="link" size="small" @click="handleDelete(record)">
                     <icon-delete />
                     <span class="text-danger">删除</span>
                 </a-button>
@@ -90,6 +94,7 @@
 import IconEdit from '@/components/IconEdit.vue';
 import IconDelete from '@/components/IconDelete.vue';
 import { notifyError } from '@/utils/notify';
+import { copyToClipboard } from '@/utils/copy';
 import { getCategories, createCategory, updateCategory, deleteCategory } from '@/api';
 
 // 定义表格列的配置
@@ -97,11 +102,12 @@ const columns = [
     {
         title: '分类名称',
         dataIndex: 'name',
+        scopedSlots: { customRender: 'copy' },
     },
     {
         title: '英文名称',
         dataIndex: 'nameEn',
-        customRender: (text) => text || '-',
+        scopedSlots: { customRender: 'copy' },
     },
     {
         title: '排序',
@@ -142,6 +148,10 @@ export default {
         this.fetchData();
     },
     methods: {
+        async copyName(text) {
+            if (await copyToClipboard(text)) this.$message.success('已复制：' + text);
+            else this.$message.warning('复制失败，请手动复制');
+        },
         // 搜索方法
         handleSearch() {
             this.fetchData();
@@ -260,4 +270,9 @@ export default {
         },
     },
 };
-</script> 
+</script>
+
+<style scoped>
+.copy-cell { cursor: pointer; }
+.copy-cell:hover { color: #1890ff; }
+</style>

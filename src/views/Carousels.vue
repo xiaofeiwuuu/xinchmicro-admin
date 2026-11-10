@@ -1,7 +1,7 @@
 <template>
 	<div>
 		<a-card class="mb-24" :bordered="false">
-			<a-button type="primary" @click="showModal()">
+			<a-button v-can="'carousel.edit'" type="primary" @click="showModal()">
 				<a-icon type="plus" /> 新增轮播图
 			</a-button>
 		</a-card>
@@ -24,9 +24,9 @@
 				</template>
 				<template slot="action" slot-scope="text, record">
 					<a-space>
-						<a @click="showModal(record)">编辑</a>
-						<a-divider type="vertical" />
-						<a-popconfirm
+						<a v-can="'carousel.edit'" @click="showModal(record)">编辑</a>
+						<a-divider v-can="'carousel.edit'" type="vertical" />
+						<a-popconfirm v-can="'carousel.edit'"
 							title="确定要删除这个轮播图吗？"
 							@confirm="handleDelete(record.id)"
 							okText="是"

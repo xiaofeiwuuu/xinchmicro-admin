@@ -46,3 +46,21 @@ export function isLoggedIn(now = Date.now()) {
 export function isMainUser() {
   return getUserInfo().userType === 'main';
 }
+
+// ---- 功能权限（服务端是 utils/permissions.js 的功能目录；这里只用来显示菜单和拦路由，真正的权限在服务端校验）----
+// 登录时和页面打开时（刷新）存进用户信息。主账号是 '*'；子账号是功能 key 数组；取不到时按「没有任何权限」处理，宁可少显示
+export function getPermissions() {
+  const info = getUserInfo();
+  if (info.userType === 'main') return '*';
+  return Array.isArray(info.permissions) ? info.permissions : [];
+}
+
+export function can(key) {
+  const p = getPermissions();
+  return p === '*' || p.includes(key);
+}
+
+// 用 /users/me 的结果更新本地保存的用户信息（令牌不变）
+export function updateUserInfo(patch) {
+  safe(() => localStorage.setItem(USER_KEY, JSON.stringify({ ...getUserInfo(), ...patch })));
+}

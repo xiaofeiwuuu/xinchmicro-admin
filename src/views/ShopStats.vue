@@ -3,13 +3,8 @@
 		<!-- 时间范围 -->
 		<a-card :bordered="false" class="mb-24">
 			<div class="head">
-				<a-radio-group v-model="range" button-style="solid" @change="pickPreset">
-					<a-radio-button v-for="r in RANGES" :key="r.key" :value="r.key">{{ r.text }}</a-radio-button>
-				</a-radio-group>
-				<!-- 自定义日期段：选好开始和结束日期就用它统计（含首尾两天，最长一年）；点上面的按钮会清掉 -->
-				<a-range-picker v-model="customDates" :locale="pickerLocale" :disabledDate="disabledDate" :allowClear="true" format="YYYY-MM-DD"
-					:placeholder="['开始日期', '结束日期']" :class="{ 'range-on': range === 'custom' }" style="width: 260px;" @change="pickCustom" />
-				<span class="muted">{{ unitText }}统计 · 北京时间 · 和上一个同样长的时间段比</span>
+				<!-- 日期选择在前，预设按钮在后。选了自定义日期段（含首尾两天，最长一年）就用它统计，点预设按钮会清掉 -->
+				<date-range-quick v-model="customDates" :quicks="RANGES" :activeKey="range === 'custom' ? '' : range" :pickerWidth="260" @change="pickCustom" @quick="onPreset" />
 				<a-button size="small" icon="reload" :loading="loading" @click="load">刷新</a-button>
 			</div>
 		</a-card>
@@ -120,9 +115,7 @@
 <script>
 import TrendChart from '@/components/TrendChart.vue'
 import IconCrown from '@/components/IconCrown.vue'
-import moment from 'moment'
-import 'moment/locale/zh-cn'
-import pickerLocale from 'ant-design-vue/lib/date-picker/locale/zh_CN'
+import DateRangeQuick from '@/components/DateRangeQuick.vue'
 import { getShopStats } from '@/api'
 import { notifyError } from '@/utils/notify'
 
@@ -141,9 +134,9 @@ const group = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 
 export default {
 	name: 'ShopStats',
-	components: { TrendChart, IconCrown },
+	components: { TrendChart, IconCrown, DateRangeQuick },
 	data() {
-		return { RANGES, pickerLocale, range: '7d', chartType: 'bar', customDates: [], customFrom: '', customTo: '', data: null, loading: false, seq: 0 }
+		return { RANGES, range: '7d', chartType: 'bar', customDates: [], customFrom: '', customTo: '', data: null, loading: false, seq: 0 }
 	},
 	computed: {
 		t() { return this.data.totals },
@@ -162,7 +155,6 @@ export default {
 		customerItems() { return this.data.buckets.map((b) => ({ label: b.label, title: this.bucketTitle(b), value: b.newCustomers, tip: [`新增客户 ${b.newCustomers} 个`] })) }
 	},
 	created() {
-		moment.locale('zh-cn') // 日期选择器里的月份、星期显示中文
 		this.load()
 	},
 	methods: {
@@ -179,7 +171,8 @@ export default {
 			}
 		},
 		// 点预设按钮：清掉自定义日期
-		pickPreset() {
+		onPreset(key) {
+			this.range = key
 			this.customDates = []
 			this.load()
 		},
@@ -200,8 +193,6 @@ export default {
 			this.range = 'custom'
 			this.load()
 		},
-		// 不能选今天以后的日子
-		disabledDate(current) { return !!current && current.isAfter(moment().endOf('day')) },
 		bucketTitle(b) {
 			if (this.data.unit === 'week') return `${b.label} 起的一周`
 			if (this.data.unit === 'month') return `20${b.label.slice(0, 2)} 年 ${Number(b.label.slice(3))} 月`
@@ -224,7 +215,6 @@ export default {
 </script>
 
 <style scoped>
-.range-on { box-shadow: 0 0 0 1px #1890ff; border-radius: 4px; }
 .head { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }
 .muted { color: #8c8c8c; font-size: 12px; }
 .foot { line-height: 20px; padding: 0 4px 24px; }

@@ -1,49 +1,62 @@
 <template>
 	<div>
 		<a-card :bordered="false" class="mb-24">
-			<a-tag v-if="customerId" closable color="blue" style="margin-right: 16px; padding: 4px 8px;" @close="clearCustomer">客户：{{ customerName || '#' + customerId }}</a-tag>
-			<a-input-search
-				v-model="filters.keyword"
-				placeholder="订单号 / 收货人 / 电话"
-				style="width: 240px; margin-right: 16px;"
-				allowClear
-				@search="handleSearch"
-			/>
-			<a-select v-model="filters.status" placeholder="订单状态" style="width: 130px; margin-right: 16px;" allowClear @change="handleSearch">
+			<a-input v-model="filters.orderNo" placeholder="订单号" style="width: 160px; margin-right: 12px;" allowClear @pressEnter="handleSearch" />
+			<!-- 客户：搜昵称/手机号。从数据统计、客户管理跳过来时按客户筛选，客户名直接显示在框里；点清除或改字就取消按客户筛选 -->
+			<a-input :value="customerId ? customerLabel : filters.customer" placeholder="客户昵称 / 手机号" style="width: 160px; margin-right: 12px;" allowClear @change="onCustomerInput" @pressEnter="handleSearch" />
+			<a-input v-model="filters.receiver" placeholder="收货人 / 电话" style="width: 160px; margin-right: 12px;" allowClear @pressEnter="handleSearch" />
+			<!-- 下单日期段（北京时间，含首尾）：公共组件，日期选择在前，快捷按钮在后 -->
+			<date-range-quick v-model="dates" :pickerWidth="250" :placeholder="['下单开始日期', '下单结束日期']" @change="handleSearch" />
+			<a-select v-model="filters.status" placeholder="订单状态" style="width: 160px; margin-right: 12px;" allowClear @change="handleSearch">
 				<a-select-option v-for="(v, k) in ORDER_STATUS" :key="k" :value="k">{{ v.text }}</a-select-option>
 			</a-select>
-			<a-select v-model="filters.invoice" placeholder="开票状态" style="width: 120px; margin-right: 16px;" allowClear @change="handleSearch">
+			<a-select v-model="filters.invoice" placeholder="开票状态" style="width: 160px; margin-right: 12px;" allowClear @change="handleSearch">
 				<a-select-option v-for="(v, k) in INVOICE_STATUS" :key="k" :value="k">{{ v.text }}</a-select-option>
 			</a-select>
-			<span style="margin-right: 16px;">
-				<a-switch v-model="filters.refundPending" size="small" @change="handleSearch" /> 只看需要退款
-			</span>
-			<span style="margin-right: 16px;">
-				<a-switch v-model="filters.afterSales" size="small" @change="handleSearch" /> 只看售后待处理
-			</span>
+			<a-select v-model="filters.todo" placeholder="待处理事项" style="width: 160px; margin-right: 12px;" allowClear @change="handleSearch">
+				<a-select-option value="refund">需要退款</a-select-option>
+				<a-select-option value="afterSales">售后待处理</a-select-option>
+				<a-select-option value="cancelRequest">客户申请取消</a-select-option>
+			</a-select>
 			<a-button type="primary" @click="handleSearch"><a-icon type="search" /> 搜索</a-button>
+			<a-button style="margin-left: 8px;" @click="handleReset">重置</a-button>
 			<span class="tool-btns">
 				<a-button :loading="exporting" @click="exportOrders">导出订单</a-button>
-				<a-button @click="openBulk">批量发货</a-button>
+				<a-button v-can="'order.ship'" @click="openBulk">批量发货</a-button>
 				<a-button :disabled="!selectedKeys.length" @click="printSelected">打印发货单{{ selectedKeys.length ? '（' + selectedKeys.length + '）' : '' }}</a-button>
 			</span>
 		</a-card>
 
 		<a-card :bordered="false">
 			<a-table class="orders-table" :scroll="tableScroll" rowKey="id" :columns="columns" :dataSource="orders" :pagination="pagination" :loading="loading" :rowClassName="rowClass" :rowSelection="{ selectedRowKeys: selectedKeys, onChange: onSelect }" @change="handleTableChange">
+				<!-- 订单号、客户、收货人的文字点一下就复制（页面默认不能选中文字） -->
+				<template slot="orderNo" slot-scope="text">
+					<span class="copy-cell" title="点击复制" @click="copyText(text)">{{ text }}</span>
+				</template>
 				<template slot="customer" slot-scope="text, record">
-					{{ (record.customer && record.customer.nickname) || '（未设置）' }}
-					<div style="color: #8c8c8c; font-size: 12px;">{{ record.customer && record.customer.phone }}</div>
+					<span v-if="record.customer && record.customer.deleted" class="cust-deleted" title="客户自己注销了账号，个人信息已清除；订单和下单时的收货信息按法律要求保留">已注销用户</span>
+					<span v-else-if="record.customer && record.customer.nickname" class="copy-cell" title="点击复制" @click="copyText(record.customer.nickname)">{{ record.customer.nickname }}</span>
+					<span v-else>（未设置）</span>
+					<div v-if="record.customer && record.customer.phone" style="color: #8c8c8c; font-size: 12px;"><span class="copy-cell" title="点击复制" @click="copyText(record.customer.phone)">{{ record.customer.phone }}</span></div>
 				</template>
 				<template slot="receiver" slot-scope="text, record">
-					{{ record.address.consignee }}
-					<div style="color: #8c8c8c; font-size: 12px;">{{ record.address.phone }}</div>
+					<span class="copy-cell" title="点击复制" @click="copyText(record.address.consignee)">{{ record.address.consignee }}</span>
+					<div style="color: #8c8c8c; font-size: 12px;"><span class="copy-cell" title="点击复制" @click="copyText(record.address.phone)">{{ record.address.phone }}</span></div>
 				</template>
 				<template slot="amount" slot-scope="text">{{ money(text) }}</template>
 				<template slot="status" slot-scope="text, record">
 					<a-tag :color="ORDER_STATUS[text].color">{{ ORDER_STATUS[text].text }}</a-tag>
 					<a-tag v-if="record.refundState" :color="REFUND_STATE[record.refundState].color">{{ REFUND_STATE[record.refundState].text }}</a-tag>
+					<a-tag v-if="record.refundedAmount" :color="record.fullyRefunded ? 'green' : 'orange'">{{ record.fullyRefunded ? '已全额退款' : '已退款 ' + money(record.refundedAmount) }}</a-tag>
+					<a-tag v-if="record.cancelRequest && record.cancelRequest.status === 'pending'" color="orange">申请取消</a-tag>
 					<a-tag v-if="activeSale(record)" :color="AFTER_SALE_STATUS[activeSale(record).status].color">售后：{{ AFTER_SALE_STATUS[activeSale(record).status].short }}</a-tag>
+				</template>
+				<!-- 备注列：客户下单时写的备注（发货要看）、取消原因、最近一次售后的原因和商家处理说明；每条最多两行，完整内容鼠标放上去看，点一下复制 -->
+				<template slot="remark" slot-scope="text, record">
+					<template v-if="remarkLines(record).length">
+						<div v-for="l in remarkLines(record)" :key="l.k" class="rm" :class="l.cls" :title="l.full + '（点击复制）'" @click="copyText(l.full)">{{ l.label }}{{ l.text }}</div>
+					</template>
+					<span v-else style="color: #bfbfbf;">-</span>
 				</template>
 				<template slot="invoice" slot-scope="text">
 					<a-tag :color="INVOICE_STATUS[text].color">{{ INVOICE_STATUS[text].text }}</a-tag>
@@ -51,38 +64,44 @@
 				<template slot="action" slot-scope="text, record">
 					<div class="row-actions">
 						<a @click="openDetail(record.id)">详情</a>
-						<!-- 常用操作直接放在列表里，不用先打开详情；不同状态显示不同的按钮 -->
-						<a v-if="record.status === 'pending_ship'" @click="quickAction(record, 'ship')">发货</a>
-						<a v-if="record.refundPending" class="act-danger" @click="quickAction(record, 'refunded')">标记已退款</a>
-						<a v-if="record.invoiceStatus === 'requesting'" @click="quickAction(record, 'issue')">开发票</a>
-						<a v-if="['pending_payment', 'pending_ship'].includes(record.status)" class="act-danger" @click="quickAction(record, 'cancel')">取消</a>
+						<!-- 其它操作都收进「更多」（按订单状态只列能做的）；有要处理的事（申请取消、售后、退款、开票）时「更多」上有个橙色小点 -->
+						<a-dropdown :trigger="['click']" placement="bottomRight">
+							<a class="more-link" @click.prevent>更多<a-icon type="down" /><i v-if="needsAction(record)" class="more-dot"></i></a>
+							<a-menu slot="overlay" @click="(e) => onMore(record, e.key)">
+								<template v-for="m in moreItems(record)">
+									<a-menu-divider v-if="m.divider" :key="m.key" />
+									<a-menu-item v-else :key="m.key"><span :class="{ 'act-danger': m.danger }">{{ m.label }}</span></a-menu-item>
+								</template>
+							</a-menu>
+						</a-dropdown>
 					</div>
 				</template>
 			</a-table>
 		</a-card>
 
-		<!-- 订单详情：摘要条 → 订单信息 → 商品 → 发票 → 操作记录（时间轴，最新在上）；操作按钮固定在弹窗底部 -->
+		<!-- 订单详情：摘要条 → 订单信息 → 商品 → 发票 → 操作记录（时间轴，最新在上） ；只看不改，操作都在列表的操作列 -->
 		<a-modal v-model="detailVisible" title="订单详情" :width="980" :destroyOnClose="true" :bodyStyle="{ maxHeight: '70vh', overflowY: 'auto', padding: '20px 24px' }">
 			<a-spin :spinning="detailLoading">
 				<div v-if="detail" class="od">
-					<!-- 摘要：状态、金额、订单号、下单和付款时间 -->
+					<!-- 摘要：左边订单号、下单和付款时间，右边状态和金额 -->
 					<div class="od-sum">
-						<div class="od-sum-main">
-							<div class="od-tags">
-								<a-tag :color="ORDER_STATUS[detail.status].color" class="od-status">{{ ORDER_STATUS[detail.status].text }}</a-tag>
-								<a-tag v-if="detail.refundState" :color="REFUND_STATE[detail.refundState].color">{{ REFUND_STATE[detail.refundState].text }}</a-tag>
-							</div>
-							<div class="od-total">{{ money(detail.totalAmount) }}</div>
-						</div>
 						<div class="od-sum-meta">
 							<div><span class="k">订单号</span>{{ detail.orderNo }}<a class="od-copy" @click="copyText(detail.orderNo)">复制</a></div>
 							<div><span class="k">下单时间</span>{{ detail.createdAt }}</div>
 							<div><span class="k">付款</span>{{ detail.paidBy ? PAID_BY[detail.paidBy] + (detail.paidAt ? '　' + detail.paidAt : '') : '未付款' }}</div>
 						</div>
+						<div class="od-sum-main">
+							<div class="od-tags">
+								<a-tag :color="ORDER_STATUS[detail.status].color" class="od-status">{{ ORDER_STATUS[detail.status].text }}</a-tag>
+								<a-tag v-if="detail.refundedAmount" :color="detail.fullyRefunded ? 'green' : 'orange'" class="od-status">{{ detail.fullyRefunded ? '已全额退款' : '已退款 ' + money(detail.refundedAmount) }}</a-tag>
+								<a-tag v-if="detail.refundState" :color="REFUND_STATE[detail.refundState].color">{{ REFUND_STATE[detail.refundState].text }}</a-tag>
+							</div>
+							<div class="od-total">{{ money(detail.totalAmount) }}</div>
+						</div>
 					</div>
 
 					<a-alert v-if="detail.refundPending" type="error" show-icon class="od-alert"
-						message="这个订单有一笔微信付款需要退还给客户。系统会自动向微信申请退款（见下方操作记录）；如果多次失败，请到微信商户平台手动退款，再点「标记已退款」。" />
+						message="这个订单有一笔微信付款需要退还给客户。系统会自动向微信申请退款（见下方操作记录）；如果多次失败，请到微信商户平台手动退款，再在订单列表这一行点「标记已退款」。" />
 
 					<!-- 订单进度：下单 → 付款 → 发货 → 收货 → 开票，所有步骤都显示。
 						没到的灰色、做完的绿色、正在进行的蓝色；取消、退款失败是红色。取消的订单只显示走过的步骤和取消、退款 -->
@@ -111,11 +130,23 @@
 					<!-- 订单信息：客户、收货、物流放在一张卡里，不再分左右两栏 -->
 					<div class="od-card">
 						<div class="od-title">订单信息</div>
-						<div class="od-kv"><span class="k">客户</span><span class="v">{{ (detail.customer && detail.customer.nickname) || '（未设置）' }}　{{ detail.customer && detail.customer.phone }}</span></div>
-						<div class="od-kv"><span class="k">收货人</span><span class="v">{{ detail.address.consignee }}　{{ detail.address.phone }}</span></div>
-						<div class="od-kv"><span class="k">收货地址</span><span class="v od-pre">{{ detail.address.region }} {{ detail.address.detail }}</span></div>
+						<div class="od-kv"><span class="k">客户</span><span class="v"><span v-if="detail.customer && detail.customer.deleted" class="cust-deleted" title="客户自己注销了账号，个人信息已清除；订单和下单时的收货信息按法律要求保留">已注销用户</span><span v-else-if="detail.customer && detail.customer.nickname" class="copy-cell" title="点击复制" @click="copyText(detail.customer.nickname)">{{ detail.customer.nickname }}</span><span v-else>（未设置）</span>　<span v-if="detail.customer && detail.customer.phone" class="copy-cell" title="点击复制" @click="copyText(detail.customer.phone)">{{ detail.customer.phone }}</span></span></div>
+						<div class="od-kv"><span class="k">收货人</span><span class="v"><span class="copy-cell" title="点击复制" @click="copyText(detail.address.consignee)">{{ detail.address.consignee }}</span>　<span class="copy-cell" title="点击复制" @click="copyText(detail.address.phone)">{{ detail.address.phone }}</span></span></div>
+						<div class="od-kv"><span class="k">收货地址</span><span class="v od-pre"><span class="copy-cell" title="点击复制" @click="copyText(detail.address.region + ' ' + detail.address.detail)">{{ detail.address.region }} {{ detail.address.detail }}</span></span></div>
 						<div v-if="detail.remark" class="od-kv"><span class="k">客户备注</span><span class="v od-pre">{{ detail.remark }}</span></div>
+						<div class="od-kv"><span class="k">商家备注</span><span class="v od-pre"><span v-if="detail.adminRemark" class="rm-admin-text">{{ detail.adminRemark }}</span><span v-else style="color: #bfbfbf;">暂无（只有后台能看到）</span><a v-can="'order.remark'" class="od-copy" @click="openAction('remark')">{{ detail.adminRemark ? '修改' : '添加' }}</a></span></div>
+						<div v-if="detail.cancelRequest" class="od-kv"><span class="k">取消申请</span><span class="v od-pre">
+							<a-tag :color="{ pending: 'orange', rejected: '', approved: 'green' }[detail.cancelRequest.status]">{{ { pending: '待处理', rejected: '已拒绝', approved: '已同意，订单已取消' }[detail.cancelRequest.status] }}</a-tag>
+							客户原因：{{ detail.cancelRequest.reason }}<template v-if="detail.cancelRequest.rejectReason">　拒绝原因：{{ detail.cancelRequest.rejectReason }}</template>
+							<template v-if="detail.cancelRequest.status === 'pending' && detail.status === 'pending_ship'">
+								<template v-if="can('order.cancel')"><a class="od-copy" @click="approveCancel(detail)">同意取消</a><a class="od-copy act-danger" @click="openAction('cancel_no')">拒绝</a></template>
+							</template>
+						</span></div>
 						<div v-if="detail.expressNo" class="od-kv"><span class="k">物流</span><span class="v">{{ detail.expressCompany }}　{{ detail.expressNo }}<a class="od-copy" @click="copyText(detail.expressNo)">复制</a></span></div>
+						<div v-if="detail.expressNo" class="od-kv"><span class="k">发货凭证</span><span class="v">
+							<a v-if="detail.shipPhotoFileID" @click="openInvoiceFile(detail.shipPhotoFileID)">查看照片</a>
+							<span v-else style="color: #8c8c8c;">未上传（选填，仅后台可见）</span>
+						</span></div>
 						<div v-if="detail.cancelReason" class="od-kv"><span class="k">取消原因</span><span class="v">{{ detail.cancelReason }}</span></div>
 					</div>
 
@@ -124,7 +155,7 @@
 						<table class="od-table">
 							<tr><th>名称</th><th class="r" style="width: 100px;">单价</th><th class="r" style="width: 70px;">数量</th><th class="r" style="width: 110px;">小计</th></tr>
 							<tr v-for="i in detail.items" :key="i.productId">
-								<td>{{ i.name }}</td><td class="r">{{ money(i.price) }}</td><td class="r">{{ i.qty }}</td><td class="r">{{ money(i.subtotal) }}</td>
+								<td><span class="copy-cell" title="点击复制" @click="copyText(i.name)">{{ i.name }}</span></td><td class="r">{{ money(i.price) }}</td><td class="r">{{ i.qty }}</td><td class="r">{{ money(i.subtotal) }}</td>
 							</tr>
 							<tr class="sum"><td colspan="3" class="r">合计</td><td class="r">{{ money(detail.totalAmount) }}</td></tr>
 						</table>
@@ -144,17 +175,10 @@
 							<div v-if="s.returnNo" class="od-kv"><span class="k">客户寄回</span><span class="v">{{ s.returnCompany }}　{{ s.returnNo }}<a class="od-copy" @click="copyText(s.returnNo)">复制</a></span></div>
 							<div v-if="s.refundAmount" class="od-kv"><span class="k">退款金额</span><span class="v">{{ money(s.refundAmount) }}<span v-if="s.refundState" class="od-sub">{{ AFTER_SALE_REFUND_STATE[s.refundState] }}</span></span></div>
 							<div v-if="s.replaceNo" class="od-kv"><span class="k">寄出新货</span><span class="v">{{ s.replaceCompany }}　{{ s.replaceNo }}</span></div>
+							<div v-if="s.returnTo" class="od-kv"><span class="k">退回地址</span><span class="v">{{ s.returnTo.name }}　{{ s.returnTo.phone }}　<span class="od-pre">{{ s.returnTo.address }}</span></span></div>
 							<div v-if="s.adminNote" class="od-kv"><span class="k">{{ s.status === 'rejected' ? '拒绝原因' : '处理说明' }}</span><span class="v od-pre">{{ s.adminNote }}</span></div>
 							<div class="as-actions">
-								<template v-if="s.status === 'requested'">
-									<a-button size="small" type="primary" @click="openAction('as_approve', s)">{{ s.type === 'refund' ? '同意并退款' : '同意' }}</a-button>
-									<a-button size="small" @click="openAction('as_reject', s)">拒绝</a-button>
-								</template>
-								<template v-else-if="s.status === 'returning'">
-									<a-button size="small" type="primary" @click="openAction('as_received', s)">{{ s.type === 'exchange' ? '确认收到，寄出新货' : '确认收到，退款' }}</a-button>
-									<a-button size="small" @click="openAction('as_reject', s)">验货不通过，拒绝</a-button>
-								</template>
-								<a-button v-else-if="s.status === 'refund_failed'" size="small" type="primary" @click="openAction('as_retry', s)">重试退款</a-button>
+								<span v-if="['requested', 'returning', 'refund_failed'].includes(s.status)" class="od-sub" style="margin-left: 0;">需要处理：请在订单列表这一行的操作列里操作</span>
 								<span v-else-if="s.status === 'refunding'" class="od-sub" style="margin-left: 0;">微信正在退款，到账后会自动变成「已退款」</span>
 								<span v-else-if="s.status === 'approved'" class="od-sub" style="margin-left: 0;">等客户按你写的地址寄回，寄出后这里会出现快递单号</span>
 							</div>
@@ -167,11 +191,12 @@
 						<div class="od-title">发票 <a-tag :color="INVOICE_STATUS[detail.invoiceStatus].color" class="od-mini">{{ INVOICE_STATUS[detail.invoiceStatus].text }}</a-tag></div>
 						<template v-if="detail.invoice">
 							<div class="od-kv"><span class="k">类型</span><span class="v">{{ INVOICE_TYPE[detail.invoice.type] }}</span></div>
-							<div class="od-kv"><span class="k">抬头</span><span class="v">{{ detail.invoice.title }}</span></div>
-							<div class="od-kv"><span class="k">税号</span><span class="v">{{ detail.invoice.taxId }}</span></div>
+							<div class="od-kv"><span class="k">应开金额</span><span class="v"><b>{{ money(detail.invoiceAmount) }}</b><span v-if="detail.refundedAmount" class="od-sub">订单 {{ money(detail.totalAmount) }}，已退款 {{ money(detail.refundedAmount) }}，按实付减去已退的金额开票</span></span></div>
+							<div class="od-kv"><span class="k">抬头</span><span class="v">{{ detail.invoice.title }}<a-tag v-if="detail.invoice.kind === 'personal'" style="margin-left: 8px;">个人</a-tag></span></div>
+							<div v-if="detail.invoice.kind !== 'personal'" class="od-kv"><span class="k">税号</span><span class="v">{{ detail.invoice.taxId }}</span></div>
 							<div v-if="detail.invoice.address" class="od-kv"><span class="k">地址电话</span><span class="v">{{ detail.invoice.address }} {{ detail.invoice.phone }}</span></div>
 							<div v-if="detail.invoice.bank" class="od-kv"><span class="k">开户行账号</span><span class="v">{{ detail.invoice.bank }} {{ detail.invoice.account }}</span></div>
-							<div v-if="detail.invoice.email" class="od-kv"><span class="k">邮箱</span><span class="v">{{ detail.invoice.email }}</span></div>
+							
 						</template>
 						<div v-if="detail.invoiceNo" class="od-kv"><span class="k">发票号码</span><span class="v">{{ detail.invoiceNo }}</span></div>
 						<div v-if="detail.invoiceStatus === 'issued'" class="od-kv">
@@ -188,18 +213,9 @@
 
 				</div>
 			</a-spin>
-			<!-- 操作按钮固定在弹窗底部，不用滚到最下面才看到 -->
+			<!-- 详情只看不改：所有操作在订单列表的操作列里 -->
 			<template slot="footer">
 				<a-button @click="detailVisible = false">关闭</a-button>
-				<template v-if="detail">
-					<a-button @click="printOne(detail)">打印发货单</a-button>
-					<a-button v-if="detail.invoiceStatus === 'requesting'" @click="openAction('reject')">驳回开票申请</a-button>
-					<a-button v-if="detail.invoiceStatus === 'requesting'" type="primary" ghost @click="openAction('issue')">开具发票</a-button>
-					<a-button v-if="detail.invoiceStatus === 'issued'" type="primary" ghost @click="openAction('invoicefile')">{{ detail.invoiceFileID ? '替换发票文件' : '上传发票文件' }}</a-button>
-					<a-button v-if="detail.refundPending" @click="openAction('refunded')">标记已退款</a-button>
-					<a-button v-if="canCancel" type="danger" ghost @click="openAction('cancel')">取消订单</a-button>
-					<a-button v-if="detail.status === 'pending_ship'" type="primary" @click="openAction('ship')">发货</a-button>
-				</template>
 			</template>
 		</a-modal>
 
@@ -248,24 +264,40 @@
 					<a-select-option :value="OTHER_CARRIER">其他（手动填写）</a-select-option>
 				</a-select>
 				<a-input v-if="action.carrier === OTHER_CARRIER" v-model="action.customCarrier" maxLength="50" placeholder="快递公司名称" style="margin-bottom: 12px;" />
-				<a-input v-model="action.expressNo" maxLength="50" placeholder="运单号" @pressEnter="submitAction" />
+				<a-input v-model="action.expressNo" maxLength="50" placeholder="运单号" @blur="checkDuplicates" @pressEnter="submitAction" />
+				<div v-for="h in expressHints" :key="h" class="ship-warn">{{ h }}</div>
+				<div class="quick-label" style="margin-top: 14px;">发货凭证照片（选填，仅后台可见，不会给客户和微信）</div>
+				<image-picker v-model="action.photo" kind="ship-photo" button-text="选择面单或货物照片" @uploading="(v) => (uploadingFile = v)" />
+			</template>
+			<template v-else-if="action.type === 'shipphoto'">
+				<div v-if="detail && detail.shipPhotoFileID" class="ship-sum">
+					当前已有发货凭证：<a @click="openInvoiceFile(detail.shipPhotoFileID)">查看照片</a>　<a class="act-danger" @click="clearShipPhoto">清除</a>
+				</div>
+				<div class="quick-label">{{ detail && detail.shipPhotoFileID ? '换一张（选了之后点「确定」才会替换）' : '面单或货物照片（仅后台可见，不会给客户和微信）' }}</div>
+				<image-picker v-model="action.photo" kind="ship-photo" button-text="选择图片" @uploading="(v) => (uploadingFile = v)" />
 			</template>
 			<template v-else-if="action.type === 'cancel'">
-				<a-alert v-if="detail && detail.paidBy" type="warning" show-icon style="margin-bottom: 12px;"
-					:message="'这个订单已经用微信支付付款，取消后会自动向微信申请全额退款（原路退回给客户）。'" />
+				<div class="quick-label">常用原因</div>
+				<div class="quick-reasons">
+					<span v-for="q in CANCEL_QUICK" :key="q" class="quick-chip" :class="{ on: action.reason === quickText(q) }" @click="action.reason = quickText(q)">{{ q }}</span>
+				</div>
 				<a-textarea v-model="action.reason" :rows="3" maxLength="100" placeholder="取消原因（必填，客户能看到）" />
+				<div class="quick-tip">微信推送只显示前 20 个字，重点写前面；订单详情里显示全文。</div>
+				<div v-if="detail && detail.paidBy" class="quick-tip">这个订单已用微信支付付款，取消后会自动向微信申请全额退款（原路退回给客户）。</div>
 			</template>
 			<template v-else-if="action.type === 'issue'">
 				<div v-if="detail && detail.invoice" class="ship-sum">
 					<div>{{ INVOICE_TYPE[detail.invoice.type] }}　{{ detail.invoice.title }}</div>
-					<div>税号：{{ detail.invoice.taxId }}</div>
+					<div v-if="detail.invoice.kind !== 'personal'">税号：{{ detail.invoice.taxId }}</div>
+					<div v-else>个人抬头（无税号）</div>
 				</div>
-				<a-input v-model="action.invoiceNo" maxLength="50" placeholder="发票号码（财务在税务系统开具后填写）" style="margin-bottom: 12px;" />
-				<pdf-uploader :value="action.file" @change="(f) => (action.file = f)" button-text="上传电子发票（PDF，可选）" :removable="true" @uploading="(v) => (uploadingFile = v)" />
-				<div class="od-sub" style="margin: 8px 0 0;">上传后客户可以在小程序订单里直接下载；不上传也能开具，之后可以补传。</div>
+				<div class="ret-addr-tip" style="color: #262626;">应开金额：<b>{{ money(detail.invoiceAmount) }}</b><span v-if="detail.refundedAmount" style="color: #fa8c16;">（订单 {{ money(detail.totalAmount) }}，已退款 {{ money(detail.refundedAmount) }}，请按应开金额开具）</span></div>
+				<div class="ret-addr-tip">发票文件必须上传：客户在小程序里下载或查看，支持 PDF 或图片（JPG、PNG）。</div>
+				<pdf-uploader :value="action.file" :allow-image="true" kind="invoice" @change="(f) => (action.file = f)" button-text="上传发票文件（PDF 或图片）" :removable="true" @uploading="(v) => (uploadingFile = v)" />
+				<a-input v-model="action.invoiceNo" maxLength="50" placeholder="发票号码（选填）" style="margin-top: 12px;" />
 			</template>
 			<template v-else-if="action.type === 'invoicefile'">
-				<pdf-uploader :value="action.file" @change="(f) => (action.file = f)" button-text="选择发票文件（PDF）" :removable="true" @uploading="(v) => (uploadingFile = v)" />
+				<pdf-uploader :value="action.file" :allow-image="true" kind="invoice" @change="(f) => (action.file = f)" button-text="选择发票文件（PDF 或图片）" :removable="true" @uploading="(v) => (uploadingFile = v)" />
 				<div class="od-sub" style="margin: 8px 0 0;">替换后客户下载到的就是新文件，旧文件会从云存储删除。</div>
 			</template>
 			<template v-else-if="action.type === 'reject'">
@@ -280,7 +312,11 @@
 				<a-alert v-if="detail.invoiceStatus === 'issued' && action.type !== 'as_reject'" type="warning" show-icon style="margin-bottom: 12px;"
 					message="这个订单已经开具发票，退款后需要财务做红字发票冲销（系统不处理）。" />
 				<template v-if="action.type === 'as_approve' && action.sale.type !== 'refund'">
-					<a-textarea v-model="action.note" :rows="4" maxLength="200" placeholder="退货地址、联系人和电话（必填，客户会按这个地址寄回）" />
+					<div class="ret-addr-tip">客户会按下面的地址寄回，每一项客户都能单独复制。填过一次，下次自动带出。</div>
+					<a-input v-model="action.returnName" maxLength="30" addon-before="收件人" placeholder="例如 李四" style="margin-bottom: 10px;" />
+					<a-input v-model="action.returnPhone" maxLength="30" addon-before="电　话" placeholder="手机或座机" style="margin-bottom: 10px;" />
+					<a-input v-model="action.returnAddress" maxLength="150" addon-before="地　址" placeholder="省市区 + 详细地址" style="margin-bottom: 10px;" />
+					<a-input v-model="action.note" maxLength="200" addon-before="备　注" placeholder="选填，例如「请注明订单号」" />
 				</template>
 				<template v-else-if="action.type === 'as_approve' || action.type === 'as_retry' || (action.type === 'as_received' && action.sale.type === 'return_refund')">
 					<a-input v-model="action.amount" addon-before="退款金额 ¥" placeholder="例如 50 或 50.00" style="margin-bottom: 12px;" />
@@ -300,6 +336,16 @@
 					<a-textarea v-model="action.reason" :rows="3" maxLength="200" placeholder="拒绝原因（必填，客户能看到）" />
 				</template>
 			</template>
+			<template v-else-if="action.type === 'cancel_no'">
+				<div class="ship-sum">
+					<div>订单 {{ detail.orderNo }}　客户申请取消的原因：{{ detail.cancelRequest && detail.cancelRequest.reason }}</div>
+				</div>
+				<a-textarea v-model="action.reason" :rows="3" maxLength="200" placeholder="拒绝原因（必填，客户在订单里能看到，例如：已经打包，明天发出）" />
+			</template>
+			<template v-else-if="action.type === 'remark'">
+				<div class="quick-label">商家备注：只有后台能看到，客户看不到。留空保存 = 清除。</div>
+				<a-textarea v-model="action.note" :rows="4" maxLength="500" placeholder="例如：电话确认过，周五前发；客户要拆成两单发" />
+			</template>
 			<template v-else-if="action.type === 'refunded'">
 				<p>确认已经在微信商户平台把款项退还给客户？确认后会去掉「需要退款」标记。</p>
 				<a-textarea v-model="action.note" :rows="2" maxLength="200" placeholder="备注（可选）" />
@@ -310,21 +356,30 @@
 
 <script>
 import { notifyError } from '@/utils/notify'
+import { can } from '@/utils/auth'
 import PdfUploader from '@/components/PdfUploader.vue'
-import { getShopOrders, getShopOrder, shipShopOrder, cancelShopOrder, markShopOrderRefunded, issueShopInvoice, rejectShopInvoice, setShopInvoiceFile, approveAfterSale, rejectAfterSale, receivedAfterSale, retryAfterSaleRefund, bulkShipShopOrders, getCompanyInfo, getPdfDownloadUrl, deletePdfs } from '@/api'
+import ImagePicker from '@/components/ImagePicker.vue'
+import { getShopOrders, getShopOrder, shipShopOrder, cancelShopOrder, markShopOrderRefunded, issueShopInvoice, rejectShopInvoice, setShopOrderRemark, approveShopCancelRequest, rejectShopCancelRequest, setShopInvoiceFile, approveAfterSale, rejectAfterSale, receivedAfterSale, retryAfterSaleRefund, bulkShipShopOrders, setShopShipPhoto, checkExpressNo, getCompanyInfo, getPdfDownloadUrl, deletePdfs } from '@/api'
 import { ordersCsv, bulkShipTemplate, deliveryNotesHtml, openPrint, downloadText } from '@/utils/orderTools'
 import { parseCsv } from '@/utils/shop'
+import DateRangeQuick from '@/components/DateRangeQuick.vue'
 import { ORDER_STATUS, REFUND_STATE, INVOICE_STATUS, INVOICE_TYPE, PAID_BY, LOG_ACTION, ACTOR, AFTER_SALE_TYPE, AFTER_SALE_STATUS, AFTER_SALE_REFUND_STATE, money } from '@/utils/shop'
 
 // 常用快递公司（发货时下拉选择；没有的选「其他」手动填）
 const CARRIERS = ['顺丰速运', '中通快递', '圆通速递', '申通快递', '韵达快递', '极兔速递', '京东物流', '德邦快递', 'EMS', '邮政包裹']
 const OTHER_CARRIER = '__other__'
+// 取消订单的常用原因（点一下填进输入框，还能再改；已付款的订单自动加上「，已全额退款」；推送里只显示前 20 个字，所以写得短）
+const CANCEL_QUICK = ['商品缺货', '商品已下架', '价格有误', '地址无法配送', '客户要求取消']
 const LAST_CARRIER_KEY = 'shipCarrier'
 const lastCarrier = () => { try { return localStorage.getItem(LAST_CARRIER_KEY) || '' } catch (e) { return '' } }
+const RET_ADDR_KEY = 'lastReturnAddr'
+const lastReturnAddr = () => { try { return JSON.parse(localStorage.getItem(RET_ADDR_KEY)) || {} } catch (e) { return {} } }
+const rememberReturnAddr = (v) => { try { localStorage.setItem(RET_ADDR_KEY, JSON.stringify(v)) } catch (e) { /* 存不了就算了 */ } }
 const rememberCarrier = (c) => { try { localStorage.setItem(LAST_CARRIER_KEY, c) } catch (e) { /* 存不了就算了 */ } }
 
 const ACTIONS = {
 	ship: { title: '发货' },
+	shipphoto: { title: '上传发货凭证' },
 	cancel: { title: '取消订单' },
 	issue: { title: '开具发票' },
 	invoicefile: { title: '发票文件' },
@@ -332,6 +387,8 @@ const ACTIONS = {
 	refunded: { title: '标记已退款' },
 	as_approve: { title: '同意售后' },
 	as_reject: { title: '拒绝售后' },
+	cancel_no: { title: '拒绝取消申请' },
+	remark: { title: '商家备注' },
 	as_received: { title: '确认收到退货' },
 	as_retry: { title: '重试退款' }
 }
@@ -343,7 +400,7 @@ import { newPagination, applyTableChange } from '@/utils/pagination'
 
 export default {
 	mixins: [fixedListLayout],
-	components: { PdfUploader },
+	components: { DateRangeQuick, PdfUploader, ImagePicker },
 	data() {
 		return {
 			uploadingFile: false,
@@ -354,8 +411,9 @@ export default {
 			bulk: { rows: [], okCount: 0, failCount: 0, done: false, running: false, error: '' },
 			showLogs: false,
 			STEP_STATE: { done: '已完成', current: '进行中', todo: '未开始', bad: '' },
-			ORDER_STATUS, REFUND_STATE, INVOICE_STATUS, INVOICE_TYPE, PAID_BY, LOG_ACTION, ACTOR, ACTIONS, CARRIERS, OTHER_CARRIER, AFTER_SALE_TYPE, AFTER_SALE_STATUS, AFTER_SALE_REFUND_STATE,
-			filters: { keyword: '', status: this.$route.query.status || undefined, invoice: undefined, refundPending: false, afterSales: false },
+			dates: [],
+			ORDER_STATUS, REFUND_STATE, INVOICE_STATUS, INVOICE_TYPE, PAID_BY, LOG_ACTION, ACTOR, ACTIONS, CARRIERS, OTHER_CARRIER, CANCEL_QUICK, AFTER_SALE_TYPE, AFTER_SALE_STATUS, AFTER_SALE_REFUND_STATE,
+			filters: { orderNo: '', customer: '', receiver: '', status: this.$route.query.status || undefined, invoice: undefined, todo: undefined },
 			// 从右上角通知点进来：要让这一单的整行闪几下（订单号）；flashNo 是正在闪的那一行
 			wantFlash: this.$route.query.highlight || '',
 			flashNo: '',
@@ -366,12 +424,13 @@ export default {
 			orders: [],
 			pagination: newPagination(),
 			columns: [
-				{ title: '订单号', dataIndex: 'orderNo', key: 'orderNo' },
+				{ title: '订单号', dataIndex: 'orderNo', key: 'orderNo', scopedSlots: { customRender: 'orderNo' } },
 				{ title: '客户', key: 'customer', scopedSlots: { customRender: 'customer' } },
 				{ title: '收货人', key: 'receiver', scopedSlots: { customRender: 'receiver' } },
 				{ title: '金额', dataIndex: 'totalAmount', key: 'totalAmount', scopedSlots: { customRender: 'amount' } },
 				{ title: '状态', dataIndex: 'status', key: 'status', scopedSlots: { customRender: 'status' } },
 				{ title: '开票', dataIndex: 'invoiceStatus', key: 'invoiceStatus', scopedSlots: { customRender: 'invoice' } },
+				{ title: '备注', key: 'remark', scopedSlots: { customRender: 'remark' } },
 				{ title: '下单时间', dataIndex: 'createdAt', key: 'createdAt' },
 				{ title: '操作', key: 'action', scopedSlots: { customRender: 'action' } }
 			],
@@ -384,6 +443,27 @@ export default {
 		}
 	},
 	computed: {
+		// 按客户筛选的标签文字：优先用地址里带的名字，没有就取列表里这个客户的昵称/手机号，都没有才显示编号
+		customerLabel() {
+			if (this.customerName) return this.customerName
+			const c = this.orders[0] && this.orders[0].customer
+			return (c && (c.nickname || c.phone)) || '#' + this.customerId
+		},
+		// 发货运单号的可疑之处（只提醒，不拦截：特殊单号、合并发货都是正常情况）
+		expressHints() {
+			const a = this.action
+			if (!a || a.type !== 'ship') return []
+			const no = String(a.expressNo || '').trim()
+			if (!no) return []
+			const company = a.carrier === OTHER_CARRIER ? String(a.customCarrier || '') : String(a.carrier || '')
+			const out = []
+			if (!/^[A-Za-z0-9-]+$/.test(no)) out.push('运单号里有空格、中文或特殊符号，请检查是不是复制多了')
+			else if (no.length < 8 || no.length > 30) out.push('运单号一般是 8~30 位字母数字，请检查是否漏填或多填')
+			if (this.detail && no === this.detail.orderNo) out.push('运单号和订单号一样，是不是填错了')
+			if (company.includes('顺丰') && /^[A-Za-z0-9-]+$/.test(no) && !/^(SF\d{12,15}|\d{12})$/i.test(no)) out.push('顺丰运单号一般是 SF 开头加 12~15 位数字，或 12 位数字')
+			if ((a.dups || []).length) out.push(`这个运单号已经用在订单 ${a.dups.map((d) => d.orderNo).join('、')} 上（同一个包裹合并发多个订单可以忽略）`)
+			return out
+		},
 		// 订单进度。state：done 做完 / current 正在进行 / todo 没到 / bad 取消或失败
 		steps() {
 			const d = this.detail
@@ -410,6 +490,16 @@ export default {
 			}
 			const shipped = ['shipped', 'completed'].includes(d.status)
 			const inv = d.invoiceStatus
+			// 已经全额退款（售后）：流程到退款就结束了，不再显示「确认收货」「开具发票」
+			if (d.fullyRefunded) {
+				const sale = (d.afterSales || []).find((x) => x.status === 'refunded')
+				return [
+					S('提交订单', 'done', d.createdAt),
+					S('支付成功', 'done', d.paidAt || at('wechat_paid')),
+					S('商家发货', 'done', at('ship'), d.expressNo ? `${d.expressCompany} ${d.expressNo}` : ''),
+					S('已全额退款', 'done', (sale && sale.refundedAt) || at('after_sales_refunded', 'wechat_refunded'), `售后退款 ${money(d.refundedAmount)}`)
+				]
+			}
 			return [
 				S('提交订单', 'done', d.createdAt),
 				paid ? S('支付成功', 'done', d.paidAt || at('wechat_paid')) : S('等待付款', 'current', '', '超时会自动取消'),
@@ -426,9 +516,6 @@ export default {
 			if (!d) return 0
 			const used = (d.afterSales || []).filter((s) => ['refunding', 'refunded'].includes(s.status)).reduce((n, s) => n + Math.round((s.refundAmount || 0) * 100), 0)
 			return Math.max(0, Math.round(d.totalAmount * 100) - used) / 100
-		},
-		canCancel() {
-			return this.detail && ['pending_payment', 'pending_ship'].includes(this.detail.status)
 		}
 	},
 	beforeDestroy() {
@@ -439,7 +526,8 @@ export default {
 		'$route.query'(q, old) {
 			if (q.status && (q.status !== old.status || q.n !== old.n)) {
 				// 汇总通知（N 个订单超时没发货）：按状态筛
-				this.filters = { keyword: '', status: q.status, invoice: undefined, refundPending: false, afterSales: false }
+				this.dates = []
+				this.filters = { orderNo: '', customer: '', receiver: '', status: q.status, invoice: undefined, todo: undefined }
 				this.customerId = ''
 				this.customerName = ''
 				return this.handleSearch()
@@ -447,7 +535,8 @@ export default {
 			if (q.highlight) {
 				// 通知：回到完整的订单列表（清掉筛选），找到这一单让它闪
 				this.wantFlash = q.highlight
-				this.filters = { keyword: '', status: undefined, invoice: undefined, refundPending: false, afterSales: false }
+				this.dates = []
+				this.filters = { orderNo: '', customer: '', receiver: '', status: undefined, invoice: undefined, todo: undefined }
 				this.customerId = ''
 				this.customerName = ''
 				return this.handleSearch()
@@ -463,6 +552,54 @@ export default {
 		this.fetch()
 	},
 	methods: {
+		can, // 模板里按功能权限显示操作（服务端也会拦）
+		// 运单号填完后（离开输入框时）查一下有没有被别的订单用过；只提醒不拦截
+		async checkDuplicates() {
+			const no = String((this.action && this.action.expressNo) || '').trim()
+			if (!no || !this.detail) { this.action.dups = []; return }
+			try { this.action.dups = (await checkExpressNo(no, this.detail.id)) || [] } catch (e) { this.action.dups = [] }
+		},
+		// 发货前最后确认：把快递、运单号、收货人再摆一遍，有可疑的地方一起列出来
+		confirmShip(company, a) {
+			const d = this.detail
+			const h = this.$createElement
+			const warns = [...this.expressHints]
+			return new Promise((resolve) => {
+				this.$confirm({
+					title: '确认发货？',
+					okText: '确认发货',
+					cancelText: '再检查一下',
+					content: h('div', { style: 'line-height: 24px;' }, [
+						h('div', `订单：${d.orderNo}`),
+						h('div', `快递：${company}　运单号：${a.expressNo.trim()}`),
+						d.address ? h('div', `收货人：${d.address.consignee}　${d.address.phone}`) : null,
+						d.address ? h('div', `地址：${d.address.region} ${d.address.detail}`) : null,
+						h('div', { style: 'color: #8c8c8c;' }, a.photo && a.photo.fileID ? '已附发货凭证照片' : '未附发货凭证照片（选填）'),
+						...warns.map((w) => h('div', { style: 'color: #fa8c16; margin-top: 4px;' }, '⚠ ' + w)),
+						h('div', { style: 'color: #8c8c8c; margin-top: 8px;' }, '发货后会把快递信息录入微信，客户在微信订单里能看到，录入后不一定能再改。')
+					]),
+					onOk: () => resolve(true),
+					onCancel: () => resolve(false)
+				})
+			})
+		},
+		clearShipPhoto() {
+			this.$confirm({
+				title: '清除发货凭证照片？',
+				content: '清除后无法恢复。',
+				okText: '清除',
+				cancelText: '取消',
+				onOk: async () => {
+					try {
+						this.detail = await setShopShipPhoto(this.detail.id, '')
+						this.$message.success('已清除')
+					} catch (error) { notifyError(this, error, '清除失败') }
+				}
+			})
+		},
+		quickText(q) {
+			return this.detail && this.detail.paidBy ? q + '，已全额退款' : q
+		},
 		money,
 		async fetch() {
 			try {
@@ -480,10 +617,41 @@ export default {
 		// ---- 导出、批量发货、打印发货单 ----
 		queryParams() {
 			const f = this.filters
-			return { customerId: this.customerId || undefined, keyword: f.keyword.trim(), status: f.status, invoice: f.invoice, refundPending: f.refundPending ? 'true' : undefined, afterSales: f.afterSales ? 'pending' : undefined }
+			return { customerId: this.customerId || undefined, orderNo: f.orderNo.trim(), customer: f.customer.trim(), receiver: f.receiver.trim(), from: this.dates.length === 2 ? this.dates[0].format('YYYY-MM-DD') : undefined, to: this.dates.length === 2 ? this.dates[1].format('YYYY-MM-DD') : undefined, status: f.status, invoice: f.invoice, refundPending: f.todo === 'refund' ? 'true' : undefined, afterSales: f.todo === 'afterSales' ? 'pending' : undefined, cancelRequest: f.todo === 'cancelRequest' ? 'pending' : undefined }
 		},
 		// 导出当前筛选条件下的全部订单（最多 5000 单）。分页取，不一次拉太多
-		async exportOrders() {
+		// 当前搜索条件的文字说明（导出前的确认里用）
+		filterSummary() {
+			const f = this.filters
+			const parts = []
+			if (this.customerId) parts.push('客户：' + this.customerLabel)
+			if (f.orderNo.trim()) parts.push('订单号：' + f.orderNo.trim())
+			if (f.customer.trim()) parts.push('客户：' + f.customer.trim())
+			if (f.receiver.trim()) parts.push('收货人/电话：' + f.receiver.trim())
+			if (this.dates.length === 2) parts.push('下单日期：' + this.dates[0].format('YYYY-MM-DD') + ' 至 ' + this.dates[1].format('YYYY-MM-DD'))
+			if (f.status) parts.push('订单状态：' + ORDER_STATUS[f.status].text)
+			if (f.invoice) parts.push('开票状态：' + INVOICE_STATUS[f.invoice].text)
+			if (f.todo) parts.push('待处理事项：' + ({ refund: '需要退款', afterSales: '售后待处理', cancelRequest: '客户申请取消' }[f.todo] || f.todo))
+			return parts
+		},
+		// 导出前先确认：说清楚导出的是当前搜索条件下的订单、一共多少单
+		exportOrders() {
+			const h = this.$createElement
+			const parts = this.filterSummary()
+			const total = this.pagination.total
+			this.$confirm({
+				title: '导出订单',
+				width: 420,
+				okText: '确认导出',
+				cancelText: '取消',
+				content: h('div', [
+					h('div', ['将导出', h('b', ' 当前搜索结果 '), `共 ${total} 单（最多 5000 单）。`]),
+					h('div', { style: 'margin-top: 8px; color: #8c8c8c;' }, parts.length ? '搜索条件：' + parts.join('；') : '当前没有设置搜索条件，会导出全部订单。')
+				]),
+				onOk: () => this.doExport()
+			})
+		},
+		async doExport() {
 			const MAX = 5000
 			try {
 				this.exporting = true
@@ -571,13 +739,20 @@ export default {
 				const c = await getCompanyInfo()
 				name = (c && c.data && c.data.name) || ''
 			} catch (e) { /* 取不到公司名就不印 */ }
-			if (!openPrint(deliveryNotesHtml(orders, name))) this.$message.warning('浏览器拦截了打印窗口，请允许本页面弹出窗口后重试')
+			const opened = openPrint(deliveryNotesHtml(orders, name))
+			if (!opened) this.$message.warning('浏览器拦截了打印窗口，请允许本页面弹出窗口后重试')
+			return !!opened
 		},
 		printOne(o) {
 			this.print([o])
 		},
-		printSelected() {
-			this.print(this.selectedKeys.map((k) => this.selectedMap[k]).filter(Boolean))
+		// 打印勾选的订单：打印窗口打开了就清掉勾选（印完不用再手动一个个取消）；被浏览器拦截没打开时保留勾选，允许弹窗后可以直接重试
+		async printSelected() {
+			const opened = await this.print(this.selectedKeys.map((k) => this.selectedMap[k]).filter(Boolean))
+			if (opened) {
+				this.selectedKeys = []
+				this.selectedMap = {}
+			}
 		},
 		// 这个订单现在进行中的售后（列表里显示标签）
 		activeSale(record) {
@@ -602,8 +777,8 @@ export default {
 				})
 				clearTimeout(this.flashTimer)
 				this.flashTimer = setTimeout(() => { this.flashNo = '' }, 3600)
-			} else if (this.filters.keyword !== no) {
-				this.filters.keyword = no
+			} else if (this.filters.orderNo !== no) {
+				this.filters.orderNo = no
 				this.pagination.current = 1
 				this.fetch()
 			} else {
@@ -614,11 +789,26 @@ export default {
 			this.pagination.current = 1
 			this.fetch()
 		},
-		clearCustomer() {
+		// 重置：清空关键词、状态、开票状态、两个开关和「按客户筛选」，回到第一页；地址栏里带的筛选条件也一起去掉
+		handleReset() {
+			this.dates = []
+			this.filters = { orderNo: '', customer: '', receiver: '', status: undefined, invoice: undefined, todo: undefined }
 			this.customerId = ''
 			this.customerName = ''
-			this.$router.replace({ path: '/shop/orders' })
+			if (Object.keys(this.$route.query).length) this.$router.replace({ path: '/shop/orders' }).catch(() => {})
 			this.handleSearch()
+		},
+		// 客户框里输入：正在按客户筛选时，清空或改字都先取消按客户筛选，再当作普通搜索词
+		onCustomerInput(e) {
+			const v = e.target.value
+			if (this.customerId) {
+				this.customerId = ''
+				this.customerName = ''
+				if (Object.keys(this.$route.query).length) this.$router.replace({ path: '/shop/orders' }).catch(() => {})
+				this.filters.customer = ''
+				if (!v) return this.handleSearch()
+			}
+			this.filters.customer = v
 		},
 		handleTableChange(p) {
 			applyTableChange(this.pagination, p)
@@ -641,9 +831,118 @@ export default {
 		openAction(type, sale) {
 			const last = lastCarrier()
 			// 上次用的快递公司默认选上（常发一家的话少点一次）。售后的操作带上这条售后，退款金额默认填还能退的全部
-			this.action = { type, sale: sale || null, amount: sale ? String(this.refundable) : '', note: '', reason: '', carrier: CARRIERS.includes(last) ? last : undefined, customCarrier: '', expressNo: '', invoiceNo: '', file: null }
+			this.action = { type, sale: sale || null, amount: sale ? String(this.refundable) : '', note: '', reason: '', carrier: CARRIERS.includes(last) ? last : undefined, customCarrier: '', expressNo: '', invoiceNo: '', file: null, photo: null, dups: [], ...(type === 'as_approve' ? (({ name, phone, address }) => ({ returnName: name || '', returnPhone: phone || '', returnAddress: address || '' }))(lastReturnAddr()) : {}) }
+			if (type === 'remark') this.action.note = (this.detail && this.detail.adminRemark) || ''
 			this.uploadingFile = false
 			this.actionVisible = true
+		},
+		// 「更多」菜单里的操作（按订单状态只列能做的）。divider 是分隔线：处理类、记录类、危险操作各一组
+		// 开具 / 驳回发票后的提示：订阅通知（微信里给客户的服务通知）发出去了没有、没发的原因
+		notifyHint(code, type) {
+			const what = type === 'issue' ? '发票已开具' : '已驳回开票申请'
+			const base = '已处理，但没有通知到客户：'
+			if (!code || code === 'sent') return { text: `${what}，已通知客户` }
+			const reasons = {
+				no_quota: base + '客户提交开票申请时没有点「允许」接收通知（或授权的次数已用完）。客户仍然可以在小程序订单里看到结果',
+				disabled: base + '开票通知功能没开，服务端没有配置开票通知的模板（环境变量 SUBSCRIBE_TEMPLATE_INVOICE）',
+				bad_data: base + '开票通知的字段配置（环境变量 SUBSCRIBE_INVOICE_DATA）格式不对',
+				refused: base + '微信拒绝发送：多半是模板 ID 或字段配置和微信后台里的模板对不上，请检查',
+				no_openid: base + '找不到这个客户的微信标识',
+				error: base + '发送时出错（超时等），详情看服务端日志'
+			}
+			return { warn: true, text: reasons[code] || base + '原因不明（' + code + '）' }
+		},
+		// 每个菜单项需要的功能权限；没有权限的项不显示（服务端也会拦）。没写的（打印发货单）谁都可以
+		menuPerm(key) {
+			return {
+				ship: 'order.ship', shipphoto: 'order.ship', remark: 'order.remark',
+				cancel: 'order.cancel', cancel_ok: 'order.cancel', cancel_no: 'order.cancel', refunded: 'order.cancel',
+				as_approve: 'aftersales.handle', as_reject: 'aftersales.handle', as_received: 'aftersales.handle', as_retry: 'aftersales.handle',
+				issue: 'invoice.handle', reject: 'invoice.handle', invoicefile: 'invoice.handle'
+			}[key]
+		},
+		moreItems(r) {
+			const out = []
+			const add = (key, label, danger) => { const p = this.menuPerm(key); if (!p || can(p)) out.push({ key, label, danger: !!danger }) }
+			const sale = this.activeSale(r)
+			if (r.status === 'pending_ship') add('ship', '发货')
+			if (r.status === 'pending_ship' && r.cancelRequest && r.cancelRequest.status === 'pending') {
+				add('cancel_ok', '同意取消')
+				add('cancel_no', '拒绝取消', true)
+			}
+			if (sale && sale.status === 'requested') {
+				add('as_approve', sale.type === 'refund' ? '同意并退款' : '同意售后')
+				add('as_reject', '拒绝售后', true)
+			} else if (sale && sale.status === 'returning') {
+				add('as_received', sale.type === 'exchange' ? '确认收货并寄新货' : '确认收货并退款')
+				add('as_reject', '验货拒绝', true)
+			} else if (sale && sale.status === 'refund_failed') add('as_retry', '重试退款')
+			if (r.refundPending) add('refunded', '标记已退款', true)
+			if (r.invoiceStatus === 'requesting') {
+				add('issue', '开发票')
+				add('reject', '驳回开票')
+			}
+			if (out.length) out.push({ key: 'd1', divider: true })
+			add('remark', '商家备注')
+			if (r.invoiceStatus === 'issued') add('invoicefile', '发票文件')
+			if (r.expressNo) add('shipphoto', '发货凭证')
+			add('print', '打印发货单')
+			if (['pending_payment', 'pending_ship'].includes(r.status)) {
+				out.push({ key: 'd2', divider: true })
+				add('cancel', '取消订单', true)
+			}
+			return out
+		},
+		// 有没有要后台处理的事（「更多」上的小点）
+		needsAction(r) {
+			const sale = this.activeSale(r)
+			return !!(
+				(can('order.cancel') && r.cancelRequest && r.cancelRequest.status === 'pending' && r.status === 'pending_ship') ||
+				(can('aftersales.handle') && sale && ['requested', 'returning', 'refund_failed'].includes(sale.status)) ||
+				(can('order.cancel') && r.refundPending) ||
+				(can('invoice.handle') && r.invoiceStatus === 'requesting')
+			)
+		},
+		onMore(r, key) {
+			if (key === 'cancel_ok') return this.approveCancel(r)
+			if (key === 'print') return this.printOne(r)
+			if (key.startsWith('as_')) return this.quickAction(r, key, this.activeSale(r))
+			this.quickAction(r, key)
+		},
+		// 同意客户的取消申请：订单会被取消，已付款的金额自动原路退回，库存回补
+		approveCancel(order) {
+			this.$confirm({
+				title: '同意取消这个订单？',
+				content: `订单 ${order.orderNo}（${money(order.totalAmount)}）会被取消，已付款的金额自动原路退回给客户，库存回补。`,
+				okText: '同意并退款',
+				okType: 'danger',
+				cancelText: '再想想',
+				onOk: async () => {
+					try {
+						this.detail = await approveShopCancelRequest(order.id)
+						this.$message.success('已取消订单，退款已提交')
+						this.fetch()
+					} catch (error) {
+						notifyError(this, error, '操作失败')
+						try { this.detail = await getShopOrder(order.id) } catch (e) { /* 保留当前显示 */ }
+						this.fetch()
+					}
+				}
+			})
+		},
+		// 列表「备注」列的内容：客户备注、取消原因、最近一次售后（原因 + 商家处理说明）。没有的不显示
+		remarkLines(o) {
+			const out = []
+			if (o.adminRemark) out.push({ k: 'a', label: '商家：', text: o.adminRemark, full: o.adminRemark, cls: 'rm-admin' })
+			if (o.remark) out.push({ k: 'c', label: '客户：', text: o.remark, full: o.remark, cls: 'rm-cust' })
+			if (o.cancelRequest && o.cancelRequest.status === 'pending') out.push({ k: 'q', label: '申请取消：', text: o.cancelRequest.reason, full: o.cancelRequest.reason, cls: 'rm-cust' })
+			if (o.status === 'cancelled' && o.cancelReason) out.push({ k: 'x', label: '取消：', text: o.cancelReason, full: o.cancelReason, cls: '' })
+			const s = (o.afterSales || [])[0]
+			if (s) {
+				out.push({ k: 's', label: '售后：', text: s.reason, full: s.reason + (s.description ? '（' + s.description + '）' : ''), cls: '' })
+				if (s.adminNote) out.push({ k: 'n', label: '处理：', text: s.adminNote, full: s.adminNote, cls: '' })
+			}
+			return out
 		},
 		// 复制订单号、运单号：优先用剪贴板接口，不可用（非 https 等）时退回到临时文本框
 		copyText(text) {
@@ -678,9 +977,22 @@ export default {
 		discardUploaded() {
 			const f = this.action && this.action.file
 			if (f && f.fileID) deletePdfs([f.fileID])
+			const p = this.action && this.action.photo
+			if (p && p.fileID) deletePdfs([p.fileID])
 		},
 		// 列表里直接操作（发货、取消、标记已退款、开发票）：不用先打开详情
-		quickAction(record, type) {
+		// 需要完整订单信息的操作（售后、发货凭证、发票文件、驳回开票）先取最新详情，其余直接用列表这一行
+		async quickAction(record, type, sale) {
+			if (['as_approve', 'as_reject', 'as_received', 'as_retry', 'shipphoto', 'invoicefile', 'reject'].includes(type)) {
+				try {
+					this.detail = await getShopOrder(record.id)
+				} catch (error) {
+					return notifyError(this, error, '获取订单失败')
+				}
+				const fresh = sale && (this.detail.afterSales || []).find((x) => x.id === sale.id)
+				if (sale && !fresh) return this.$message.warning('这条售后已经变化，请刷新后再试')
+				return this.openAction(type, fresh || null)
+			}
 			this.detail = record
 			this.openAction(type)
 		},
@@ -692,13 +1004,17 @@ export default {
 			if (a.type === 'ship') {
 				const company = a.carrier === OTHER_CARRIER ? String(a.customCarrier || '').trim() : a.carrier
 				if (!need(a.carrier, '请选择快递公司') || !need(company, '请填写快递公司名称') || !need(a.expressNo, '请填写运单号')) return
-				call = () => shipShopOrder(id, { expressCompany: company, expressNo: a.expressNo.trim() })
+				if (!(await this.confirmShip(company, a))) return
+				call = () => shipShopOrder(id, { expressCompany: company, expressNo: a.expressNo.trim(), ...(a.photo && a.photo.fileID ? { photoFileID: a.photo.fileID } : {}) })
+			} else if (a.type === 'shipphoto') {
+				if (!a.photo || !a.photo.fileID) { this.$message.warning('请先选择图片'); return }
+				call = () => setShopShipPhoto(id, a.photo.fileID)
 			} else if (a.type === 'cancel') {
 				if (!need(a.reason, '请填写取消原因')) return
 				call = () => cancelShopOrder(id, a.reason.trim())
 			} else if (a.type === 'issue') {
-				if (!need(a.invoiceNo, '请填写发票号码')) return
-				call = () => issueShopInvoice(id, a.invoiceNo.trim(), a.file)
+				if (!a.file || !a.file.fileID) { this.$message.warning('请上传发票文件（PDF 或图片），客户要在小程序里下载'); return }
+				call = () => issueShopInvoice(id, String(a.invoiceNo || '').trim(), a.file)
 			} else if (a.type === 'invoicefile') {
 				if (!a.file || !a.file.fileID) { this.$message.warning('请先选择发票文件'); return }
 				call = () => setShopInvoiceFile(id, a.file)
@@ -706,8 +1022,9 @@ export default {
 				if (!need(a.reason, '请填写驳回原因')) return
 				call = () => rejectShopInvoice(id, a.reason.trim())
 			} else if (a.type === 'as_approve' && a.sale.type !== 'refund') {
-				if (!need(a.note, '请填写退货地址、联系人和电话')) return
-				call = () => approveAfterSale(a.sale.id, { note: a.note.trim() })
+				if (!need(a.returnName, '请填写收件人') || !need(a.returnPhone, '请填写电话') || !need(a.returnAddress, '请填写退货地址')) return
+				if (!/^[0-9+\-\s()]{5,30}$/.test(a.returnPhone.trim())) { this.$message.warning('电话只能填数字、+、-、空格和括号'); return }
+				call = () => approveAfterSale(a.sale.id, { returnName: a.returnName.trim(), returnPhone: a.returnPhone.trim(), returnAddress: a.returnAddress.trim(), note: a.note.trim() })
 			} else if (['as_approve', 'as_retry'].includes(a.type) || (a.type === 'as_received' && a.sale.type === 'return_refund')) {
 				if (!/^\d+(\.\d{1,2})?$/.test(String(a.amount).trim()) || !(Number(a.amount) > 0)) { this.$message.warning('请填写退款金额（大于 0，最多两位小数）'); return }
 				if (Number(a.amount) > this.refundable + 1e-9) { this.$message.warning(`退款金额不能超过还能退的 ${money(this.refundable)}`); return }
@@ -722,14 +1039,23 @@ export default {
 			} else if (a.type === 'as_reject') {
 				if (!need(a.reason, '请填写拒绝原因')) return
 				call = () => rejectAfterSale(a.sale.id, a.reason.trim())
-			} else if (a.type === 'refunded') call = () => markShopOrderRefunded(id, a.note.trim())
+			} else if (a.type === 'cancel_no') {
+				if (!need(a.reason, '请填写拒绝原因')) return
+				call = () => rejectShopCancelRequest(id, a.reason.trim())
+			} else if (a.type === 'remark') call = () => setShopOrderRemark(id, a.note.trim())
+			else if (a.type === 'refunded') call = () => markShopOrderRefunded(id, a.note.trim())
 			else return
 			try {
 				this.acting = true
-				this.detail = await call()
+				const res = await call()
+				this.detail = res
 				if (a.type === 'ship' && CARRIERS.includes(a.carrier)) rememberCarrier(a.carrier)
+				if (a.type === 'as_approve' && a.sale.type !== 'refund') rememberReturnAddr({ name: a.returnName.trim(), phone: a.returnPhone.trim(), address: a.returnAddress.trim() })
 				this.actionVisible = false
-				this.$message.success('操作成功')
+				// 开具 / 驳回发票后，告诉财务订阅通知有没有发给客户、没发的话是为什么
+				const hint = ['issue', 'reject'].includes(a.type) ? this.notifyHint(res && res.notify, a.type) : null
+				if (hint && hint.warn) this.$message.warning(hint.text, 8)
+				else this.$message.success(hint ? hint.text : '操作成功')
 				this.fetch()
 			} catch (error) {
 				// 状态已经被别人改了等：提示后重新取一次最新的订单
@@ -759,20 +1085,52 @@ export default {
 .bulk-foot { margin-top: 14px; text-align: right; }
 .bulk-foot .ant-btn { margin-left: 8px; }
 .row-actions { gap: 4px 14px; }
+.more-link { position: relative; white-space: nowrap; }
+.more-link .anticon { font-size: 10px; margin-left: 3px; }
+.more-dot { position: absolute; top: -2px; right: -8px; width: 6px; height: 6px; border-radius: 50%; background: #fa8c16; }
 .act-danger { color: #cf1322; }
 .as-block { padding: 10px 0 4px; border-top: 1px dashed #f0f0f0; }
 .as-block:first-of-type { border-top: 0; padding-top: 0; }
 .as-head { display: flex; align-items: center; margin-bottom: 6px; }
 .as-actions { padding: 8px 0 8px 0; }
 .as-actions .ant-btn { margin-right: 8px; }
+/* 发货运单号的可疑提醒 */
+.ship-warn { margin-top: 6px; color: #fa8c16; font-size: 12px; }
+.quick-label { color: #8c8c8c; font-size: 12px; margin-bottom: 8px; }
+.quick-reasons { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.quick-chip { padding: 2px 12px; line-height: 24px; border: 1px solid #d9d9d9; border-radius: 14px; color: #595959; background: #fff; cursor: pointer; user-select: none; transition: all .15s; }
+.quick-chip:hover { color: #1890ff; border-color: #1890ff; }
+.quick-chip.on { color: #fff; background: #1890ff; border-color: #1890ff; }
+.quick-tip { margin-top: 6px; color: #8c8c8c; font-size: 12px; }
 .ship-sum { background: #fafafa; border-radius: 6px; padding: 10px 12px; margin-bottom: 16px; line-height: 22px; color: #595959; }
 .od-sum { display: flex; justify-content: space-between; align-items: center; gap: 24px; padding: 16px 20px; margin-bottom: 16px; background: #f5f9ff; border-radius: 8px; }
-.od-tags { display: flex; align-items: center; margin-bottom: 4px; }
+.od-sum-main { text-align: right; }
+.od-tags { display: flex; align-items: center; justify-content: flex-end; margin-bottom: 4px; }
 .od-status { font-size: 14px; padding: 2px 12px; }
 .od-total { font-size: 28px; font-weight: 600; line-height: 38px; color: #262626; }
 .od-sum-meta { line-height: 24px; color: #262626; font-size: 13px; }
 .od-sum-meta .k { display: inline-block; width: 64px; color: #8c8c8c; }
 .od-copy { margin-left: 10px; font-size: 12px; }
+.ret-addr-tip { color: #8c8c8c; font-size: 12px; margin-bottom: 10px; }
+.rm {
+	font-size: 12px;
+	line-height: 18px;
+	color: #8c8c8c;
+	cursor: pointer;
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	overflow: hidden;
+	word-break: break-all;
+}
+.rm + .rm { margin-top: 2px; }
+.rm-cust { color: #d46b08; }
+.rm-admin { color: #531dab; }
+.rm-admin-text { color: #531dab; }
+.rm:hover { color: #1890ff; }
+.cust-deleted { color: #8c8c8c; cursor: help; }
+.copy-cell { cursor: pointer; }
+.copy-cell:hover { color: #1890ff; }
 .od-alert { margin-bottom: 16px; }
 .od-card { padding: 14px 16px 6px; margin-bottom: 14px; border: 1px solid #f0f0f0; border-radius: 8px; }
 .od-title { font-weight: 600; margin-bottom: 8px; }

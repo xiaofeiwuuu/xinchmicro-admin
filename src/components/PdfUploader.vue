@@ -6,7 +6,7 @@
       :beforeUpload="beforeUpload"
       :showUploadList="{ showRemoveIcon: removable }"
       :remove="handleRemove"
-      accept=".pdf"
+      :accept="allowImage ? '.pdf,.jpg,.jpeg,.png' : '.pdf'"
       :disabled="uploading"
     >
       <a-button :disabled="uploading">
@@ -24,7 +24,7 @@
 
 <script>
 import { uploadPdf, deletePdf } from '@/api';
-import { validatePdfFile, uploadErrorMessage } from '@/utils/i18nData';
+import { validatePdfFile, validateInvoiceFile, uploadErrorMessage } from '@/utils/i18nData';
 
 // 单个 PDF 的上传控件：校验、上传、失败重试、替换时清理本次新传的旧文件。
 // value 是当前文件信息 { fileID, url, filename }（没有则为 null），由父组件持有；
@@ -38,6 +38,10 @@ export default {
     // 是否允许移除（移除后保存即清空该文件）
     removable: { type: Boolean, default: false },
     buttonText: { type: String, default: '上传PDF' },
+    // 同时允许图片（JPG、PNG）：发票文件用，其它地方（产品、手册）只收 PDF
+    allowImage: { type: Boolean, default: false },
+    // 上传用途（决定云存储目录）：发票文件传 'invoice'，不传放产品 PDF 的目录
+    kind: { type: String, default: '' },
     maxSizeMB: { type: Number, default: 20 }
   },
   data() {
@@ -62,7 +66,7 @@ export default {
   },
   methods: {
     beforeUpload(file) {
-      const problem = validatePdfFile(file, this.maxSizeMB);
+      const problem = this.allowImage ? validateInvoiceFile(file, this.maxSizeMB) : validatePdfFile(file, this.maxSizeMB);
       if (problem) {
         this.$message.error(problem);
         return false;
@@ -77,7 +81,7 @@ export default {
       this.uploading = true;
       this.$emit('uploading', true);
       try {
-        const result = await uploadPdf(file);
+        const result = await uploadPdf(file, this.kind || undefined);
         // 同一次编辑里先传 A 又换成 B：A 不会再被引用，从云存储清掉
         await this.discardSessionFile();
         this.$emit('change', { fileID: result.fileID || '', url: result.url, filename: file.name });

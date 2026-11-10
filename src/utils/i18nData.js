@@ -163,6 +163,15 @@ export function validatePdfFile(file, maxSizeMB = 20) {
   return null;
 }
 
+// 发票文件：PDF 或图片（JPG、PNG）。服务端按云存储路径的扩展名再校验一次
+export function validateInvoiceFile(file, maxSizeMB = 20) {
+  const name = (file && file.name) || '';
+  const ok = !!file && (/\.(pdf|jpe?g|png)$/i.test(name) || ['application/pdf', 'image/jpeg', 'image/png'].includes(file.type));
+  if (!ok) return '发票文件只支持 PDF 或图片（JPG、PNG）!';
+  if (maxSizeMB && file.size / 1024 / 1024 >= maxSizeMB) return `文件大小不能超过${maxSizeMB}MB!`;
+  return null;
+}
+
 // 把上传过程中的各种错误转成给用户看的提示
 export function uploadErrorMessage(error) {
   const message = (error && error.message) || '';

@@ -1,5 +1,5 @@
 import fetchWrapper from '@/plugins/fetchWrapper'; // 确保路径正确
-import { isMainUser } from '@/utils/auth';
+import { isMainUser, getToken } from '@/utils/auth';
 
 // 接口地址前缀，由 .env / .env.development / .env.production 里的 VUE_APP_API_BASE_URL 决定（留空表示同源）
 export const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
@@ -169,11 +169,13 @@ export const uploadToCosWithProgress = (file, authData, onProgress) => {
 }
 
 // 文件上传接口
-export const uploadFile = async (file) => {
+// kind：上传用途，决定云存储里放哪个目录（服务端 chunkUploadRoutes 的 KIND_DIRS）：
+// 不传 = 产品、手册等（web/files）；'invoice' = 发票文件；'ship-photo' = 发货凭证照片
+export const uploadFile = async (file, kind) => {
     try {
         
         // 1. 获取上传授权
-        const authData = await getUploadAuth({ path: file.name, size: file.size });
+        const authData = await getUploadAuth({ path: file.name, size: file.size, ...(kind ? { kind } : {}) });
 
         // 2. 上传到腾讯云COS
         const result = await uploadToCos(file, authData);
@@ -188,8 +190,8 @@ export const uploadFile = async (file) => {
 }
 
 // PDF文件上传接口
-export const uploadPdf = async (file) => {
-    return await uploadFile(file);
+export const uploadPdf = async (file, kind) => {
+    return await uploadFile(file, kind);
 }
 
 // 微信小程序相关接口
@@ -352,8 +354,9 @@ export const getLogs = async (query = {}) => {
     });
 }
 
-export const getLogActions = async () => {
-    return fetchWrapper.get(`${API_BASE_URL}/api/logs/actions`, {
+// source：admin（后台日志，默认）| user（用户日志：小程序客户的操作、微信支付回调）
+export const getLogActions = async (source = 'admin') => {
+    return fetchWrapper.get(`${API_BASE_URL}/api/logs/actions?source=${source}`, {
         returnFullResponse: true
     });
 }
@@ -443,14 +446,51 @@ const qs = (query = {}) => {
 export const getShopCustomers = (query) => fetchWrapper.get(`${API_BASE_URL}/api/admin/customers${qs(query)}`);
 export const getShopCustomer = (id) => fetchWrapper.get(`${API_BASE_URL}/api/admin/customers/${id}`);
 export const setShopCustomerRemark = (id, remark) => fetchWrapper.put(`${API_BASE_URL}/api/admin/customers/${id}/remark`, { remark });
+// 升级成会员 / 取消会员（仅主账号）；会员按产品的会员价买，已经下的订单价格不变
+export const setShopCustomerMember = (id, isMember) => fetchWrapper.put(`${API_BASE_URL}/api/admin/customers/${id}/member`, { isMember });
 export const setShopCustomerStatus = (id, status) => fetchWrapper.put(`${API_BASE_URL}/api/admin/customers/${id}/status`, { status });
+
+// 微信支付账单（仅主账号）。query：{ kind: 'trade'|'fund', from, to（一段时间，最多 31 天）, billType?, accountType? }，查一天也可以只传 date
+// 一段时间是服务端按天取了再合并，慢一些，所以超时放宽到 2 分钟。取过的账单存在本地，下次直接读；query.refresh=1 强制重新向微信取
+// syncWxBills：把一段时间内本地还没有的账单（交易账单全部、资金账单基本账户）从微信取下来存好
+// 交易账单（全部）会带上和我们自己记录的对账结果 reconcile
+export const getWxBill = (query) => fetchWrapper.get(`${API_BASE_URL}/api/admin/bills${qs(query)}`, { timeout: 120000 });
+// 下载账单原文件（CSV）：要带令牌，所以用 fetch 取成 blob 再保存，不能直接用链接
+export const syncWxBills = ({ from, to }) => fetchWrapper.post(`${API_BASE_URL}/api/admin/bills/sync`, { from, to }, { timeout: 120000 });
+export const downloadWxBill = async (query) => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 120000);
+  const res = await fetch(`${API_BASE_URL}/api/admin/bills/download${qs(query)}`, { headers: { Authorization: `Bearer ${getToken()}` }, signal: controller.signal }).finally(() => clearTimeout(timer));
+  if (!res.ok) {
+    let message = '下载账单失败';
+    try { message = (await res.json()).message || message; } catch (e) { /* 不是 JSON，用默认提示 */ }
+    throw new Error(message);
+  }
+  return res.blob();
+};
 
 // 统计数据（仅主账号）：range 为 today / 7d / 30d / 3m / 1y
 // custom：{ from, to } 北京时间日期（YYYY-MM-DD，含首尾，最长一年），只在 range 为 'custom' 时用
 export const getShopStats = (range, custom = {}) => fetchWrapper.get(`${API_BASE_URL}/api/admin/stats${qs({ range, ...(range === 'custom' ? custom : {}) })}`);
 export const getShopOrders = (query) => fetchWrapper.get(`${API_BASE_URL}/api/admin/orders${qs(query)}`);
 export const getShopOrder = (id) => fetchWrapper.get(`${API_BASE_URL}/api/admin/orders/${id}`);
+// body: { expressCompany, expressNo, photoFileID? }；发货凭证照片选填，仅后台可见
 export const shipShopOrder = (id, body) => fetchWrapper.post(`${API_BASE_URL}/api/admin/orders/${id}/ship`, body);
+// 发货后补传 / 替换发货凭证；fileID 传空字符串 = 清除
+// 商家备注（后台自己看，客户看不到）；空串清除
+// 产品销量（仅主账号）：from / to 是 YYYY-MM-DD（北京时间，含首尾，最长一年），excludeRefund 为真时排除全额退款的订单；返回 { products, summary, from, to, days }
+export const getProductSalesStats = (query) => fetchWrapper.get(`${API_BASE_URL}/api/admin/stats/products${qs(query)}`);
+// 协议与规则（用户协议 terms / 隐私政策 privacy / 退换货规则 returns；lang: zh / en）：当前内容和历史版本、某个历史版本、保存（仅主账号，保存后新增一版）
+export const getLegalManage = (type, lang) => fetchWrapper.get(`${API_BASE_URL}/api/legal/manage${qs({ type, lang })}`);
+export const getLegalVersion = (id) => fetchWrapper.get(`${API_BASE_URL}/api/legal/manage/versions/${id}`);
+export const saveLegal = (type, lang, html) => fetchWrapper.put(`${API_BASE_URL}/api/legal/manage`, { type, lang, html });
+export const setShopOrderRemark = (id, remark) => fetchWrapper.put(`${API_BASE_URL}/api/admin/orders/${id}/remark`, { remark: remark || '' });
+// 客户对待发货订单的取消申请：同意（后台取消订单并自动退款）/ 拒绝（要原因，客户能看到）
+export const approveShopCancelRequest = (id) => fetchWrapper.post(`${API_BASE_URL}/api/admin/orders/${id}/cancel-request/approve`, {});
+export const rejectShopCancelRequest = (id, reason) => fetchWrapper.post(`${API_BASE_URL}/api/admin/orders/${id}/cancel-request/reject`, { reason });
+export const setShopShipPhoto = (id, fileID) => fetchWrapper.post(`${API_BASE_URL}/api/admin/orders/${id}/ship-photo`, { fileID: fileID || '' });
+// 这个运单号有没有被别的未取消订单用过（只提醒）：返回 [{ id, orderNo, expressCompany }]
+export const checkExpressNo = (no, excludeId) => fetchWrapper.get(`${API_BASE_URL}/api/admin/orders/express-check?no=${encodeURIComponent(no)}&excludeId=${encodeURIComponent(excludeId || '')}`, { silent: true });
 // 批量发货（导入快递单号）：items 是 [{ orderNo, expressCompany, expressNo }]；dryRun 只检查不发货。返回每一行的结果
 export const bulkShipShopOrders = (items, dryRun) => fetchWrapper.post(`${API_BASE_URL}/api/admin/orders/bulk-ship`, { items, dryRun: !!dryRun });
 export const cancelShopOrder = (id, reason) => fetchWrapper.post(`${API_BASE_URL}/api/admin/orders/${id}/cancel`, { reason });
@@ -474,7 +514,11 @@ export const updateProductSale = (productId, body) => fetchWrapper.put(`${API_BA
 // 批量保存：有不合法的行时服务端一行都不保存，错误里带 errors: [{ index, message }]
 // 批量设置一批产品：范围是 { productIds } 或 { query: { categoryId, catalogId, keyword, filter } }，set 是要改的内容；dryRun 只预览
 export const batchProductSales = (body) => fetchWrapper.post(`${API_BASE_URL}/api/admin/product-sales/batch`, body);
-export const bulkProductSales = (items) => fetchWrapper.post(`${API_BASE_URL}/api/admin/product-sales/bulk`, { items });
+// dryRun: true 只检查和预览（返回会改哪些产品、每个字段从什么改成什么），不写入
+// reason：库存修改原因（导入里有库存变化时必填，预览返回 needsReason 告诉页面要不要填）
+export const bulkProductSales = (items, dryRun = false, reason = '') => fetchWrapper.post(`${API_BASE_URL}/api/admin/product-sales/bulk`, { items, ...(dryRun ? { dryRun: true } : {}), ...(reason ? { reason } : {}) });
+// 某个产品的库存记录（新的在前）：{ total, list }
+export const getStockLogs = (productId, query) => fetchWrapper.get(`${API_BASE_URL}/api/admin/product-sales/${productId}/stock-logs${qs(query)}`);
 
 // 公告
 export const getAnnouncements = async (query = {}) =>
@@ -490,3 +534,12 @@ export const deleteAnnouncement = async (id) =>
 export const getAdminNotifications = () => fetchWrapper.get(`${API_BASE_URL}/api/admin/notifications`, { silent: true, timeout: 10000 });
 export const readAdminNotifications = (ids) => fetchWrapper.post(`${API_BASE_URL}/api/admin/notifications/read`, { ids });
 export const readAllAdminNotifications = () => fetchWrapper.post(`${API_BASE_URL}/api/admin/notifications/read-all`, {});
+
+// 当前登录账号的信息和功能权限（permissions：主账号是 '*'，子账号是功能 key 数组）；页面打开时刷新一次，主账号改了角色这里马上反映
+export const getMe = () => fetchWrapper.get(`${API_BASE_URL}/api/users/me`);
+// 角色管理（仅主账号）：角色是一组功能权限，子账号挂上角色后只能用这些功能
+export const getRoles = () => fetchWrapper.get(`${API_BASE_URL}/api/roles`);
+export const getPermissionCatalog = () => fetchWrapper.get(`${API_BASE_URL}/api/roles/catalog`);
+export const createRole = (data) => fetchWrapper.post(`${API_BASE_URL}/api/roles`, data);
+export const updateRole = (id, data) => fetchWrapper.put(`${API_BASE_URL}/api/roles/${id}`, data);
+export const deleteRole = (id) => fetchWrapper.delete(`${API_BASE_URL}/api/roles/${id}`);

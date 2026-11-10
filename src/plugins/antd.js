@@ -18,6 +18,7 @@ import Icon from 'ant-design-vue/lib/icon';
 import Input from 'ant-design-vue/lib/input';
 import InputNumber from 'ant-design-vue/lib/input-number';
 import Layout from 'ant-design-vue/lib/layout';
+import Dropdown from 'ant-design-vue/lib/dropdown';
 import Menu from 'ant-design-vue/lib/menu';
 import message from 'ant-design-vue/lib/message';
 import Modal from 'ant-design-vue/lib/modal';
@@ -39,6 +40,7 @@ import 'ant-design-vue/lib/affix/style/css';
 import 'ant-design-vue/lib/alert/style/css';
 import 'ant-design-vue/lib/breadcrumb/style/css';
 import 'ant-design-vue/lib/button/style/css';
+import 'ant-design-vue/lib/dropdown/style/css';
 import 'ant-design-vue/lib/card/style/css';
 import 'ant-design-vue/lib/checkbox/style/css';
 import 'ant-design-vue/lib/config-provider/style/css';
@@ -70,7 +72,7 @@ import 'ant-design-vue/lib/upload/style/css';
 
 [
   Affix, Alert, Breadcrumb, Button, Card, Checkbox, ConfigProvider, DatePicker, Divider, Form, FormModel,
-  Icon, Input, InputNumber, Layout, Menu, Modal, Popconfirm, Progress, Radio, Result, Select, Space,
+  Dropdown, Icon, Input, InputNumber, Layout, Menu, Modal, Popconfirm, Progress, Radio, Result, Select, Space,
   Spin, Statistic, Switch, Table, Tag, Tooltip, Upload,
 ].forEach(c => Vue.use(c));
 

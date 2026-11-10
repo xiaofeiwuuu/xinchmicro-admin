@@ -49,6 +49,7 @@ const fetchWrapper = {
       else if (typeof value === 'string' &&
               (key.toLowerCase().includes('time') ||
                key.toLowerCase().includes('date') ||
+               key.toLowerCase().includes('since') ||
                key.toLowerCase().includes('at'))) {
         // 只转换带时区标记（Z 或 +08:00 之类）的 ISO 时间；没有时区的字符串无法确定是哪个时区，原样保留
         if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})$/.test(value)) {
@@ -121,7 +122,9 @@ const fetchWrapper = {
       if (response.status === 401 && token) {
         clearAuth();
         if (this.router) {
-          this.router.push('/login');
+          // 登录过期：登录后回到当前页面
+          const cur = this.router.currentRoute;
+          this.router.push(cur && cur.path !== '/login' && cur.fullPath !== '/' ? { path: '/login', query: { redirect: cur.fullPath } } : '/login').catch(() => {});
         }
         const authError = new Error('登录已过期');
         authError.isAuth = true;

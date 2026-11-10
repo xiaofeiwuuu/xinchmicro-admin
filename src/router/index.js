@@ -1,6 +1,6 @@
 import Vue from 'vue'
 import VueRouter from 'vue-router'
-import { isLoggedIn, isMainUser, clearAuth } from '@/utils/auth'
+import { isLoggedIn, isMainUser, clearAuth, can } from '@/utils/auth'
 
 Vue.use(VueRouter)
 
@@ -32,7 +32,8 @@ let routes = [
 		layout: "dashboard",
 		meta:{
 			name:'产品分类',
-			requiresAuth: true
+			requiresAuth: true,
+			permission: 'category.view'
 		},
 		component: () => import('@/views/Categories.vue'),
 	},
@@ -42,7 +43,8 @@ let routes = [
 		layout: "dashboard",
 		meta:{
 			name:'产品目录',
-			requiresAuth: true
+			requiresAuth: true,
+			permission: 'catalog.view'
 		},
 		component: () => import('@/views/Catalogs.vue'),
 	},
@@ -52,7 +54,8 @@ let routes = [
 		layout: "dashboard",
 		meta:{
 			name:'产品详情',
-			requiresAuth: true
+			requiresAuth: true,
+			permission: 'product.view'
 		},
 		component: () => import('@/views/Products.vue'),
 	},
@@ -62,7 +65,8 @@ let routes = [
 		layout: "dashboard",
 		meta:{
 			name:'批量关联英文PDF',
-			requiresAuth: true
+			requiresAuth: true,
+			permission: 'product.edit'
 		},
 		component: () => import('@/views/ProductsBulkEn.vue'),
 	},
@@ -83,7 +87,8 @@ let routes = [
 		layout: "dashboard",
 		meta:{
 			name:'公司信息',
-			requiresAuth: true
+			requiresAuth: true,
+			permission: 'company.view'
 		},
 		component: () => import('@/views/CompanyInfo.vue'),
 	},
@@ -93,7 +98,8 @@ let routes = [
 		layout: "dashboard",
 		meta:{
 			name:'轮播图管理',
-			requiresAuth: true
+			requiresAuth: true,
+			permission: 'carousel.view'
 		},
 		component: () => import('@/views/Carousels.vue'),
 	},
@@ -103,9 +109,22 @@ let routes = [
 		layout: "dashboard",
 		meta:{
 			name:'公告管理',
-			requiresAuth: true
+			requiresAuth: true,
+			permission: 'announcement.view'
 		},
 		component: () => import('@/views/Announcements.vue'),
+	},
+	{
+		path: '/legal',
+		name: 'LegalDocs',
+		layout: "dashboard",
+		meta:{
+			name:'协议与规则',
+			requiresAuth: true,
+			permission: 'legal.view',
+			allowCopy: true // 富文本编辑器里要能选中文字
+		},
+		component: () => import('@/views/LegalDocs.vue'),
 	},
 	{
 		path: '/logs',
@@ -117,6 +136,27 @@ let routes = [
 			requiresMainUser: true
 		},
 		component: () => import('@/views/Logs.vue'),
+	},
+	{
+		path: '/roles',
+		name: 'Roles',
+		layout: "dashboard",
+		meta:{
+			name:'角色管理',
+			requiresAuth: true,
+			requiresMainUser: true
+		},
+		component: () => import('@/views/Roles.vue'),
+	},
+	{
+		path: '/no-permission',
+		name: 'NoPermission',
+		layout: "dashboard",
+		meta:{
+			name:'没有权限',
+			requiresAuth: true
+		},
+		component: () => import('@/views/NoPermission.vue'),
 	},
 	{
 		path: '/users',
@@ -135,9 +175,21 @@ let routes = [
 		layout: "dashboard",
 		meta:{
 			name:'客户管理',
-			requiresAuth: true
+			requiresAuth: true,
+			permission: 'customer.view'
 		},
 		component: () => import('@/views/ShopCustomers.vue'),
+	},
+	{
+		path: '/shop/product-sales',
+		name: 'ShopProductSales',
+		layout: "dashboard",
+		meta:{
+			name:'产品销量',
+			requiresAuth: true,
+			permission: 'stats.view'
+		},
+		component: () => import('@/views/ShopProductSales.vue'),
 	},
 	{
 		path: '/shop/stats',
@@ -146,9 +198,20 @@ let routes = [
 		meta:{
 			name:'数据统计',
 			requiresAuth: true,
-			requiresMainUser: true
+			permission: 'stats.view'
 		},
 		component: () => import('@/views/ShopStats.vue'),
+	},
+	{
+		path: '/shop/bills',
+		name: 'ShopBills',
+		layout: "dashboard",
+		meta:{
+			name:'对账与账单',
+			requiresAuth: true,
+			permission: 'bills.view'
+		},
+		component: () => import('@/views/ShopBills.vue'),
 	},
 	{
 		path: '/shop/orders',
@@ -156,7 +219,8 @@ let routes = [
 		layout: "dashboard",
 		meta:{
 			name:'订单管理',
-			requiresAuth: true
+			requiresAuth: true,
+			permission: 'order.view'
 		},
 		component: () => import('@/views/ShopOrders.vue'),
 	},
@@ -166,7 +230,8 @@ let routes = [
 		layout: "dashboard",
 		meta:{
 			name:'价格库存',
-			requiresAuth: true
+			requiresAuth: true,
+			permission: 'price.view'
 		},
 		component: () => import('@/views/ShopProducts.vue'),
 	},
@@ -176,7 +241,8 @@ let routes = [
 		layout: "dashboard",
 		meta:{
 			name:'手册管理',
-			requiresAuth: true
+			requiresAuth: true,
+			permission: 'manual.view'
 		},
 		component: () => import('@/views/Manuals.vue'),
 	},
@@ -218,6 +284,18 @@ const router = new VueRouter({
 })
 
 // 添加全局路由守卫
+// 有权限的第一个页面（菜单顺序）。子账号没有权限的页面会被送到这里
+const PAGE_ORDER = [
+	['/categories', 'category.view'], ['/catalogs', 'catalog.view'], ['/products', 'product.view'], ['/manuals', 'manual.view'],
+	['/shop/orders', 'order.view'], ['/shop/customers', 'customer.view'], ['/shop/products', 'price.view'],
+	['/shop/stats', 'stats.view'], ['/shop/product-sales', 'stats.view'], ['/shop/bills', 'bills.view'],
+	['/company', 'company.view'], ['/carousels', 'carousel.view'], ['/announcements', 'announcement.view'], ['/legal', 'legal.view']
+];
+function firstAllowedPath() {
+	const hit = PAGE_ORDER.find(([, perm]) => can(perm));
+	return hit ? hit[0] : '/no-permission';
+}
+
 router.beforeEach((to, from, next) => {
 	// 令牌存在且没有过期才算已登录
 	const isLogin = isLoggedIn()
@@ -232,13 +310,17 @@ router.beforeEach((to, from, next) => {
 					// 如果不是主账号，重定向到首页
 					next('/categories');
 				}
+			} else if (to.meta.permission && !can(to.meta.permission)) {
+				// 没有这个页面对应的功能权限：去第一个有权限的页面；一个都没有就去提示页
+				next(firstAllowedPath());
 			} else {
 				next();
 			}
 		} else {
 			// 令牌已过期的话顺手清掉残留的登录信息
 			clearAuth();
-			next('/login');
+			// 记住要去的页面（比如企业微信通知里的订单链接），登录后跳回去；首页本来就是默认落点，不用记
+			next(to.fullPath && to.fullPath !== '/' ? { path: '/login', query: { redirect: to.fullPath } } : '/login');
 		}
 	} else {
 		if (isLogin && to.path === '/login') {
@@ -247,6 +329,11 @@ router.beforeEach((to, from, next) => {
 			next();
 		}
 	}
+})
+
+// 页面默认不能选中文字；路由 meta 里有 allowCopy: true 的页面才允许（见 scss/base/_typography.scss）
+router.afterEach((to) => {
+	document.body.classList.toggle('copy-ok', !!(to.meta && to.meta.allowCopy))
 })
 
 export default router

@@ -380,6 +380,74 @@
 			pointer-events: none;
 		}
 	}
+	// 菜单底部的「收起 / 展开」：贴在菜单容器底部，窄屏不显示（窄屏用头部的按钮）
+	@media( min-width: $lg ){
+		.ant-layout-sider.sider-primary .ant-layout-sider-children {
+			display: flex;
+			flex-direction: column;
+			min-height: 100%;
+		}
+	}
+	.sider-toggle {
+		display: none;
+		@media( min-width: $lg ){
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			gap: 6px;
+			position: sticky;
+			bottom: 0;
+			margin-top: auto; // 菜单不够长时也贴在菜单栏最底部
+			padding: 10px 0;
+			background: $color-gray-1;
+			border-top: 1px solid $color-gray-3;
+			color: $color-gray-7;
+			font-size: 13px;
+			cursor: pointer;
+			user-select: none;
+			&:hover { color: $color-primary; }
+		}
+	}
+
+	// 菜单收起成只剩图标（只在桌面宽度）：左边窄条 80px，内容区随之左移
+	&.sidebar-mini {
+		@media( min-width: $lg ){
+			.ant-layout-sider.sider-primary {
+				width: 80px !important;
+				min-width: 80px !important;
+				max-width: 80px !important;
+				flex: 0 0 80px !important;
+				padding-left: 8px;
+				padding-right: 8px;
+				transition: width .2s;
+				.brand {
+					text-align: center;
+					padding-left: 0;
+					padding-right: 0;
+					span { font-size: 0; }
+					span::before { content: '芯'; font-size: 18px; }
+				}
+				.ant-menu-item a {
+					display: flex;
+					justify-content: center;
+					padding-left: 0;
+					padding-right: 0;
+				}
+				.ant-menu-item .icon { margin-right: 0; }
+				.ant-menu-item .label { display: none; }
+				// 分组标题（产品、商城…）收起时变成一条细线
+				.ant-menu-item.menu-item-header {
+					font-size: 0;
+					height: 1px;
+					margin: 10px 14px !important;
+					padding: 0 !important;
+					background: $color-gray-3;
+					overflow: hidden;
+				}
+			}
+			> .ant-layout { margin-left: 100px; }
+		}
+	}
 	// / Primary Sidebar
 
 	// Content/Main Layout
@@ -394,6 +462,7 @@
 			width: auto;
 			flex-shrink: 1;
 			margin-left: 270px;
+			transition: margin-left .2s;
 		}
 	}
 	.ant-menu {

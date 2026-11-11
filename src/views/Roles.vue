@@ -36,16 +36,22 @@
 		</a-card>
 
 		<!-- 新增 / 编辑角色 -->
-		<a-modal :title="form.id ? '编辑角色' : '新增角色'" :visible="visible" :confirmLoading="saving" width="780px" okText="保存" cancelText="取消" @ok="save" @cancel="visible = false">
-			<a-form-model :model="form" layout="vertical">
+		<a-modal :title="form.id ? '编辑角色' : '新增角色'" :visible="visible" :confirmLoading="saving" width="1000px" okText="保存" cancelText="取消" @ok="save" @cancel="visible = false">
+			<a-form-model :model="form" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+				<a-row type="flex" :gutter="0">
+				<!-- 左：角色名称、说明 -->
+				<a-col :span="9" class="col-left">
 				<a-form-model-item label="角色名称">
-					<a-input v-model="form.name" :maxLength="30" placeholder="例如：仓库、客服、财务" style="max-width: 320px" />
+					<a-input v-model="form.name" :maxLength="30" placeholder="请输入角色名称" style="max-width: 320px" />
 				</a-form-model-item>
-				<a-form-model-item label="说明（选填）">
-					<a-input v-model="form.description" :maxLength="200" placeholder="这个角色是做什么的" />
+				<a-form-model-item label="说明">
+					<a-textarea v-model="form.description" :rows="5" :maxLength="200" placeholder="这个角色是做什么的" />
 				</a-form-model-item>
-				<a-form-model-item label="可以使用的功能">
-					<div class="perm-hint">按左侧菜单的结构排列：勾选分组或页面就是勾选它下面的全部功能。账号只能调用勾选的功能对应的接口；鼠标放在「接口」上可以看到每个功能包含哪些接口；选了某个功能会自动带上它依赖的功能。</div>
+				</a-col>
+				<!-- 右：可用功能 -->
+				<a-col :span="15" class="col-right">
+				<a-form-model-item :label-col="{ span: 24 }" :wrapper-col="{ span: 24 }">
+					<span slot="label">可用功能 <a-tooltip title="按左侧菜单的结构排列：勾选分组或页面就是勾选它下面的全部功能。账号只能调用勾选的功能对应的接口；鼠标放在「接口」上可以看到每个功能包含哪些接口；选了某个功能会自动带上它依赖的功能。"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
 					<div class="perm-tools"><a @click="expandAll(true)">全部展开</a><a @click="expandAll(false)">全部收起</a></div>
 					<div class="ptree">
 						<div v-for="g in catalog.menu" :key="g.label" class="pg">
@@ -64,13 +70,17 @@
 									</div>
 									<div v-show="isOpen('p:' + pg.label)" class="branch">
 										<div v-for="k in pg.keys" :key="k" class="leaf">
-											<a-checkbox :checked="has(k)" @change="toggle(byKey.get(k), $event.target.checked)"><span class="perm-label">{{ byKey.get(k).short || byKey.get(k).label }}</span></a-checkbox>
-											<span class="perm-desc">{{ byKey.get(k).desc }}</span>
+											<a-checkbox :checked="has(k)" @change="toggle(byKey.get(k), $event.target.checked)">
+												<a-tooltip placement="topLeft" :overlayStyle="{ maxWidth: '360px' }">
+													<template slot="title"><div>{{ byKey.get(k).desc }}</div><div v-if="byKey.get(k).requires.length" style="margin-top: 4px;">需要「{{ byKey.get(k).requires.map(nameOf).join('、') }}」</div></template>
+													<span class="perm-label">{{ byKey.get(k).short || byKey.get(k).label }}</span>
+												</a-tooltip>
+											</a-checkbox>
+											<span class="perm-spacer"></span>
 											<a-tooltip placement="topRight" overlayClassName="api-tip">
 												<template slot="title"><div class="api-list"><div v-for="a in byKey.get(k).apis" :key="a" class="api-line">{{ a }}</div></div></template>
 												<span class="perm-api">接口 {{ byKey.get(k).apis.length }}</span>
 											</a-tooltip>
-											<span v-if="byKey.get(k).requires.length" class="perm-req">需要「{{ byKey.get(k).requires.map(nameOf).join('、') }}」</span>
 										</div>
 										<div v-for="l in pg.locked" :key="l.label" class="leaf locked">
 											<a-checkbox disabled :checked="false"><span class="perm-label">{{ l.label }}</span></a-checkbox>
@@ -86,6 +96,8 @@
 						</div>
 					</div>
 				</a-form-model-item>
+				</a-col>
+				</a-row>
 			</a-form-model>
 		</a-modal>
 	</div>
@@ -208,10 +220,14 @@ export default {
 .roles-tip { flex: 1; min-width: 0; color: #595959; font-size: 14px; }
 .roles-tip-sub { color: #8c8c8c; }
 .roles-empty { padding: 28px 0 8px; text-align: center; color: #8c8c8c; }
-.perm-hint { color: #8c8c8c; font-size: 13px; margin-bottom: 10px; line-height: 1.6; }
-.perm-tools { margin-bottom: 8px; font-size: 13px; }
+.help-icon { color: #8c8c8c; cursor: help; }
+.help-icon:hover { color: #1890ff; }
+/* 表单里 label 和内容的行高被全局设成了输入框高度（40px），树里每一行会被撑得很高，这里压回正常行高 */
+.col-left { padding-right: 24px; }
+.col-right { padding-left: 24px; border-left: 1px dashed #d9d9d9; }
+.perm-tools { margin-bottom: 8px; font-size: 13px; line-height: 22px; }
 .perm-tools a { margin-right: 14px; }
-.ptree { border: 1px solid #e8ecf3; border-radius: 8px; padding: 6px 10px 10px; max-height: 56vh; overflow-y: auto; }
+.ptree { line-height: 22px; border: 1px solid #e8ecf3; border-radius: 8px; padding: 6px 10px 10px; max-height: 56vh; overflow-y: auto; }
 .pg { margin-top: 4px; }
 .pg-head, .pp-head { display: flex; align-items: center; gap: 6px; padding: 5px 0; }
 .pg-head { background: #f5f7fa; border-radius: 6px; padding: 6px 8px; margin-top: 6px; }
@@ -223,7 +239,7 @@ export default {
 .leaf { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; padding: 4px 0 4px 6px; }
 .leaf.locked .perm-label, .locked-title { color: #8c8c8c; font-weight: 400; }
 .perm-label { font-weight: 500; }
-.perm-desc { flex: 1; min-width: 160px; color: #8c8c8c; font-size: 13px; }
+.perm-spacer { flex: 1; }
 .perm-api { color: #1890ff; font-size: 12.5px; cursor: help; white-space: nowrap; }
 .perm-req { color: #fa8c16; font-size: 12px; white-space: nowrap; }
 .api-list { max-height: 260px; overflow-y: auto; }

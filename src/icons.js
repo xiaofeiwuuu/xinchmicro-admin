@@ -34,6 +34,7 @@ export { default as ContainerOutline } from '@ant-design/icons/lib/outline/Conta
 export { default as ContainerFill } from '@ant-design/icons/lib/fill/ContainerFill';
 export { default as DashboardOutline } from '@ant-design/icons/lib/outline/DashboardOutline';
 export { default as DashboardFill } from '@ant-design/icons/lib/fill/DashboardFill';
+export { default as FilePdfOutline } from '@ant-design/icons/lib/outline/FilePdfOutline';
 export { default as DeleteOutline } from '@ant-design/icons/lib/outline/DeleteOutline';
 export { default as DeleteFill } from '@ant-design/icons/lib/fill/DeleteFill';
 export { default as DoubleLeftOutline } from '@ant-design/icons/lib/outline/DoubleLeftOutline';

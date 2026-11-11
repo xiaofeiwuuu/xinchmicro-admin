@@ -149,6 +149,11 @@
 			svg path {
 				fill: $color-gray-6;
 			}
+			// 用描边画的图标（产品销量、手册管理）：同样染成灰色，不然会一直是黑的
+			svg path[stroke] {
+				stroke: $color-gray-6;
+				fill: none;
+			}
 			.label {
 				vertical-align: middle;
 			}
@@ -161,6 +166,10 @@
 				}
 				svg path {
 					fill: $color-gray-1;
+				}
+				svg path[stroke] {
+					stroke: $color-gray-1;
+					fill: none;
 				}
 				.label {
 					font-weight: $fw-semibold;
@@ -196,6 +205,10 @@
 					}
 					svg path {
 						fill: $color-gray-1;
+					}
+					svg path[stroke] {
+						stroke: $color-gray-1;
+						fill: none;
 					}
 				}
 			}
@@ -234,6 +247,10 @@
 					}
 					svg path {
 						fill: $color-gray-1;
+					}
+					svg path[stroke] {
+						stroke: $color-gray-1;
+						fill: none;
 					}
 				}
 				&.menu-item-header {
@@ -382,10 +399,35 @@
 	}
 	// 菜单底部的「收起 / 展开」：贴在菜单容器底部，窄屏不显示（窄屏用头部的按钮）
 	@media( min-width: $lg ){
+		// 菜单栏本身不滚动，滚动的是里面的菜单；「收起菜单」固定在最底部，不会被菜单文字盖住或跟着滚走
+		.ant-layout-sider.sider-primary {
+			overflow: hidden;
+		}
 		.ant-layout-sider.sider-primary .ant-layout-sider-children {
 			display: flex;
 			flex-direction: column;
-			min-height: 100%;
+			height: 100%;
+		}
+		// 菜单项悬停时 antd 会加 ant-menu-item-active 类，并带 padding / color 的过渡动画（行内还有 antd 写的 padding-left）：
+		// 这里的内边距已被强制为 0，动画本来没东西可动，直接关掉过渡，杜绝任何悬停时的位移
+		.ant-layout-sider.sider-primary .ant-menu-item,
+		.ant-layout-sider.sider-primary .ant-menu-submenu-title {
+			transition: none !important;
+		}
+		// 鼠标移到菜单项上，整个菜单会向左偏几 px、移到下一项又回来：antd 给内联菜单项设了 width: calc(100% + 1px)，
+		// 比菜单可见区域宽，菜单就有了横向的可滚动空间；悬停时 antd 会把「变成激活」的菜单项滚动到完整可见，于是整体横向偏移。
+		// 把宽度定死为 100%，没有横向溢出，也就不会被滚动
+		.ant-layout-sider.sider-primary .ant-menu-inline .ant-menu-item,
+		.ant-layout-sider.sider-primary .ant-menu-inline .ant-menu-submenu-title {
+			width: 100% !important;
+		}
+		.ant-layout-sider.sider-primary .ant-layout-sider-children > .ant-menu {
+			flex: 1 1 auto;
+			min-height: 0;
+			overflow-y: auto;
+			overflow-x: hidden;
+			scrollbar-width: thin;
+			overscroll-behavior: contain; // 菜单滚到头后，滚轮/触控板不再带动后面的页面，也不出现回弹
 		}
 	}
 	.sider-toggle {
@@ -395,8 +437,7 @@
 			align-items: center;
 			justify-content: center;
 			gap: 6px;
-			position: sticky;
-			bottom: 0;
+			flex: none;
 			margin-top: auto; // 菜单不够长时也贴在菜单栏最底部
 			padding: 10px 0;
 			background: $color-gray-1;

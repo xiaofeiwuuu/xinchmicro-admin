@@ -242,7 +242,7 @@ export default {
 .lg-editor { border: 1px solid #d9d9d9; border-radius: 4px; }
 .lg-editor.readonly { background: #fafafa; }
 .lg-toolbar { border-bottom: 1px solid #e8e8e8; }
-.lg-body { height: calc(100vh - 460px); min-height: 360px; overflow-y: hidden; }
+.lg-body { height: calc(100vh - 305px); min-height: 360px; overflow-y: hidden; }
 .lg-foot { display: flex; align-items: center; margin-top: 16px; }
 .lg-history { margin-left: 16px; }
 .lg-dirty { margin-left: 16px; color: #fa8c16; font-size: 12px; }

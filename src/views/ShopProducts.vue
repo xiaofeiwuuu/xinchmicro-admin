@@ -21,16 +21,10 @@
 					<a-button type="primary" @click="handleSearch"><a-icon type="search" /> 搜索</a-button>
 					<a-button @click="handleReset">重置</a-button>
 				</div>
-				<div>
+				<div style="margin-left: auto;">
 					<a-button :loading="exporting" @click="exportCsv" style="margin-right: 8px;">导出（CSV）</a-button>
-					<a-button v-can="'price.edit'" :loading="importing" @click="$refs.file.click()">导入（CSV / Excel）</a-button>
-					<input ref="file" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="display: none;" @change="onFile" />
-					<a-tooltip title="示例里有普通价、会员价、阶梯价、会员阶梯价的各种写法，第二个工作表有填写说明。示例里的产品ID是假的，直接导入不会改动任何真实产品。">
-						<span class="sample-links">
-							示例：<a :href="sampleUrl('csv')" download="价格库存导入示例.csv">CSV</a>
-							<a :href="sampleUrl('xlsx')" download="价格库存导入示例.xlsx">XLSX</a>
-						</span>
-					</a-tooltip>
+					<a-button v-can="'price.edit'" :loading="importing" @click="$refs.file.click()">导入（CSV）</a-button>
+					<input ref="file" type="file" accept=".csv,text/csv" style="display: none;" @change="onFile" />
 				</div>
 			</div>
 			<!-- 全局最低价：一行 -->
@@ -52,11 +46,13 @@
 		<a-card :bordered="false">
 			<!-- 批量操作入口：点开弹窗，不常驻页面 -->
 			<div v-can="'price.edit'" class="batch-bar" style="margin-bottom: 12px;">
+				<div class="batch-hint">
+					<span class="muted">{{ selectedKeys.length ? '已勾选 ' + selectedKeys.length + ' 个产品' : '可以先勾选产品，也可以对当前筛选结果的全部产品操作' }}</span>
+					<a v-if="selectedKeys.length" style="margin-left: 8px;" @click="selectedKeys = []">清除勾选</a>
+				</div>
 				<a-button type="primary" @click="openBatch()"><a-icon type="edit" /> 批量设置</a-button>
 				<a-button style="margin-left: 8px;" @click="openBatch('on')">一键上架</a-button>
 				<a-button type="danger" ghost style="margin-left: 8px;" @click="openBatch('off')">一键下架</a-button>
-				<span class="muted gap">{{ selectedKeys.length ? '已勾选 ' + selectedKeys.length + ' 个产品' : '可以先勾选产品，也可以对当前筛选结果的全部产品操作' }}</span>
-				<a v-if="selectedKeys.length" @click="selectedKeys = []">清除勾选</a>
 			</div>
 			<a-table :scroll="tableScroll" :rowClassName="(r) => (r.productId === focusId ? 'row-focus' : '')" rowKey="productId" :columns="columns" :dataSource="rows" :pagination="pagination" :loading="loading" :rowSelection="rowSelection" @change="handleTableChange">
 				<template slot="name" slot-scope="text, record">
@@ -67,40 +63,70 @@
 					</a-tooltip>
 				</template>
 				<template slot="tiers" slot-scope="text, record">
-					<div v-if="(record.tiers && record.tiers.length) || (record.memberTiers && record.memberTiers.length)" class="tier-sum">
-						<div v-for="t in record.tiers" :key="'n' + t.minQty">{{ t.minQty }} 件起 ¥{{ Number(t.price).toFixed(2) }}</div>
-						<div v-for="t in record.memberTiers" :key="'m' + t.minQty" class="tier-member">会员 {{ t.minQty }} 件起 ¥{{ Number(t.price).toFixed(2) }}</div>
-					</div>
+					<a-tooltip v-if="(record.tiers && record.tiers.length) || (record.memberTiers && record.memberTiers.length)" placement="right">
+						<div slot="title">
+							<div v-for="t in record.tiers" :key="'n' + t.minQty">{{ t.minQty }} 件起 ¥{{ Number(t.price).toFixed(2) }}</div>
+							<div v-for="t in record.memberTiers" :key="'m' + t.minQty">会员 {{ t.minQty }} 件起 ¥{{ Number(t.price).toFixed(2) }}</div>
+						</div>
+						<span class="tier-sum">
+							<span v-if="record.tiers && record.tiers.length">{{ record.tiers.length }} 档</span>
+							<span v-if="record.memberTiers && record.memberTiers.length" class="tier-member">会员 {{ record.memberTiers.length }} 档</span>
+						</span>
+					</a-tooltip>
 					<span v-else class="muted">无</span>
-					<a v-can="'price.edit'" style="margin-left: 8px;" @click="openTiers(record)">{{ (record.tiers && record.tiers.length) || (record.memberTiers && record.memberTiers.length) ? '修改' : '设置' }}</a>
 				</template>
 				<template slot="price" slot-scope="text, record">
-					<a-input-number v-model="record.edit.price" :disabled="!canEdit" :min="0" :max="LIMITS.priceMax" :precision="2" :step="0.1" style="width: 120px;" />
+					<span v-if="record.configured">¥{{ Number(record.price).toFixed(2) }}</span><span v-else class="muted">未设置</span>
 					<div v-if="record.belowMin" style="margin-top: 4px;"><a-tag color="red">低于最低价</a-tag></div>
 				</template>
 				<template slot="memberPrice" slot-scope="text, record">
-					<a-input-number v-model="record.edit.memberPrice" :disabled="!canEdit" :min="0" :max="LIMITS.priceMax" :precision="2" :step="0.1" placeholder="无" style="width: 110px;" />
+					<span v-if="record.configured && record.memberPrice">¥{{ Number(record.memberPrice).toFixed(2) }}</span><span v-else class="muted">无</span>
 				</template>
 				<template slot="stock" slot-scope="text, record">
 					<span v-if="record.configured && record.stockUnlimited" class="unlimited">不限</span>
 					<span v-else :style="{ color: record.configured && record.stock === 0 ? '#ff4d4f' : '' }">{{ record.stock }}</span>
-					<a v-can="'price.edit'" style="margin-left: 8px;" @click="openStock(record)">调整</a>
-					<a style="margin-left: 8px;" @click="openStockLogs(record)">记录</a>
 				</template>
-				<template slot="minOrderQty" slot-scope="text, record">
-					<a-input-number v-model="record.edit.minOrderQty" :disabled="!canEdit" :min="1" :max="LIMITS.minOrderMax" :precision="0" style="width: 90px;" />
-				</template>
-				<template slot="maxOrderQty" slot-scope="text, record">
-					<a-input-number v-model="record.edit.maxOrderQty" :disabled="!canEdit" :min="1" :max="LIMITS.qtyMax" :precision="0" placeholder="不限制" style="width: 100px;" />
-				</template>
+				<template slot="minOrderQty" slot-scope="text, record">{{ record.configured ? record.minOrderQty : '-' }}</template>
+				<template slot="maxOrderQty" slot-scope="text, record">{{ record.configured ? (record.maxOrderQty || '不限制') : '-' }}</template>
 				<template slot="onSale" slot-scope="text, record">
-					<a-switch v-model="record.edit.onSale" :disabled="!canEdit" />
+					<a-tag :color="record.onSale ? 'green' : ''">{{ record.onSale ? '上架中' : (record.configured ? '已下架' : '未设置') }}</a-tag>
 				</template>
 				<template slot="action" slot-scope="text, record">
-					<a-button v-can="'price.edit'" type="primary" size="small" :disabled="!dirty(record)" :loading="record.saving" @click="save(record)">保存</a-button>
+					<div class="row-actions" style="justify-content: flex-end;">
+						<a-button v-can="'price.edit'" type="link" size="small" @click="openEdit(record)">编辑</a-button>
+						<a-button v-can="'price.edit'" type="link" size="small" @click="openTiers(record)">阶梯价</a-button>
+					</div>
+					<div class="row-actions" style="justify-content: flex-end;">
+						<a-button v-can="'price.edit'" type="link" size="small" @click="openStock(record)">调整库存</a-button>
+						<a-button type="link" size="small" @click="openStockLogs(record)">库存记录</a-button>
+					</div>
 				</template>
 			</a-table>
 		</a-card>
+
+		<!-- 编辑价格库存：列表是只读的，点「编辑」在这里改价格、会员价、起订量、最大购买数量和上下架 -->
+		<a-modal v-model="editVisible" :width="520" :maskClosable="false" :destroyOnClose="true" :okText="'保存'" cancelText="取消" :confirmLoading="!!(editRow && editRow.saving)" @ok="saveEdit" @cancel="closeEdit">
+			<template slot="title">编辑价格库存 <span v-if="editRow" class="muted" style="font-weight: normal; margin-left: 8px;">{{ editRow.name }}</span></template>
+			<a-form v-if="editRow" :label-col="{ span: 7 }" :wrapper-col="{ span: 16 }">
+				<a-form-item label="价格（元）">
+					<a-input-number v-model="editRow.edit.price" :min="0" :max="LIMITS.priceMax" :precision="2" :step="0.1" style="width: 100%;" />
+				</a-form-item>
+				<a-form-item>
+					<span slot="label">会员价（元） <a-tooltip title="必须低于普通价；清空 = 没有会员价（同时清掉会员阶梯价）。"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
+					<a-input-number v-model="editRow.edit.memberPrice" :min="0" :max="LIMITS.priceMax" :precision="2" :step="0.1" placeholder="无" style="width: 100%;" />
+				</a-form-item>
+				<a-form-item label="起订量">
+					<a-input-number v-model="editRow.edit.minOrderQty" :min="1" :max="LIMITS.minOrderMax" :precision="0" style="width: 100%;" />
+				</a-form-item>
+				<a-form-item>
+					<span slot="label">最大购买数量 <a-tooltip title="指一个订单里这个产品最多买几件；清空 = 不限制。"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
+					<a-input-number v-model="editRow.edit.maxOrderQty" :min="1" :max="LIMITS.qtyMax" :precision="0" placeholder="不限制" style="width: 100%;" />
+				</a-form-item>
+				<a-form-item label="上架">
+					<a-switch v-model="editRow.edit.onSale" />
+				</a-form-item>
+			</a-form>
+		</a-modal>
 
 		<!-- 产品详情：点列表里的产品名打开（只看，不在这里改；价格库存在列表里改）。左边是基本信息、价格库存和资料文件，右边是参数 -->
 		<a-modal v-model="pdVisible" :footer="null" :width="960" :destroyOnClose="true" :bodyStyle="{ maxHeight: '72vh', overflowY: 'auto' }">
@@ -172,27 +198,39 @@
 		<!-- 调整库存（单个产品） -->
 		<a-modal v-model="stockVisible" :title="'调整库存：' + (stockRow && stockRow.name)" :confirmLoading="stockSaving" okText="确定" cancelText="取消" @ok="saveStock">
 			<p>当前库存：<b>{{ stockRow && stockRow.stockUnlimited ? '不限' : stockRow && stockRow.stock }}</b></p>
+			<div class="stock-reason-title">调整方式
+				<a-tooltip>
+					<div slot="title">
+						<p style="margin: 0 0 6px;">入库、减少：在当前库存上加减，日常入库和盘点建议用这两个。</p>
+						<p style="margin: 0 0 6px;">直接设为：覆盖当前库存，这期间有客户下单被扣掉的库存会被冲掉。</p>
+						<p style="margin: 0 0 6px;">不限库存：下单不检查也不扣库存，也没有库存预警；想改回限量，选「直接设为」填个数字。</p>
+						<p style="margin: 0;">现在是不限库存的产品不能增减，要填数字请选「直接设为」。</p>
+					</div>
+					<a-icon type="question-circle" class="help-icon" />
+				</a-tooltip>
+			</div>
 			<a-radio-group v-model="stockMode" style="margin-bottom: 12px;">
-				<a-radio value="add" :disabled="stockRow && stockRow.stockUnlimited">入库（增加）</a-radio>
-				<a-radio value="sub" :disabled="stockRow && stockRow.stockUnlimited">减少</a-radio>
+				<a-tooltip title="在当前库存基础上添加数量">
+					<a-radio value="add" :disabled="stockRow && stockRow.stockUnlimited">入库（增加）</a-radio>
+				</a-tooltip>
+				<a-tooltip title="在当前库存基础上减去数量">
+					<a-radio value="sub" :disabled="stockRow && stockRow.stockUnlimited">减少</a-radio>
+				</a-tooltip>
 				<a-radio value="set">直接设为</a-radio>
 				<a-radio value="unlimited">不限库存</a-radio>
 			</a-radio-group>
 			<div v-if="stockMode !== 'unlimited'"><a-input-number v-model="stockValue" :min="0" :max="LIMITS.stockMax" :precision="0" style="width: 200px;" /></div>
-			<div v-if="stockMode === 'unlimited'" class="stock-note">不限库存：下单不检查也不扣库存，也不会有库存预警，适合不用管数量的产品。之后想改回限量，选「直接设为」填个数字就行。</div>
-			<div v-if="stockMode === 'set'" class="stock-note">「直接设为」会覆盖当前库存。如果这期间有客户下单，被扣掉的库存会被冲掉；日常入库和盘点调整建议用「入库」或「减少」。</div>
-			<div v-if="stockRow && stockRow.stockUnlimited && stockMode !== 'unlimited'" class="stock-note">这个产品现在是不限库存，不能增加或减少；填数字请选「直接设为」，会改成限量。</div>
 			<div class="stock-reason">
-				<div class="stock-reason-title">修改原因 <span class="muted">（必填，会记进库存记录，库存对不上时靠它追查）</span></div>
+				<div class="stock-reason-title">修改原因 <a-tooltip title="必填，会记进库存记录，库存对不上时靠它追查。"><a-icon type="question-circle" class="help-icon" /></a-tooltip></div>
 				<div class="quick-reasons">
 					<span v-for="q in STOCK_REASONS" :key="q" class="quick-chip" :class="{ on: stockReason === q }" @click="stockReason = q">{{ q }}</span>
 				</div>
-				<a-input v-model="stockReason" :maxLength="100" placeholder="选一个常用的，或自己写，例如：采购入库、年底盘点、损耗" />
+				<a-input v-model="stockReason" :maxLength="100" placeholder="选一个常用的，或自己写" />
 			</div>
 		</a-modal>
 
 		<!-- 库存记录：某个产品每一次库存变化（下单扣减、取消回补、后台调整）：谁、什么时候、改前改后、原因 -->
-		<a-modal v-model="slVisible" :title="'库存记录：' + (slRow && slRow.name)" :footer="null" :width="860" :destroyOnClose="true">
+		<a-modal v-model="slVisible" :title="'库存记录：' + (slRow && slRow.name)" :footer="null" :width="1100" :destroyOnClose="true">
 			<a-table :columns="slColumns" :dataSource="slList" :loading="slLoading" rowKey="id" size="small" :pagination="slPagination" @change="slChange">
 				<template slot="slChange" slot-scope="text, r">
 					<span v-if="r.unlimited" class="muted">改成不限库存</span>
@@ -208,47 +246,49 @@
 		</a-modal>
 
 		<!-- 阶梯价：买得越多单价越低。买不到第一档的数量按起步价（普通客户是列表里的「价格」，会员是「会员价」）。点确定立即保存（和价格那一行的「保存」是分开的） -->
-		<a-modal v-model="tierVisible" :title="'阶梯价：' + (tierRow && tierRow.name)" :confirmLoading="tierSaving" okText="确定" cancelText="取消" :width="560" @ok="saveTiers">
-			<div class="tier-block-head">
-				<div class="tier-block-title">普通客户 <span class="muted">起步价 ¥{{ tierRow ? Number(tierRow.price).toFixed(2) : '' }}</span></div>
-				<a-button v-if="tierList.length < 5" type="dashed" size="small" icon="plus" @click="addTier(tierList)">添加一档</a-button>
-				<span v-else class="muted">最多 5 档</span>
-			</div>
-			<div v-for="(t, i) in tierList" :key="'n' + i" class="tier-row">
-				<span class="tier-label">买满</span>
-				<a-input-number v-model="t.minQty" :min="2" :max="LIMITS.qtyMax" :precision="0" style="width: 110px;" />
-				<span class="tier-label">件起，每件</span>
-				<a-input-number v-model="t.price" :min="0" :max="LIMITS.priceMax" :precision="2" :step="0.1" style="width: 120px;" />
-				<span class="tier-label">元</span>
-				<a class="act-danger" @click="tierList.splice(i, 1)">删除</a>
-			</div>
-			<div v-if="tierPreview.length" class="tier-preview">
-				<div class="tier-preview-title">普通客户看到的价格</div>
-				<div v-for="line in tierPreview" :key="line.k">{{ line.text }}</div>
-			</div>
-
-			<template v-if="tierRow && tierRow.memberPrice">
-				<div class="tier-block-head" style="margin-top: 20px;">
-					<div class="tier-block-title">会员 <span class="muted">起步价（会员价）¥{{ Number(tierRow.memberPrice).toFixed(2) }}</span></div>
-					<a-button v-if="memberTierList.length < 5" type="dashed" size="small" icon="plus" @click="addTier(memberTierList)">添加一档</a-button>
-					<span v-else class="muted">最多 5 档</span>
-				</div>
-				<div v-for="(t, i) in memberTierList" :key="'m' + i" class="tier-row">
-					<span class="tier-label">买满</span>
-					<a-input-number v-model="t.minQty" :min="2" :max="LIMITS.qtyMax" :precision="0" style="width: 110px;" />
-					<span class="tier-label">件起，每件</span>
-					<a-input-number v-model="t.price" :min="0" :max="LIMITS.priceMax" :precision="2" :step="0.1" style="width: 120px;" />
-					<span class="tier-label">元</span>
-					<a class="act-danger" @click="memberTierList.splice(i, 1)">删除</a>
-				</div>
-				<div v-if="memberTierPreview.length" class="tier-preview">
-					<div class="tier-preview-title">会员看到的价格（已和普通客户的阶梯取更低）</div>
-					<div v-for="line in memberTierPreview" :key="line.k">{{ line.text }}</div>
-				</div>
+		<a-modal v-model="tierVisible" :confirmLoading="tierSaving" okText="确定" cancelText="取消" :width="820" @ok="saveTiers">
+			<template slot="title">阶梯价：{{ tierRow && tierRow.name }}
+				<a-tooltip placement="bottomLeft" :overlayStyle="{ maxWidth: '380px' }">
+					<div slot="title">
+						<p style="margin: 0 0 6px;">数量一档比一档大（最小 2），单价一档比一档低，第一档要低于起步价；不能低于全局最低价。</p>
+						<p style="margin: 0 0 6px;">会员买的时候，会员价格和普通客户的阶梯在每个数量上取更低的，会员永远不会比普通客户贵。</p>
+						<p style="margin: 0;">清空所有档就是取消阶梯价。</p>
+					</div>
+					<a-icon type="question-circle" class="help-icon" />
+				</a-tooltip>
 			</template>
-			<div v-else class="stock-note">这个产品没有设置会员价，要给会员单独的阶梯价，请先在列表里填会员价并保存。</div>
-
-			<div class="stock-note">规则：数量一档比一档大（最小 2），单价一档比一档低，第一档要低于起步价；不能低于全局最低价。会员买的时候，会员价格和普通客户的阶梯在每个数量上取更低的，会员永远不会比普通客户贵。清空所有档就是取消。</div>
+			<div v-for="b in tierBlocks" :key="b.key" class="tier-card">
+				<div class="tier-block-head">
+					<div class="tier-block-title">{{ b.title }} <span class="tier-start">起步价 ¥{{ b.start }}</span></div>
+					<span v-if="b.enabled && b.member" class="tier-follow">
+						跟随普通阶梯价
+						<a-switch size="small" :checked="memberFollow" @change="onFollowChange" />
+					</span>
+					<a-button v-if="b.enabled && !(b.member && b.follow) && b.list.length < 5" type="link" size="small" icon="plus" @click="addTier(b.list)">添加一档</a-button>
+					<span v-else-if="b.enabled && !(b.member && b.follow)" class="muted">最多 5 档</span>
+				</div>
+				<div v-if="b.enabled" class="tier-body">
+					<!-- 左：填写 -->
+					<div class="tier-edit">
+						<div v-if="b.member && b.follow" class="tier-empty">会员买的数量达到普通阶梯价的档位时，按普通阶梯价；不到档位按会员价。要给会员单独定阶梯价，关掉上面的开关。</div>
+						<div v-else-if="!b.list.length" class="tier-empty">还没有阶梯价，买多少都按起步价</div>
+						<div v-for="(t, i) in (b.member && b.follow ? [] : b.list)" :key="b.key + i" class="tier-row">
+							<a-input-number v-model="t.minQty" :min="2" :max="LIMITS.qtyMax" :precision="0" style="width: 90px;" />
+							<span class="tier-label">件起 每件</span>
+							<a-input-number v-model="t.price" :min="0" :max="LIMITS.priceMax" :precision="2" :step="0.1" style="width: 100px;" />
+							<span class="tier-label">元</span>
+							<a class="act-danger tier-del" @click="b.list.splice(i, 1)">删除</a>
+						</div>
+					</div>
+					<!-- 右：客户实际看到的价格 -->
+					<div class="tier-preview">
+						<div class="tier-preview-title">{{ b.previewTitle }}</div>
+						<div v-for="line in b.preview" :key="line.k" class="tp-line"><span class="tp-range">{{ line.range }}</span><span class="tp-price">{{ line.price }}<small> / 件</small></span></div>
+						<div v-if="!b.preview.length" class="tier-empty">没有阶梯价，按起步价卖</div>
+					</div>
+				</div>
+				<div v-else class="tier-empty">没有设置会员价。要给会员单独的阶梯价，先在「编辑」里填会员价并保存。</div>
+			</div>
 		</a-modal>
 
 		<!-- 有改了没保存的价格库存时，离开页面、翻页、换筛选条件、打开批量设置前先问一下 -->
@@ -456,7 +496,7 @@
 					<div class="quick-reasons">
 						<span v-for="q in STOCK_REASONS" :key="q" class="quick-chip" :class="{ on: importReason === q }" @click="importReason = q">{{ q }}</span>
 					</div>
-					<a-input v-model="importReason" :maxLength="100" placeholder="选一个常用的，或自己写，例如：年底盘点" />
+					<a-input v-model="importReason" :maxLength="100" placeholder="选一个常用的，或自己写" />
 				</div>
 				<a-alert type="warning" show-icon message="确认后会立即保存，影响商城里的价格和库存。" style="margin-top: 12px;" />
 			</template>
@@ -477,7 +517,6 @@ import { copyToClipboard } from '@/utils/copy'
 import { isMainUser, can } from '@/utils/auth'
 import { getProductSales, getStockLogs, updateProductSale, bulkProductSales, batchProductSales, getShopSettings, updateShopSettings, getCategories, getCatalogs, getProductById, getPdfDownloadUrl } from '@/api'
 import { toCsv, parseCsv, parseTierText, tierText } from '@/utils/shop'
-import { readXlsx } from '@/utils/xlsx'
 import { LIMITS, PRICE_TEXT } from '@/utils/shopLimits'
 
 // 会员价：没有（null、undefined、空、0）统一看成 null，才好比较有没有改
@@ -497,10 +536,10 @@ function previewLines(base, tiers, normalBase, normalTiers) {
   return steps.map((st, i) => {
     const next = steps[i + 1]
     const range = next ? (next.minQty - 1 > st.minQty ? `${st.minQty} ~ ${next.minQty - 1} 件` : `${st.minQty} 件`) : `${st.minQty} 件及以上`
-    return { k: i, text: `${range}：¥${st.price.toFixed(2)} / 件` }
+    return { k: i, range, price: '¥' + st.price.toFixed(2), text: `${range}：¥${st.price.toFixed(2)} / 件` }
   })
 }
-// 表头和 public/templates 里的示例文件一致。导入时按表头文字开头匹配列，列的顺序可以换
+// 导出的表头就是导入的表头。导入时按表头文字开头匹配列，列的顺序可以换
 const HEADERS = ['产品ID', '产品名称', '价格(元)', '会员价(元，空=不改，填「无」=清除)', '阶梯价(空=不改，填「无」=清除，例：10件起8元;100件起6元)', '会员阶梯价(空=不改，填「无」=清除，写法同阶梯价)', '库存', '起订量', '最大购买数量(空=不改，填「无」=不限制)', '是否上架(是/否)']
 
 import fixedListLayout from '@/mixins/fixedListLayout'
@@ -552,9 +591,12 @@ export default {
 				{ title: '起订量', key: 'minOrderQty', scopedSlots: { customRender: 'minOrderQty' } },
 				{ title: '最大购买数量', key: 'maxOrderQty', scopedSlots: { customRender: 'maxOrderQty' } },
 				{ title: '上架', key: 'onSale', scopedSlots: { customRender: 'onSale' } },
-				{ title: '', key: 'action', scopedSlots: { customRender: 'action' } }
+				{ title: '操作', key: 'action', width: 170, align: 'right', scopedSlots: { customRender: 'action' } }
 			],
 			// 产品详情弹窗
+			editVisible: false,
+			memberFollow: true,
+			editRow: null,
 			pdVisible: false,
 			pdLoading: false,
 			pdFailed: false,
@@ -598,13 +640,22 @@ export default {
 			return [{ key: 'tier', label: '阶梯价' }, { key: 'mtier', label: '会员阶梯价' }]
 		},
 		// 阶梯价弹窗里的预览：按现在填的内容实时算。普通客户：起步价 + 普通阶梯；会员：会员价 + 会员阶梯，和普通那套每个数量上取更低
+		// 阶梯价弹窗里的两块：普通客户、会员（没有会员价的产品，会员那块只显示说明）
+		tierBlocks() {
+			const r = this.tierRow
+			if (!r) return []
+			return [
+				{ key: 'n', title: '普通客户', start: Number(r.price).toFixed(2), enabled: true, list: this.tierList, preview: this.tierPreview, previewTitle: '普通客户看到的价格' },
+				{ key: 'm', title: '会员', start: r.memberPrice ? Number(r.memberPrice).toFixed(2) : '-', enabled: !!r.memberPrice, member: true, follow: this.memberFollow, list: this.memberTierList, preview: this.memberTierPreview, previewTitle: '会员看到的价格' }
+			]
+		},
 		tierPreview() {
 			const r = this.tierRow
 			return r ? previewLines(r.price, cleanRows(this.tierList), r.price, []) : []
 		},
 		memberTierPreview() {
 			const r = this.tierRow
-			return r && r.memberPrice ? previewLines(r.memberPrice, cleanRows(this.memberTierList), r.price, cleanRows(this.tierList)) : []
+			return r && r.memberPrice ? previewLines(r.memberPrice, this.memberFollow ? [] : cleanRows(this.memberTierList), r.price, cleanRows(this.tierList)) : []
 		},
 		// 参数：按目录里的参数标题顺序，配上这个产品填的值
 		pdParams() {
@@ -777,6 +828,24 @@ export default {
 			if (!(await this.askLeave())) return
 			applyTableChange(this.pagination, p)
 			this.fetch()
+		},
+		openEdit(r) {
+			r.edit = { price: r.price, memberPrice: r.memberPrice, minOrderQty: r.minOrderQty, maxOrderQty: r.maxOrderQty || null, onSale: r.onSale }
+			this.editRow = r
+			this.editVisible = true
+		},
+		// 取消：丢掉改动（不然离开页面时会被当成「有没保存的修改」）
+		closeEdit() {
+			const r = this.editRow
+			if (r) r.edit = { price: r.price, memberPrice: r.memberPrice, minOrderQty: r.minOrderQty, maxOrderQty: r.maxOrderQty || null, onSale: r.onSale }
+			this.editVisible = false
+		},
+		async saveEdit() {
+			const r = this.editRow
+			if (!r) return
+			if (!this.dirty(r)) { this.editVisible = false; return }
+			await this.save(r)
+			if (!this.dirty(r)) this.editVisible = false // 保存成功才关；校验没过或服务端拒绝时留在弹窗里改
 		},
 		async save(r) {
 			const e = r.edit
@@ -1005,8 +1074,13 @@ export default {
 			this.tierList = (r.tiers || []).map((t) => ({ minQty: t.minQty, price: Number(t.price) }))
 			this.memberTierList = (r.memberTiers || []).map((t) => ({ minQty: t.minQty, price: Number(t.price) }))
 			if (!this.tierList.length) this.addTier(this.tierList)
-			if (r.memberPrice && !this.memberTierList.length) this.addTier(this.memberTierList)
+			// 会员没有自己的阶梯价 = 跟随普通阶梯价（默认）；关掉「跟随」才能自定义
+			this.memberFollow = !this.memberTierList.length
 			this.tierVisible = true
+		},
+		onFollowChange(v) {
+			this.memberFollow = v
+			if (!v && !this.memberTierList.length) this.addTier(this.memberTierList) // 打开自定义时先给一档空的
 		},
 		addTier(list) {
 			const last = list[list.length - 1]
@@ -1032,7 +1106,7 @@ export default {
 			const r = this.tierRow
 			const blank = (t) => t.minQty == null && t.price == null // 完全空的一档当作没填
 			const list = this.tierList.filter((t) => !blank(t))
-			const mlist = r.memberPrice ? this.memberTierList.filter((t) => !blank(t)) : null
+			const mlist = r.memberPrice ? (this.memberFollow ? [] : this.memberTierList.filter((t) => !blank(t))) : null
 			const problem = this.tierProblem(list, r.price, '阶梯价') || (mlist ? this.tierProblem(mlist, r.memberPrice, '会员阶梯价') : '')
 			if (problem) return this.$message.warning(problem)
 			const toBody = (rows) => rows.map((t) => ({ minQty: t.minQty, price: String(t.price) }))
@@ -1136,29 +1210,13 @@ export default {
 			e.target.value = ''
 			if (!file) return
 			if (file.size > 2 * 1024 * 1024) return this.$message.error('文件太大（最多 2MB）')
-			if (/\.xls$/i.test(file.name)) return this.$message.error('不支持老的 .xls 格式，请在 Excel 里另存为 .xlsx 或 CSV')
+			if (/\.xlsx?$/i.test(file.name)) return this.$message.error('只支持 CSV 文件，请在 Excel 里另存为 CSV（UTF-8）')
 			const reader = new FileReader()
 			reader.onerror = () => this.$message.error('读取文件失败')
-			if (/\.xlsx$/i.test(file.name)) {
-				// Excel：只读第一个工作表
-				reader.onload = async () => {
-					try {
-						this.importRows(await readXlsx(reader.result))
-					} catch (error) {
-						this.importResult = { ok: false, errors: [error.message || '读取 Excel 失败，请另存为 CSV 再试'] }
-						this.importVisible = true
-					}
-				}
-				reader.readAsArrayBuffer(file)
-			} else {
-				reader.onload = () => this.importRows(parseCsv(String(reader.result)))
-				reader.readAsText(file, 'utf-8')
-			}
+			reader.onload = () => this.importRows(parseCsv(String(reader.result)))
+			reader.readAsText(file, 'utf-8')
 		},
-		sampleUrl(ext) {
-			return `${process.env.BASE_URL || '/'}templates/price-import-sample.${ext}`
-		},
-		// rows：表格的每一行（CSV 和 Excel 读出来都是 [[单元格文字, ...], ...]）
+		// rows：表格的每一行（CSV 读出来是 [[单元格文字, ...], ...]）
 		async importRows(rows) {
 			const fail = (errors) => { this.importResult = { ok: false, errors }; this.importVisible = true }
 			if (rows.length < 2) return fail(['表格里没有数据'])
@@ -1253,6 +1311,10 @@ export default {
 </script>
 
 <style scoped>
+.row-actions >>> .ant-btn { height: 24px; line-height: 24px; }
+.cell-links { display: flex; gap: 12px; margin-top: 2px; white-space: nowrap; }
+.help-icon { color: #8c8c8c; cursor: help; }
+.help-icon:hover { color: #1890ff; }
 .copy-cell { cursor: pointer; }
 .copy-cell:hover { color: #1890ff; }
 .quick-reasons { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -1271,8 +1333,6 @@ export default {
 .import-change { margin-left: 12px; font-size: 13px; line-height: 22px; }
 .import-from { color: #8c8c8c; text-decoration: line-through; }
 .import-to { color: #d46b08; font-weight: 600; }
-.sample-links { margin-left: 12px; color: #8c8c8c; font-size: 12px; }
-.sample-links a { margin-left: 8px; }
 .name-link { color: inherit; font-weight: 500; }
 .name-link:hover { color: #1890ff; }
 .pd-foot { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: 16px; }
@@ -1280,7 +1340,14 @@ export default {
 .pd-title:first-child { margin-top: 0; }
 .pd-cols { display: flex; gap: 28px; align-items: flex-start; }
 .pd-col { flex: 1; min-width: 0; }
-.tier-sum { display: inline-block; vertical-align: middle; font-size: 12px; line-height: 18px; color: #595959; }
+.tier-sum { display: inline-flex; flex-direction: column; vertical-align: middle; font-size: 13px; line-height: 20px; color: #595959; cursor: default; }
+.tier-card { padding: 14px 16px; border: 1px solid #f0f0f0; border-radius: 8px; margin-bottom: 14px; }
+.tier-card:last-child { margin-bottom: 0; }
+.tier-start { margin-left: 8px; font-weight: 400; font-size: 12px; color: #8c8c8c; }
+.tier-empty { color: #8c8c8c; font-size: 12px; padding: 4px 0; }
+.tier-del { margin-left: auto; }
+.tier-follow { margin-left: auto; margin-right: 8px; font-size: 12px; color: #595959; }
+.tier-follow .ant-switch { margin-left: 6px; }
 .tier-row { display: flex; align-items: center; margin-bottom: 10px; }
 .bt-tier-top { display: flex; align-items: center; justify-content: space-between; width: 100%; }
 .tier-label { margin: 0 8px; color: #595959; white-space: nowrap; }
@@ -1288,8 +1355,15 @@ export default {
 .tier-block-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .tier-block-title { font-weight: 600; color: #262626; }
 .tier-block-title .muted { margin-left: 8px; font-weight: 400; }
-.tier-preview { margin: 14px 0 8px; padding: 10px 12px; background: #fafafa; border-radius: 4px; font-size: 13px; line-height: 22px; color: #262626; }
-.tier-preview-title { color: #8c8c8c; font-size: 12px; margin-bottom: 4px; }
+.tier-body { display: flex; align-items: stretch; gap: 20px; }
+.tier-edit { flex: 1 1 0; min-width: 0; }
+.tier-preview { flex: 1 1 0; min-width: 0; margin: 0; padding: 0 0 0 20px; border-left: 1px dashed #d9d9d9; }
+.tp-line { display: flex; justify-content: space-between; align-items: baseline; padding: 7px 0; border-bottom: 1px solid #f5f5f5; }
+.tp-line:last-child { border-bottom: 0; }
+.tp-range { color: #595959; font-size: 13px; }
+.tp-price { color: #262626; font-weight: 600; font-size: 14px; }
+.tp-price small { color: #8c8c8c; font-weight: 400; font-size: 12px; }
+.tier-preview-title { color: #8c8c8c; font-size: 12px; margin-bottom: 2px; }
 .pd-grid { display: grid; grid-template-columns: 110px 1fr; gap: 1px; background: #f0f0f0; border: 1px solid #f0f0f0; border-radius: 6px; overflow: hidden; }
 .pd-k, .pd-v { padding: 8px 12px; }
 .pd-k { background: #fafafa; color: #595959; }
@@ -1298,6 +1372,7 @@ export default {
 .top-card .min-row { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #f0f0f0; }
 .label-inline { margin-right: 10px; color: #595959; font-weight: 500; }
 .warn { color: #d46b08; }
+.batch-hint { flex: 1; min-width: 0; }
 .batch-bar { display: flex; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
 .row { display: flex; align-items: center; flex-wrap: wrap; }
 .gap { margin: 0 8px; }

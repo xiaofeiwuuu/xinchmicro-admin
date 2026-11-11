@@ -192,6 +192,30 @@
 			</a-menu-item>
 			<a-menu-item class="menu-item-header" disabled v-if="isMainUser">系统</a-menu-item>
 			<a-menu-item v-if="isMainUser">
+				<a-tooltip placement="right" :title="mini ? '账户管理' : ''">
+					<router-link to="/users">
+					<span class="icon">
+						<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+							<path fill-rule="evenodd" clip-rule="evenodd" d="M4 3h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2zM7.5 6.2a1.9 1.9 0 100 3.8 1.9 1.9 0 000-3.8zM4.7 14c0-1.7 1.3-2.7 2.8-2.7s2.8 1 2.8 2.7H4.7zM12 6.8h4v1.4h-4V6.8zm0 3h4v1.4h-4V9.8z" fill="#111827"/>
+						</svg>
+					</span>
+					<span class="label">账户管理</span>
+				</router-link>
+				</a-tooltip>
+			</a-menu-item>
+			<a-menu-item v-if="isMainUser">
+				<a-tooltip placement="right" :title="mini ? '角色管理' : ''">
+					<router-link to="/roles">
+					<span class="icon">
+						<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+							<path fill-rule="evenodd" clip-rule="evenodd" d="M10 2l7 2.6v5c0 3.9-2.9 6.6-7 7.8-4.1-1.2-7-3.9-7-7.8v-5L10 2zm-.9 9.1L7.2 9.2 6 10.4l3.1 3.1 5-5L12.9 7.3l-3.8 3.8z" fill="#111827"/>
+						</svg>
+					</span>
+					<span class="label">角色管理</span>
+				</router-link>
+				</a-tooltip>
+			</a-menu-item>
+			<a-menu-item v-if="isMainUser">
 				<a-tooltip placement="right" :title="mini ? '日志管理' : ''">
 					<router-link to="/logs">
 					<span class="icon">
@@ -213,30 +237,6 @@
 						</svg>
 					</span>
 					<span class="label">文件管理</span>
-				</router-link>
-				</a-tooltip>
-			</a-menu-item>
-			<a-menu-item v-if="isMainUser">
-				<a-tooltip placement="right" :title="mini ? '账户管理' : ''">
-					<router-link to="/users">
-					<span class="icon">
-						<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-							<path d="M10 9a3 3 0 100-6 3 3 0 000 6zM6.5 10C5.67 10 5 10.67 5 11.5v1a3 3 0 003 3h4a3 3 0 003-3v-1c0-.83-.67-1.5-1.5-1.5h-7z" fill="#111827"/>
-						</svg>
-					</span>
-					<span class="label">账户管理</span>
-				</router-link>
-				</a-tooltip>
-			</a-menu-item>
-			<a-menu-item v-if="isMainUser">
-				<a-tooltip placement="right" :title="mini ? '角色管理' : ''">
-					<router-link to="/roles">
-					<span class="icon">
-						<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-							<path d="M10 9a3 3 0 100-6 3 3 0 000 6zM6.5 10C5.67 10 5 10.67 5 11.5v1a3 3 0 003 3h4a3 3 0 003-3v-1c0-.83-.67-1.5-1.5-1.5h-7z" fill="#111827"/>
-						</svg>
-					</span>
-					<span class="label">角色管理</span>
 				</router-link>
 				</a-tooltip>
 			</a-menu-item>

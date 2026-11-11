@@ -45,9 +45,7 @@
 				</template>
 				<template slot="amount" slot-scope="text">{{ money(text) }}</template>
 				<template slot="status" slot-scope="text, record">
-					<a-tag :color="ORDER_STATUS[text].color">{{ ORDER_STATUS[text].text }}</a-tag>
-					<a-tag v-if="record.refundState" :color="REFUND_STATE[record.refundState].color">{{ REFUND_STATE[record.refundState].text }}</a-tag>
-					<a-tag v-if="record.refundedAmount" :color="record.fullyRefunded ? 'green' : 'orange'">{{ record.fullyRefunded ? '已全额退款' : '已退款 ' + money(record.refundedAmount) }}</a-tag>
+					<a-tag v-for="s in statusTags(record)" :key="s.text" :color="s.color">{{ s.text }}</a-tag>
 					<a-tag v-if="record.cancelRequest && record.cancelRequest.status === 'pending'" color="orange">申请取消</a-tag>
 					<a-tag v-if="activeSale(record)" :color="AFTER_SALE_STATUS[activeSale(record).status].color">售后：{{ AFTER_SALE_STATUS[activeSale(record).status].short }}</a-tag>
 				</template>
@@ -92,9 +90,7 @@
 						</div>
 						<div class="od-sum-main">
 							<div class="od-tags">
-								<a-tag :color="ORDER_STATUS[detail.status].color" class="od-status">{{ ORDER_STATUS[detail.status].text }}</a-tag>
-								<a-tag v-if="detail.refundedAmount" :color="detail.fullyRefunded ? 'green' : 'orange'" class="od-status">{{ detail.fullyRefunded ? '已全额退款' : '已退款 ' + money(detail.refundedAmount) }}</a-tag>
-								<a-tag v-if="detail.refundState" :color="REFUND_STATE[detail.refundState].color">{{ REFUND_STATE[detail.refundState].text }}</a-tag>
+								<a-tag v-for="s in statusTags(detail)" :key="s.text" :color="s.color" class="od-status">{{ s.text }}</a-tag>
 							</div>
 							<div class="od-total">{{ money(detail.totalAmount) }}</div>
 						</div>
@@ -891,6 +887,18 @@ export default {
 				as_approve: 'aftersales.handle', as_reject: 'aftersales.handle', as_received: 'aftersales.handle', as_retry: 'aftersales.handle',
 				issue: 'invoice.handle', reject: 'invoice.handle', invoicefile: 'invoice.handle'
 			}[key]
+		},
+		// 订单状态那一栏显示哪些标签：
+		//   - 已全额退款（售后退完了）：只显示红色「已全额退款」，不再显示「已完成」「已发货」
+		//   - 已取消并且钱已经退回客户：只显示红色「已退款」，不再显示「已取消」
+		//   - 其它：订单状态；已取消还在退款流程里的（需要退款、退款中、退款失败）后面再跟退款标签；部分退款显示橙色「已退款 ¥x」
+		statusTags(r) {
+			if (r.fullyRefunded) return [{ text: '已全额退款', color: 'red' }]
+			if (r.status === 'cancelled' && r.refundState === 'refunded') return [{ text: '已退款', color: 'red' }]
+			const out = [{ text: ORDER_STATUS[r.status].text, color: ORDER_STATUS[r.status].color }]
+			if (r.refundState) out.push({ text: REFUND_STATE[r.refundState].text, color: REFUND_STATE[r.refundState].color })
+			if (r.refundedAmount) out.push({ text: '已退款 ' + money(r.refundedAmount), color: 'orange' })
+			return out
 		},
 		moreItems(r) {
 			const out = []

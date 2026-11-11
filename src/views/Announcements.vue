@@ -31,27 +31,38 @@
 			</a-table>
 		</a-card>
 
-		<a-modal :title="editingId ? '编辑公告' : '新增公告'" :visible="visible" :confirmLoading="saving" :width="640" :maskClosable="false" okText="保存" @ok="save" @cancel="visible = false">
-			<a-form layout="vertical">
-				<a-form-item label="标题" required>
-					<a-input v-model="form.title" :maxLength="100" placeholder="例如：春节放假通知" />
-				</a-form-item>
-				<a-form-item label="正文" required>
-					<a-textarea v-model="form.content" :rows="6" :maxLength="2000" placeholder="公告内容，换行会保留" />
-					<div class="count">{{ form.content.length }} / 2000</div>
-				</a-form-item>
-				<a-form-item label="英文标题和正文（选填）">
-					<a-input v-model="form.titleEn" :maxLength="100" placeholder="English title" style="margin-bottom: 8px;" />
-					<a-textarea v-model="form.contentEn" :rows="4" :maxLength="2000" placeholder="English content" />
-					<div class="hint2">不填的话，英文界面显示中文。</div>
-				</a-form-item>
-				<a-form-item label="显示时间（选填）">
-					<a-range-picker v-model="range" :locale="pickerLocale" showTime format="YYYY-MM-DD HH:mm" :placeholder="['立即开始', '不结束']" style="width: 100%;" />
-					<div class="hint2">不选就一直显示，直到你停用或删除它。</div>
-				</a-form-item>
-				<a-form-item label="状态">
-					<a-switch v-model="form.active" /> <span class="sw-text">{{ form.active ? '启用' : '停用（不会弹出）' }}</span>
-				</a-form-item>
+		<a-modal :title="editingId ? '编辑公告' : '新增公告'" :visible="visible" :confirmLoading="saving" :width="1000" :maskClosable="false" okText="保存" @ok="save" @cancel="visible = false">
+			<a-form layout="horizontal" :label-col="{ span: 5 }" :wrapper-col="{ span: 19 }">
+				<a-row type="flex" :gutter="0">
+					<!-- 左：中文 -->
+					<a-col :xs="24" :md="12" class="col-left">
+						<a-form-item label="标题" required>
+							<a-input v-model="form.title" :maxLength="100" placeholder="例如：春节放假通知" />
+						</a-form-item>
+						<a-form-item label="正文" required>
+							<a-textarea v-model="form.content" :rows="6" :maxLength="2000" placeholder="公告内容，换行会保留" />
+							<div class="count">{{ form.content.length }} / 2000</div>
+						</a-form-item>
+						<a-form-item>
+							<span slot="label">显示时间 <a-tooltip title="选填；不选就一直显示，直到你停用或删除它。"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
+							<a-range-picker v-model="range" :locale="pickerLocale" showTime format="YYYY-MM-DD HH:mm" :placeholder="['立即开始', '不结束']" style="width: 100%;" />
+						</a-form-item>
+					</a-col>
+					<!-- 右：英文 -->
+					<a-col :xs="24" :md="12" class="col-right">
+						<a-form-item>
+							<span slot="label">英文标题 <a-tooltip title="选填；英文标题和正文不填的话，英文界面显示中文。"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
+							<a-input v-model="form.titleEn" :maxLength="100" placeholder="English title" />
+						</a-form-item>
+						<a-form-item label="英文正文">
+							<a-textarea v-model="form.contentEn" :rows="6" :maxLength="2000" placeholder="English content" />
+							<div class="count">{{ form.contentEn.length }} / 2000</div>
+						</a-form-item>
+						<a-form-item label="状态">
+							<a-switch v-model="form.active" /> <span class="sw-text">{{ form.active ? '启用' : '停用（不会弹出）' }}</span>
+						</a-form-item>
+					</a-col>
+				</a-row>
 			</a-form>
 		</a-modal>
 	</div>
@@ -166,13 +177,27 @@ export default {
 				this.saving = false
 			}
 		},
-		async toggle(r) {
-			try {
-				const res = await updateAnnouncement(r.id, { status: r.status === 'active' ? 'inactive' : 'active' })
-				if (res.code === 0) this.load()
-			} catch (e) {
-				notifyError(this, e, '操作失败')
-			}
+		// 停用、启用都先确认：启用后客户打开小程序就会看到，停用后马上不再弹出
+		toggle(r) {
+			const stopping = r.status === 'active'
+			this.$confirm({
+				title: stopping ? `停用公告「${r.title}」？` : `启用公告「${r.title}」？`,
+				content: stopping ? '停用后客户打开小程序不会再弹出这条公告，之后可以再启用。' : '启用后，客户打开小程序时会弹出这条公告（在显示时间段内，且还没看过的客户）。',
+				okText: stopping ? '停用' : '启用',
+				okType: stopping ? 'danger' : 'primary',
+				cancelText: '取消',
+				onOk: async () => {
+					try {
+						const res = await updateAnnouncement(r.id, { status: stopping ? 'inactive' : 'active' })
+						if (res.code === 0) {
+							this.$message.success(stopping ? '已停用' : '已启用')
+							this.load()
+						}
+					} catch (e) {
+						notifyError(this, e, '操作失败')
+					}
+				}
+			})
 		},
 		remove(r) {
 			this.$confirm({
@@ -201,6 +226,11 @@ export default {
 
 <style scoped>
 .hint { margin-left: 16px; color: #8c8c8c; }
+.col-left { padding-right: 24px; }
+.col-right { padding-left: 24px; }
+@media (min-width: 768px) { .col-right { border-left: 1px dashed #d9d9d9; } }
+.help-icon { color: #8c8c8c; cursor: help; }
+.help-icon:hover { color: #1890ff; }
 .hint2 { color: #8c8c8c; font-size: 12px; margin-top: 6px; }
 .count { text-align: right; color: #bfbfbf; font-size: 12px; }
 .sw-text { margin-left: 8px; color: #595959; }

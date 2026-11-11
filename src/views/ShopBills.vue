@@ -54,8 +54,8 @@
 				<!-- 对账：只有「全部」交易账单才有 -->
 				<a-card v-if="data.reconcile" :bordered="false" class="mb-24" title="和我们自己的记录对账">
 					<div slot="extra" class="note" style="margin: 0;">
-						<template v-if="data.reconcile.ok"><i class="dot ok"></i>和微信账单完全一致</template>
-						<template v-else><i class="dot warn"></i>有 {{ data.reconcile.items.length }} 处差异，请逐条核对</template>
+						<a-tag v-if="data.reconcile.ok" color="green" class="rec-tag"><a-icon type="check-circle" /> 和微信账单完全一致</a-tag>
+						<a-tag v-else color="orange" class="rec-tag"><a-icon type="exclamation-circle" /> 有 {{ data.reconcile.items.length }} 处差异，请逐条核对</a-tag>
 					</div>
 					<table class="rec-table">
 						<colgroup><col class="c-name" /><col /><col /><col /><col /></colgroup>
@@ -68,6 +68,7 @@
 					</table>
 					<a-table v-if="!data.reconcile.ok" class="rec-items" size="small" rowKey="key" :columns="diffColumns" :dataSource="diffRows" :pagination="false">
 						<template slot="type" slot-scope="text"><a-tag :color="DIFF[text].color">{{ DIFF[text].text }}</a-tag></template>
+						<template slot="copy" slot-scope="text"><span v-if="text" class="copy-cell" title="点击复制" @click="copyText(text)">{{ text }}</span><span v-else>—</span></template>
 						<template slot="bill" slot-scope="text">{{ text === null ? '—' : yuan(text) }}</template>
 						<template slot="localAmt" slot-scope="text">{{ text === null ? '—' : yuan(text) }}</template>
 					</a-table>
@@ -76,7 +77,10 @@
 
 				<!-- 明细 -->
 				<a-card :bordered="false" :title="'明细（' + data.count + ' 条）'">
-					<a-table size="small" rowKey="key" :columns="columns" :dataSource="rows" :pagination="pagination" :scroll="{ x: true }" @change="onTableChange" />
+					<a-table size="small" rowKey="key" :columns="columns" :dataSource="rows" :pagination="pagination" :scroll="{ x: true }" @change="onTableChange">
+						<template slot="copy" slot-scope="text"><span v-if="text" class="copy-cell" title="点击复制" @click="copyText(text)">{{ text }}</span><span v-else>—</span></template>
+						<template slot="tstatus" slot-scope="text"><a-tag v-if="text" :color="tradeState(text).color">{{ tradeState(text).text }}</a-tag><span v-else>—</span></template>
+					</a-table>
 					<div class="bills-tip" style="margin-top: 8px;">表里只列常用的几列；完整内容请点上面的「下载账单文件」。文件里每个字段前的 ` 字符是微信故意加的，防止 Excel 把长数字显示成科学计数法。</div>
 				</a-card>
 			</template>
@@ -95,6 +99,7 @@ import DateRangeQuick from '@/components/DateRangeQuick.vue'
 import { getWxBill, downloadWxBill, syncWxBills } from '@/api'
 import { notifyError } from '@/utils/notify'
 import { newPagination, applyTableChange } from '@/utils/pagination'
+import { copyToClipboard } from '@/utils/copy'
 
 const DIFF = {
 	pay_missing_local: { text: '微信有、我们没确认', color: 'red' },
@@ -113,6 +118,18 @@ const QUICK = [
 	{ key: '7d', text: '近 7 天', range: () => [yday().subtract(6, 'day'), yday()] },
 	{ key: '30d', text: '近 30 天', range: () => [yday().subtract(29, 'day'), yday()] }
 ]
+// 微信交易账单里「交易状态」的取值（官方文档）：给中文和颜色，不认识的原样显示。灰色的写 color: ''（不要写 'default'：a-tag 会当成自定义颜色，白字配浅灰底几乎看不见）
+const TRADE_STATE = {
+	SUCCESS: { text: '支付成功', color: 'green' },
+	REFUND: { text: '转入退款', color: 'orange' },
+	NOTPAY: { text: '未支付', color: '' },
+	CLOSED: { text: '已关闭', color: '' },
+	REVOKED: { text: '已撤销', color: '' },
+	USERPAYING: { text: '支付中', color: 'blue' },
+	PAYERROR: { text: '支付失败', color: 'red' }
+}
+// 点一下就复制的列（订单号、单号）
+const COPY_COLS = ['商户订单号', '微信订单号']
 const TRADE_COLS = ['交易时间', '商户订单号', '微信订单号', '交易状态', '订单金额', '申请退款金额', '手续费', '商品名称']
 
 export default {
@@ -164,7 +181,8 @@ export default {
 			if (!this.data) return []
 			const header = this.data.header || []
 			const cols = this.kind === 'trade' ? TRADE_COLS.filter((c) => header.includes(c)) : header
-			return cols.map((c) => ({ title: c, dataIndex: c, key: c }))
+			// 订单号类的列点一下复制；交易状态用彩色标签
+			return cols.map((c) => ({ title: c, dataIndex: c, key: c, ...(COPY_COLS.includes(c) ? { scopedSlots: { customRender: 'copy' } } : c === '交易状态' ? { scopedSlots: { customRender: 'tstatus' } } : {}) }))
 		},
 		rows() { return ((this.data && this.data.rows) || []).map((r, i) => ({ ...r, key: i })) },
 		// 微信账单减我们的记录；一样就显示 —，不一样标橙色
@@ -180,8 +198,8 @@ export default {
 		diffColumns() {
 			return [
 				{ title: '类型', dataIndex: 'type', key: 'type', scopedSlots: { customRender: 'type' } },
-				{ title: '商户订单号/退款单号', dataIndex: 'outTradeNo', key: 'outTradeNo' },
-				{ title: '业务订单号', dataIndex: 'orderNo', key: 'orderNo' },
+				{ title: '商户订单号/退款单号', dataIndex: 'outTradeNo', key: 'outTradeNo', scopedSlots: { customRender: 'copy' } },
+				{ title: '业务订单号', dataIndex: 'orderNo', key: 'orderNo', scopedSlots: { customRender: 'copy' } },
 				{ title: '微信账单金额', dataIndex: 'billAmount', key: 'billAmount', scopedSlots: { customRender: 'bill' } },
 				{ title: '我们的金额', dataIndex: 'localAmount', key: 'localAmount', scopedSlots: { customRender: 'localAmt' } },
 				{ title: '说明', dataIndex: 'note', key: 'note' }
@@ -191,6 +209,11 @@ export default {
 	},
 	methods: {
 		yuan(n) { return '¥' + Number(n || 0).toFixed(2) },
+		tradeState(v) { return TRADE_STATE[String(v).trim().toUpperCase()] || { text: String(v), color: '' } },
+		async copyText(text) {
+			if (await copyToClipboard(String(text))) this.$message.success('已复制 ' + text)
+			else this.$message.error('复制失败，请手动选择复制')
+		},
 		// 只能选昨天及以前、最近三个月内；一次最多 31 天（选了开始日期后，超过 31 天的选不了）
 		disabledDate(current) {
 			return !!current && (current.isAfter(moment().subtract(1, 'day').endOf('day')) || current.isBefore(moment().subtract(90, 'day').startOf('day')))
@@ -268,6 +291,9 @@ export default {
 </script>
 
 <style scoped>
+.copy-cell { cursor: pointer; }
+.copy-cell:hover { color: #1890ff; }
+.rec-tag { margin: 0; font-size: 13px; }
 .bills-head { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
 .bills-sub { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px 16px; margin-top: 16px; padding-top: 14px; border-top: 1px solid #f0f0f0; }
 .sub-actions { display: flex; gap: 16px; font-size: 13px; }

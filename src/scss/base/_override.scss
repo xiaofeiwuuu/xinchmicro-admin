@@ -377,8 +377,10 @@ textarea.ant-calendar-range .ant-calendar-time-picker-input {
 .ant-form-item-control {
 	line-height: $input-height-lg ;
 }
+// 左右排列的表单里，label 的行高要和输入框（$input-height-lg，40px）一样，文字才和输入框垂直居中；
+// 以前写死 28px，label 比输入框高出一截，label 和右边的内容上下对不齐。上下排列的表单（.ant-form-vertical）antd 自己有更具体的规则，不受影响
 .ant-form-item-label {
-	line-height: 28px;
+	line-height: $input-height-lg;
 }
 form .has-feedback :not(.ant-input-group-addon) > .ant-select .ant-select-selection__clear {
 	right: 32px ;

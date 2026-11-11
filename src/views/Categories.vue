@@ -28,26 +28,26 @@
                 <span v-if="text" class="copy-cell" title="点击复制" @click="copyName(text)">{{ text }}</span>
                 <span v-else>-</span>
             </template>
-            <span slot="action" slot-scope="text, record">
+            <!-- 操作列统一用 .row-actions：按钮并排，放不下整个按钮换行，不用竖分隔线（见 scss/components/_table.scss） -->
+            <div slot="action" slot-scope="text, record" class="row-actions">
                 <!-- 编辑按钮 -->
                 <a-button v-can="'category.edit'" type="link" size="small" @click="showModal(record)">
                     <icon-edit />
                     <span class="text-dark">编辑</span>
                 </a-button>
-                <a-divider v-can="'category.edit'" type="vertical" />
                 <!-- 删除按钮 -->
                 <a-button v-can="'category.edit'" type="link" size="small" @click="handleDelete(record)">
                     <icon-delete />
                     <span class="text-danger">删除</span>
                 </a-button>
-            </span>
+            </div>
         </a-table>
 
         <!-- 编辑模态框 -->
         <a-modal :maskClosable="false" :title="modalTitle" :visible="visible" :confirm-loading="confirmLoading"
             @ok="handleOk" @cancel="handleCancel">
             <a-form :form="form" :hide-required-mark="true">
-                <a-form-item label="分类名称" :colon="false">
+                <a-form-item label="分类名称" :colon="false" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
                     <a-input 
                         v-decorator="[
                             'name', 
@@ -59,7 +59,7 @@
                         placeholder="请输入分类名称" 
                     />
                 </a-form-item>
-                <a-form-item label="英文名称" :colon="false">
+                <a-form-item label="英文名称" :colon="false" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
                     <a-input
                         v-decorator="[
                             'nameEn',
@@ -71,7 +71,8 @@
                         placeholder="可选；没有填写时英文界面显示分类名称"
                     />
                 </a-form-item>
-                <a-form-item label="排序" :colon="false">
+                <a-form-item :colon="false" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+                    <span slot="label">排序 <a-tooltip title="数字越小越靠前"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
                     <a-input-number 
                         v-decorator="[
                             'sort_order', 
@@ -81,7 +82,7 @@
                             }
                         ]"
                         :min="0"
-                        placeholder="请输入排序数字(数字越小越靠前)" 
+                        placeholder="请输入排序数字" 
                         style="width: 100%"
                     />
                 </a-form-item>
@@ -116,6 +117,8 @@ const columns = [
     {
         title: '操作',
         key: 'action',
+        // 编辑 + 删除两个按钮并排要约 150px；列宽是平均分配的，窗口不宽时平均下来放不下，会把删除挤到下一行，所以这一列给固定宽度（其余列仍平分剩下的）
+        width: 150,
         scopedSlots: { customRender: 'action' },
     },
 ];
@@ -273,6 +276,9 @@ export default {
 </script>
 
 <style scoped>
+/* 表单里的提示：问号图标，鼠标移上去或手指点一下显示 */
+.help-icon { margin-left: 4px; color: #8c8c8c; cursor: help; }
+.help-icon:hover { color: #1890ff; }
 .copy-cell { cursor: pointer; }
 .copy-cell:hover { color: #1890ff; }
 </style>

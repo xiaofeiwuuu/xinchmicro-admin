@@ -32,7 +32,7 @@
 							okText="是"
 							cancelText="否"
 						>
-							<a>删除</a>
+							<a class="act-danger">删除</a>
 						</a-popconfirm>
 					</a-space>
 				</template>
@@ -42,15 +42,14 @@
 		<a-modal
 			:title="modalTitle"
 			:visible="visible"
+			:width="760"
 			@ok="handleSubmit"
 			@cancel="handleCancel"
 			:confirmLoading="confirmLoading"
 		>
-			<a-form-model ref="form" :model="form" :rules="rules">
-				<a-form-model-item label="标题" prop="title">
-					<a-input v-model="form.title" placeholder="请输入标题" />
-				</a-form-model-item>
-				<a-form-model-item label="图片" prop="imageUrl">
+			<a-form-model ref="form" :model="form" :rules="rules" :label-col="{ span: 5 }" :wrapper-col="{ span: 19 }">
+				<a-form-model-item prop="imageUrl">
+					<span slot="label">图片 <a-tooltip title="点击图片可更换"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
 					<a-upload
 						name="file"
 						listType="picture-card"
@@ -72,17 +71,18 @@
 							<a-icon type="reload" /> 重试上传
 						</a-button>
 					</div>
-					<div v-if="fileList.length && fileList[0].url" style="margin-top: 8px;">
-						<img :src="toDisplayUrl(fileList[0].url)" alt="轮播图" title="点击更换图片"
-							:style="{ maxWidth: '200px', maxHeight: '200px', cursor: uploading ? 'not-allowed' : 'pointer' }"
-							@click="!uploading && handleChangeImage()" />
-						<div style="margin-top: 4px; color: rgba(0, 0, 0, 0.45); font-size: 12px;">点击图片可更换图片</div>
+					<div v-if="fileList.length && fileList[0].url" class="img-box" :class="{ disabled: uploading }" title="点击更换图片" @click="!uploading && handleChangeImage()">
+						<img :src="toDisplayUrl(fileList[0].url)" alt="轮播图" />
 					</div>
+				</a-form-model-item>
+				<a-form-model-item label="标题" prop="title">
+					<a-input v-model="form.title" placeholder="请输入标题" />
 				</a-form-model-item>
 				<a-form-model-item label="链接">
 					<link-picker :key="linkPickerKey" v-model="form.link" />
 				</a-form-model-item>
-				<a-form-model-item label="排序" prop="order">
+				<a-form-model-item prop="order">
+					<span slot="label">排序 <a-tooltip title="数字越小越靠前（0 最靠前）；数字一样时，后添加的排在前面。"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
 					<a-input-number v-model="form.order" :min="0" />
 				</a-form-model-item>
 				<a-form-model-item label="状态" prop="status">
@@ -425,9 +425,17 @@ export default {
 </script>
 
 <style scoped>
+.act-danger { color: #ff4d4f; }
+.act-danger:hover { color: #ff7875; }
 .mb-24 {
 	margin-bottom: 24px;
 }
+.img-box { width: 220px; height: 130px; border: 1px dashed #d9d9d9; border-radius: 8px; background: #fafafa; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 8px; }
+.img-box:hover { border-color: #1890ff; }
+.img-box.disabled { cursor: not-allowed; opacity: 0.6; }
+.img-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.help-icon { color: #8c8c8c; cursor: help; }
+.help-icon:hover { color: #1890ff; }
 .ant-upload-text {
 	margin-top: 8px;
 	color: #666;

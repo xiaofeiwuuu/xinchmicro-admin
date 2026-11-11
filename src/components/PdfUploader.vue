@@ -1,6 +1,15 @@
 <template>
-  <div>
+  <div :class="{ 'in-form-row': hideButtonWhenUploaded }">
+    <!-- 已有文件且设了 hideButtonWhenUploaded：用一张文件卡片代替 antd 自带的文件列表（那个只有一行小字，选中时整行蓝底，不好看） -->
+    <div v-if="showCard" class="pdf-card">
+      <a-icon type="file-pdf" class="pdf-card-icon" />
+      <a class="pdf-card-name" :href="value.url || undefined" target="_blank" rel="noopener noreferrer" :title="cardName">{{ cardName }}</a>
+      <a-tooltip v-if="removable" title="移除这个文件">
+        <span class="pdf-card-remove" @click="handleRemove"><a-icon type="delete" /></span>
+      </a-tooltip>
+    </div>
     <a-upload
+      v-else
       name="pdf"
       :fileList="fileList"
       :beforeUpload="beforeUpload"
@@ -9,6 +18,7 @@
       :accept="allowImage ? '.pdf,.jpg,.jpeg,.png' : '.pdf'"
       :disabled="uploading"
     >
+      <!-- hideButtonWhenUploaded：已经有文件了就藏起上传按钮（要换的话先点文件右边的移除，按钮会再出现）；上传中和上传失败时仍显示，失败要能重选 -->
       <a-button :disabled="uploading">
         <a-icon :type="uploading ? 'loading' : 'upload'" /> {{ uploading ? '上传中...' : buttonText }}
       </a-button>
@@ -37,6 +47,8 @@ export default {
     originalFileId: { type: String, default: '' },
     // 是否允许移除（移除后保存即清空该文件）
     removable: { type: Boolean, default: false },
+    // 已有文件时隐藏上传按钮（需要同时允许移除，否则没法换文件）
+    hideButtonWhenUploaded: { type: Boolean, default: false },
     buttonText: { type: String, default: '上传PDF' },
     // 同时允许图片（JPG、PNG）：发票文件用，其它地方（产品、手册）只收 PDF
     allowImage: { type: Boolean, default: false },
@@ -52,6 +64,14 @@ export default {
     };
   },
   computed: {
+    // 有文件、没在上传、没出错，且要求「有文件就隐藏上传按钮」：显示文件卡片
+    showCard() {
+      return !!(this.hideButtonWhenUploaded && this.value && !this.uploading && !this.error);
+    },
+    cardName() {
+      if (!this.value) return '';
+      return this.value.filename || (this.value.url || '').split('/').pop() || '当前文件';
+    },
     // 文件列表完全由状态推导，不另存一份
     fileList() {
       const name = this.file ? this.file.name : '';
@@ -127,3 +147,16 @@ export default {
   }
 };
 </script>
+
+<style scoped>
+/* 已上传文件的卡片：和输入框一样高（40px）、一样的圆角，左边 PDF 图标，中间文件名（太长省略，点开预览），右边移除 */
+/* margin 上下各 4px：表单行里（外层行高 40px）输入框是行内元素，会偏下 4px，卡片留同样的距离才和左边的 label 垂直居中、行高和别的行一致（48px） */
+.pdf-card { margin: 4px 0; display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; border: 1px solid #d6e4ff; border-radius: 8px; background: #f5f9ff; }
+/* 上传按钮在这一行里比 label 的中心低 1px，上移 1px（relative 不影响布局） */
+.in-form-row >>> .ant-upload .ant-btn { position: relative; top: -1px; }
+.pdf-card-icon { flex: none; font-size: 20px; color: #f5222d; }
+.pdf-card-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #262626; }
+.pdf-card-name:hover { color: #1890ff; }
+.pdf-card-remove { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; color: #8c8c8c; cursor: pointer; }
+.pdf-card-remove:hover { background: #ffe9e9; color: #f5222d; }
+</style>

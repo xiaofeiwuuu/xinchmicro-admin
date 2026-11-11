@@ -1,6 +1,7 @@
 <template>
 	<div>
 		<a-card :bordered="false" class="mb-24">
+			<a-input v-model="customerId" placeholder="编号" style="width: 160px; margin-right: 12px;" allowClear @pressEnter="handleSearch" />
 			<a-input v-model="nickname" placeholder="昵称" style="width: 160px; margin-right: 12px;" allowClear @pressEnter="handleSearch" />
 			<a-input v-model="phone" placeholder="手机号" style="width: 160px; margin-right: 12px;" allowClear @pressEnter="handleSearch" />
 			<a-select v-model="scope" style="width: 160px; margin-right: 12px;" @change="handleSearch">
@@ -30,8 +31,8 @@
 				@change="handleTableChange"
 			>
 				<template slot="avatar" slot-scope="text, record">
-					<img v-if="record.avatar" :src="record.avatar" class="avatar" />
-					<span v-else class="avatar avatar-empty">{{ (record.nickname || '客').slice(0, 1) }}</span>
+					<!-- 没设头像（或头像链接失效）显示默认头像，和小程序里的默认头像是同一张 -->
+					<img :src="record.avatar || defaultAvatar" class="avatar" @error="onAvatarError" />
 				</template>
 				<template slot="nickname" slot-scope="text, record">
 					<span v-if="text" class="copy-cell" title="点击复制" @click="copyName(text)">{{ text }}</span><span v-else>（未设置）</span><a-tag v-if="record.isMember" color="gold" style="margin-left: 8px;">会员</a-tag>
@@ -50,18 +51,8 @@
 					<div class="row-actions">
 						<a @click="openDetail(record.id)">详情</a>
 						<a v-can="'customer.edit'" @click="openRemark(record)">备注</a>
-						<a-popconfirm v-if="main" :overlayStyle="{ maxWidth: '260px' }" :title="record.isMember ? '取消会员后，这个客户以后下单按普通价；已经下的订单价格不变。确定吗？' : '升级成会员后，这个客户以后下单按产品的会员价（没设会员价的产品还是普通价）；已经下的订单价格不变。确定吗？'" @confirm="toggleMember(record)">
-							<a>{{ record.isMember ? '取消会员' : '设为会员' }}</a>
-						</a-popconfirm>
-						<a-popconfirm
-							v-if="record.status !== 'deleted'"
-							v-can="'customer.edit'"
-							:overlayStyle="{ maxWidth: '260px' }"
-							:title="record.status === 'active' ? BLOCK_TIP : '确定恢复这个客户吗？'"
-							@confirm="toggle(record)"
-						>
-							<a :style="{ color: record.status === 'active' ? '#ff4d4f' : '#1890ff' }">{{ record.status === 'active' ? '拉黑' : '恢复' }}</a>
-						</a-popconfirm>
+						<a v-if="main" @click="confirmMember(record)">{{ record.isMember ? '取消会员' : '设为会员' }}</a>
+						<a v-if="record.status !== 'deleted'" v-can="'customer.edit'" :style="{ color: record.status === 'active' ? '#ff4d4f' : '#1890ff' }" @click="confirmToggle(record)">{{ record.status === 'active' ? '拉黑' : '恢复' }}</a>
 					</div>
 				</template>
 			</a-table>
@@ -83,14 +74,14 @@
 					<div class="cd-sum">
 						<div class="cd-top">
 						<div class="cd-who">
-							<img v-if="detail.avatar" :src="detail.avatar" class="avatar avatar-lg" />
-							<span v-else class="avatar avatar-lg avatar-empty">{{ (detail.nickname || '客').slice(0, 1) }}</span>
+							<img :src="detail.avatar || defaultAvatar" class="avatar avatar-lg" @error="onAvatarError" />
 							<div class="cd-who-text">
 								<div class="cd-name">
 									<span v-if="detail.nickname" class="copy-cell" title="点击复制" @click="copyName(detail.nickname)">{{ detail.nickname }}</span><span v-else>（未设置昵称）</span>
 									<a-tag :color="{ active: 'green', disabled: 'red', deleted: '' }[detail.status]" class="cd-tag">{{ { active: '正常', disabled: '已拉黑', deleted: '已注销（个人信息已清除）' }[detail.status] }}</a-tag>
 									<a-tag v-if="detail.isMember" color="gold" class="cd-tag">会员</a-tag>
 								</div>
+								<div class="cd-line"><span class="k">编号</span><span class="copy-cell" title="点击复制" @click="copyName('#' + detail.id)">#{{ detail.id }}</span></div>
 								<div class="cd-line"><span class="k">手机号</span><span v-if="detail.phone" class="copy-cell" title="点击复制" @click="copyName(detail.phone)">{{ detail.phone }}</span><span v-else>未绑定</span></div>
 								<div class="cd-line"><span class="k">最近登录</span>{{ detail.lastLoginAt || '-' }}</div>
 							</div>
@@ -163,7 +154,8 @@ export default {
 			FOLD: 2, // 收货地址、发票抬头默认只显示前 2 个，其余收起
 			showAllAddr: false,
 			showAllTitles: false,
-			BLOCK_TIP: '拉黑后，这个微信号不能再使用小程序：打开只会看到「账号已被限制」页面，不能登录、下单、支付。确定吗？',
+			BLOCK_TIP: '拉黑后，这个微信号不能再使用小程序：打开只会看到「账号已被限制」页面，不能登录、下单、支付。',
+			customerId: '',
 			nickname: '',
 			phone: '',
 			status: undefined,
@@ -181,20 +173,25 @@ export default {
 			loading: false,
 			customers: [],
 			pagination: newPagination(),
+			defaultAvatar: require('@/assets/avatar-default.png'),
 			sortOrder: '', // 订单数排序：'' 默认（新注册在前）/ descend / ascend
 			baseColumns: [
-				{ title: '头像', dataIndex: 'avatar', key: 'avatar', scopedSlots: { customRender: 'avatar' } },
+				{ title: '编号', dataIndex: 'id', key: 'id', width: 80 },
+				{ title: '头像', dataIndex: 'avatar', key: 'avatar', width: 80, scopedSlots: { customRender: 'avatar' } },
 				{ title: '昵称', dataIndex: 'nickname', key: 'nickname', scopedSlots: { customRender: 'nickname' } },
 				{ title: '手机号', dataIndex: 'phone', key: 'phone', scopedSlots: { customRender: 'phone' } },
 				{ title: '备注', dataIndex: 'remark', key: 'remark', scopedSlots: { customRender: 'remark' } },
-				{ title: '订单数', dataIndex: 'orderCount', key: 'orderCount', sorter: true, sortDirections: ['descend', 'ascend'] },
-				{ title: '状态', dataIndex: 'status', key: 'status', scopedSlots: { customRender: 'status' } },
+				{ title: '订单数', dataIndex: 'orderCount', key: 'orderCount', width: 100, sorter: true, sortDirections: ['descend', 'ascend'] },
+				{ title: '状态', dataIndex: 'status', key: 'status', width: 90, scopedSlots: { customRender: 'status' } },
 				{ title: '最近登录', dataIndex: 'lastLoginAt', key: 'lastLoginAt', customRender: (v) => v || '-' },
 				{ title: '操作', key: 'action', scopedSlots: { customRender: 'action' } }
 			]
 		}
 	},
 	created() {
+		// 从日志里点客户过来：?id=编号，直接查这个人
+		const q = (this.$route && this.$route.query) || {}
+		if (q.id) this.customerId = String(q.id)
 		this.fetch()
 	},
 	computed: {
@@ -212,6 +209,11 @@ export default {
 		},
 	},
 	methods: {
+		// 头像链接失效（文件被删、过期）时退回默认头像；清掉 onerror 防止默认头像也加载失败时死循环
+		onAvatarError(e) {
+			const img = e.target
+			if (img.src !== this.defaultAvatar) img.src = this.defaultAvatar
+		},
 		async copyName(text) {
 			if (await copyToClipboard(text)) this.$message.success('已复制：' + text)
 			else this.$message.warning('复制失败，请手动复制')
@@ -219,7 +221,7 @@ export default {
 		async fetch() {
 			try {
 				this.loading = true
-				const data = await getShopCustomers({ nickname: this.nickname.trim(), phone: this.phone.trim(), status: this.status, member: this.member, engaged: this.scope === 'engaged' ? '1' : undefined, page: this.pagination.current, pageSize: this.pagination.pageSize, sortBy: this.sortOrder ? 'orderCount' : undefined, order: this.sortOrder === 'ascend' ? 'asc' : this.sortOrder === 'descend' ? 'desc' : undefined })
+				const data = await getShopCustomers({ id: this.customerId.trim() || undefined, nickname: this.nickname.trim(), phone: this.phone.trim(), status: this.status, member: this.member, engaged: this.scope === 'engaged' ? '1' : undefined, page: this.pagination.current, pageSize: this.pagination.pageSize, sortBy: this.sortOrder ? 'orderCount' : undefined, order: this.sortOrder === 'ascend' ? 'asc' : this.sortOrder === 'descend' ? 'desc' : undefined })
 				this.customers = data.list
 				this.pagination.total = data.total
 			} catch (error) {
@@ -234,6 +236,7 @@ export default {
 		},
 		// 重置：清空关键词和状态，范围回到默认的「有过操作的客户」
 		handleReset() {
+			this.customerId = ''
 			this.nickname = ''
 			this.phone = ''
 			this.status = undefined
@@ -287,6 +290,34 @@ export default {
 		viewOrders() {
 			this.$router.push({ path: '/shop/orders', query: { customerId: String(this.detail.id), name: this.detail.nickname || '' } })
 		},
+		// 设为会员 / 取消会员：弹出确认框（不用气泡），会改变这个客户以后买东西的价格，要说清楚影响
+		confirmMember(record) {
+			const next = !record.isMember
+			const who = `客户「${record.nickname || '未设置昵称'}」`
+			this.$confirm({
+				title: next ? '设为会员？' : '取消会员？',
+				content: next
+					? `${who}升级成会员后，以后下单按产品的会员价（没设会员价的产品还是普通价）；已经下的订单价格不变。`
+					: `${who}取消会员后，以后下单按普通价；已经下的订单价格不变。`,
+				okText: next ? '设为会员' : '取消会员',
+				okType: next ? 'primary' : 'danger',
+				cancelText: '再想想',
+				onOk: () => this.toggleMember(record)
+			})
+		},
+		// 拉黑 / 恢复：同样弹出确认框
+		confirmToggle(record) {
+			const block = record.status === 'active'
+			const who = `客户「${record.nickname || '未设置昵称'}」`
+			this.$confirm({
+				title: block ? '拉黑这个客户？' : '恢复这个客户？',
+				content: block ? `${who}：${this.BLOCK_TIP}` : `${who}恢复后，这个微信号可以重新使用小程序。`,
+				okText: block ? '拉黑' : '恢复',
+				okType: block ? 'danger' : 'primary',
+				cancelText: '再想想',
+				onOk: () => this.toggle(record)
+			})
+		},
 		async toggleMember(record) {
 			const next = !record.isMember
 			try {
@@ -316,7 +347,6 @@ export default {
 .copy-cell:hover { color: #1890ff; }
 .avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; }
 .avatar-lg { width: 64px; height: 64px; font-size: 24px; flex-shrink: 0; }
-.avatar-empty { background: #e6f4ff; color: #1677ff; font-weight: 600; }
 .row-actions { gap: 4px 14px; }
 .remark-cell { display: inline-block; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
 .cd-sum { padding: 16px 20px; margin-bottom: 16px; background: #fff; border: 1px solid #f0f0f0; border-radius: 8px; }

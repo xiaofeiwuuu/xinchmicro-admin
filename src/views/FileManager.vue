@@ -5,9 +5,6 @@
       已登记 {{ summary.total }} 个　使用中 {{ summary.used }} 个　未使用 {{ summary.unused }} 个（{{ unusedSize }}）
       <span v-if="summary.unregisteredRefs > 0">　还有 {{ summary.unregisteredRefs }} 个正在使用的文件未登记，可点「导入历史文件」补全</span>
     </div>
-    <div class="fm-hint">
-      删除会同时从云存储永久删除，无法恢复；只能删除「未使用」且上传超过 24 小时的文件，文件删除成功后记录才会一并移除。
-    </div>
 
     <!-- 工具栏 -->
     <div class="fm-toolbar">
@@ -19,9 +16,12 @@
       <a-input-search v-model="keyword" placeholder="搜索文件名" allow-clear style="width: 160px;" @search="onFilterChange" />
       <a-button :loading="importing" @click="$refs.importInput.click()">导入历史文件</a-button>
       <input ref="importInput" type="file" accept=".html,.htm,.csv,.txt" style="display: none;" @change="onImportFile" />
-      <a-button :disabled="!selectedRowKeys.length || deleting" :loading="deleting" @click="confirmDelete(selectedRowKeys)">
+      <a-button type="danger" ghost :disabled="!selectedRowKeys.length || deleting" :loading="deleting" @click="confirmDelete(selectedRowKeys)">
         删除选中（{{ selectedRowKeys.length }} 个，约 {{ selectedSize }}）
       </a-button>
+      <a-tooltip :overlayStyle="{ maxWidth: '360px' }" title="删除会同时从云存储永久删除，无法恢复；只能删除「未使用」且上传超过 24 小时的文件，文件删除成功后记录才会一并移除。">
+        <a-icon type="question-circle" class="fm-help" />
+      </a-tooltip>
     </div>
 
     <a-table :scroll="tableScroll"
@@ -31,7 +31,7 @@
       :data-source="list"
       :loading="loading"
       :pagination="pagination"
-      :row-selection="{ selectedRowKeys, onChange: onSelectChange, getCheckboxProps: checkboxProps }"
+      :row-selection="{ selectedRowKeys, onChange: onSelectChange, getCheckboxProps: checkboxProps, columnWidth: 50 }"
       @change="onTableChange"
     >
       <template slot="name" slot-scope="text, record">
@@ -43,7 +43,7 @@
         <span v-for="(u, i) in record.usedBy" :key="i" class="fm-used-by">{{ typeLabel(u.type) }}：{{ u.name }}</span>
       </template>
       <template slot="action" slot-scope="text, record">
-        <a v-if="record.deletable" @click="confirmDelete([record.id])">删除</a>
+        <a v-if="record.deletable" class="fm-danger" @click="confirmDelete([record.id])">删除</a>
         <span v-else-if="!record.inUse" class="fm-muted">{{ record.reason }}</span>
       </template>
     </a-table>
@@ -83,11 +83,11 @@ export default {
       selectedMap: {},
       result: null,
       columns: [
-        { title: '文件名（点击打开链接）', dataIndex: 'name', scopedSlots: { customRender: 'name' } },
-        { title: '大小', dataIndex: 'size', scopedSlots: { customRender: 'size' } },
-        { title: '上传时间', dataIndex: 'uploadedAt' },
-        { title: '状态', key: 'status', scopedSlots: { customRender: 'status' } },
-        { title: '操作', key: 'action', scopedSlots: { customRender: 'action' } }
+        { title: '文件名（点击打开链接）', dataIndex: 'name', width: '33%', scopedSlots: { customRender: 'name' } },
+        { title: '大小', dataIndex: 'size', width: '10%', scopedSlots: { customRender: 'size' } },
+        { title: '上传时间', dataIndex: 'uploadedAt', width: '19%' },
+        { title: '状态', key: 'status', width: '19%', scopedSlots: { customRender: 'status' } },
+        { title: '操作', key: 'action', width: '14%', scopedSlots: { customRender: 'action' } }
       ]
     };
   },
@@ -221,7 +221,11 @@ export default {
 
 <style scoped>
 .fm-summary { color: rgba(0, 0, 0, 0.65); }
-.fm-hint { color: rgba(0, 0, 0, 0.45); font-size: 12px; margin: 4px 0 16px; }
+.fm-summary { margin-bottom: 16px; }
+.fm-help { color: #8c8c8c; cursor: help; }
+.fm-help:hover { color: #1890ff; }
+.fm-danger { color: #ff4d4f; }
+.fm-danger:hover { color: #ff7875; }
 .fm-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 16px; }
 .fm-used-by { display: block; font-size: 12px; color: rgba(0, 0, 0, 0.45); }
 .fm-muted { color: rgba(0, 0, 0, 0.35); }

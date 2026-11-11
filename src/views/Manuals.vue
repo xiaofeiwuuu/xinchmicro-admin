@@ -59,19 +59,19 @@
       </template>
       
       <template slot="action" slot-scope="text, record">
-       <span style="white-space: nowrap;">
+       <!-- 操作列统一用 .row-actions：按钮并排，放不下整个按钮换行，不用竖分隔线、不用 nowrap（nowrap 的内容比列宽时会撑出横向滚动条） -->
+       <div class="row-actions">
         <!-- 编辑按钮 -->
         <a-button v-can="'manual.edit'" type="link" size="small" @click="handleEdit(record)">
           <icon-edit />
           <span class="text-dark">编辑</span>
         </a-button>
-        <a-divider v-can="'manual.edit'" type="vertical" />
         <!-- 删除按钮 -->
         <a-button v-can="'manual.edit'" type="link" size="small" @click="handleDelete(record)">
           <icon-delete />
           <span class="text-danger">删除</span>
         </a-button>
-       </span>
+       </div>
       </template>
     </a-table>
 
@@ -84,8 +84,8 @@
       @cancel="closeDialog"
       :maskClosable="false"
     >
-      <a-form :form="form" layout="vertical">
-        <a-form-item label="手册名称" :required="true">
+      <a-form :form="form" :hide-required-mark="true">
+        <a-form-item label="手册名称" :colon="false" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
           <a-input
             v-decorator="[
               'name',
@@ -100,7 +100,7 @@
             placeholder="请输入手册名称"
           />
         </a-form-item>
-        <a-form-item label="手册类型" :required="true">
+        <a-form-item label="手册类型" :colon="false" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
           <a-select
             v-decorator="[
               'type',
@@ -115,7 +115,8 @@
             <a-select-option value="safety">安全手册</a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item label="手册语言" :required="true">
+        <a-form-item :colon="false" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+          <span slot="label">手册语言 <a-tooltip title="小程序按语言显示手册：中文界面只显示中文手册，英文界面只显示英文手册。"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
           <a-select
             v-decorator="[
               'lang',
@@ -128,11 +129,9 @@
           >
             <a-select-option v-for="item in langOptions" :key="item.value" :value="item.value">{{ item.label }}</a-select-option>
           </a-select>
-          <div style="color: #999; font-size: 12px; margin-top: 5px;">
-            小程序按语言显示手册：中文界面只显示中文手册，英文界面只显示英文手册。
-          </div>
         </a-form-item>
-        <a-form-item label="排序">
+        <a-form-item :colon="false" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+          <span slot="label">排序 <a-tooltip title="数字越小越靠前，相同则按创建时间倒序（小程序按这个顺序显示）"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
           <a-input-number
             v-decorator="[
               'sort',
@@ -146,11 +145,9 @@
             placeholder="数字越小越靠前"
             style="width: 100%;"
           />
-          <div style="color: #999; font-size: 12px; margin-top: 5px;">
-            提示：数字越小越靠前，相同则按创建时间倒序（小程序按这个顺序显示）
-          </div>
         </a-form-item>
-        <a-form-item label="手册文件" :required="dialogType === 'add'">
+        <a-form-item :colon="false" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+          <span slot="label">手册文件 <a-tooltip title="支持 PDF 文件上传，不限制文件大小"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
           <a-upload
             :file-list="fileList"
             :remove="handleRemove"
@@ -162,7 +159,6 @@
               <a-icon :type="uploading ? 'loading' : 'upload'" />
               {{ uploading ? '上传中...' : '点击上传' }}
             </a-button>
-            <div style="margin-top: 8px; color: #999;">支持 PDF 文件上传，不限制文件大小</div>
           </a-upload>
 
           <!-- 上传进度条 -->
@@ -223,7 +219,8 @@ export default {
         { title: '排序', dataIndex: 'sort', key: 'sort', minWidth: 120, sorter: (a, b) => (a.sort || 0) - (b.sort || 0) },
         { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt', scopedSlots: { customRender: 'createdAt' }, minWidth: 180 },
         { title: '创建者', dataIndex: 'creator', key: 'creator', scopedSlots: { customRender: 'creator' }, minWidth: 120 },
-        { title: '操作', key: 'action', scopedSlots: { customRender: 'action' } }
+        // 编辑 + 删除两个按钮并排要约 150px，列宽是平均分配的，窗口不宽时放不下，所以给固定宽度
+        { title: '操作', key: 'action', width: 150, scopedSlots: { customRender: 'action' } }
       ],
       loading: false,
       submitLoading: false,
@@ -570,6 +567,9 @@ export default {
 </script>
 
 <style scoped>
+/* 表单里的提示：问号图标，鼠标移上去或手指点一下显示 */
+.help-icon { margin-left: 4px; color: #8c8c8c; cursor: help; }
+.help-icon:hover { color: #1890ff; }
 .manuals-container {
   padding: 20px;
 }

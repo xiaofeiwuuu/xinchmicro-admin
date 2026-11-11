@@ -6,13 +6,23 @@
 				<!-- 日期选择在前，预设按钮在后。选了自定义日期段（含首尾两天，最长一年）就用它统计，点预设按钮会清掉 -->
 				<date-range-quick v-model="customDates" :quicks="RANGES" :activeKey="range === 'custom' ? '' : range" :pickerWidth="260" @change="pickCustom" @quick="onPreset" />
 				<a-button size="small" icon="reload" :loading="loading" @click="load">刷新</a-button>
+				<!-- 统计口径：原来是页面最底下一大段小字，放进问号图标里，鼠标移上去（手机点一下）才显示 -->
+				<a-tooltip placement="bottomLeft" :overlayStyle="{ maxWidth: '440px' }">
+					<div slot="title" class="stat-tip">
+						<p>对比的是上一个同样长、同样已经过去的时间段（今天对比昨天同一时刻之前）。</p>
+						<p>自定义日期段含首尾两天，最长 366 天，日期按北京时间。</p>
+						<p>收入 = 统计期内付款成功、且订单没有被取消的金额，按付款时间算（不是下单时间）；付款后被取消的订单算退款，不计入收入。</p>
+						<p>新增客户只算有过实际操作的（填过资料、存过地址、下过单等），小程序一打开就会有的访客记录不算。</p>
+					</div>
+					<a-icon type="question-circle" class="help-icon" />
+				</a-tooltip>
 			</div>
 		</a-card>
 
 		<a-spin :spinning="loading && !data">
 			<template v-if="data">
-				<!-- 关键数字 -->
-				<a-row :gutter="24">
+				<!-- 关键数字：type="flex" 让四张卡片等高（新增客户这张没有下面的小字，不加这个会矮一截） -->
+				<a-row type="flex" :gutter="24">
 					<a-col :xs="24" :sm="12" :xl="{ span: 6 }" :xxl="{ span: 6 }">
 						<a-card :bordered="false" class="kpi mb-24">
 							<div class="kpi-label">收入</div>
@@ -39,10 +49,9 @@
 					</a-col>
 					<a-col :xs="24" :sm="12" :xl="{ span: 6 }">
 						<a-card :bordered="false" class="kpi mb-24">
-							<div class="kpi-label">新增客户</div>
+							<div class="kpi-label">新增客户 <a-tooltip title="只算有过实际操作的客户，路过的访客不算"><a-icon type="question-circle" class="help-icon" /></a-tooltip></div>
 							<div class="kpi-value">{{ t.newCustomers }}</div>
 							<div class="kpi-sub" v-html="delta(t.newCustomers, p.newCustomers)"></div>
-							<div class="kpi-note">只算有过实际操作的，路过的访客不算</div>
 						</a-card>
 					</a-col>
 				</a-row>
@@ -102,11 +111,6 @@
 						</a-card>
 					</a-col>
 				</a-row>
-
-				<div class="muted foot">
-					口径：对比的是上一个同样长、同样已经过去的时间段（今天对比昨天同一时刻之前）；自定义日期段含首尾两天，最长 366 天，日期按北京时间。收入 = 统计期内付款成功、且订单没有被取消的金额，按付款时间算（不是下单时间）；付款后被取消的订单算退款，不计入收入。
-					新增客户只算有过实际操作的（填过资料、存过地址、下过单等），小程序一打开就会有的访客记录不算。
-				</div>
 			</template>
 		</a-spin>
 	</div>
@@ -216,9 +220,12 @@ export default {
 
 <style scoped>
 .head { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }
-.muted { color: #8c8c8c; font-size: 12px; }
-.foot { line-height: 20px; padding: 0 4px 24px; }
+.stat-tip p { margin: 0 0 6px; line-height: 20px; }
+.stat-tip p:last-child { margin-bottom: 0; }
+.help-icon { color: #8c8c8c; cursor: help; }
+.help-icon:hover { color: #1890ff; }
 .kpi-label { color: #8c8c8c; }
+.kpi { height: calc(100% - 24px); } /* 24px 是 mb-24 的下外边距 */
 .kpi-value { font-size: 30px; font-weight: 600; line-height: 44px; }
 .kpi-sub { font-size: 13px; min-height: 20px; }
 .kpi-note { margin-top: 8px; padding-top: 8px; border-top: 1px dashed #f0f0f0; color: #8c8c8c; font-size: 12px; }

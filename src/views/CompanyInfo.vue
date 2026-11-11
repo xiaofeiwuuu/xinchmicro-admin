@@ -1,10 +1,14 @@
 <template>
 	<div>
 		<a-card :bordered="false">
-			<a-form class="co-form" layout="vertical" :form="form" @submit="handleSubmit">
+			<a-form class="co-form" layout="horizontal" :label-col="{ span: 5 }" :wrapper-col="{ span: 19 }" :form="form" @submit="handleSubmit">
 				<fieldset :disabled="!canEdit" class="co-fieldset">
-				<a-form-item label="公司Logo">
+				<a-row :gutter="48">
+					<a-col :xs="24" :md="12">
+<a-form-item>
+					<span slot="label">公司Logo <a-tooltip title="点击图片可更换"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
 					<a-upload
+						:class="{ 'has-logo': logoFileList.length }"
 						name="file"
 						:fileList="logoFileList"
 						:beforeUpload="beforeUpload"
@@ -25,19 +29,20 @@
 							<a-icon type="reload" /> 重试上传
 						</a-button>
 					</div>
-					<div v-if="logoFileList.length && logoFileList[0].url" style="margin-top: 8px;">
-						<img :src="toDisplayUrl(logoFileList[0].url)" alt="公司Logo" title="点击更换Logo"
-							:style="{ maxWidth: '200px', maxHeight: '200px', cursor: logoUploading ? 'not-allowed' : 'pointer' }"
-							@click="!logoUploading && handleChangeLogo()" />
-						<div style="margin-top: 4px; color: rgba(0, 0, 0, 0.45); font-size: 12px;">点击图片可更换Logo</div>
+					<div v-if="logoFileList.length && logoFileList[0].url">
+						<div class="logo-box" :class="{ disabled: logoUploading }" @click="!logoUploading && handleChangeLogo()">
+							<img :src="toDisplayUrl(logoFileList[0].url)" alt="公司Logo" />
+						</div>
 					</div>
 					<a-modal :visible="previewVisible" :footer="null" @cancel="handleCancel">
 						<img alt="example" style="width: 100%" :src="toDisplayUrl(previewImage)" />
 					</a-modal>
 				</a-form-item>
-				<a-row :gutter="32">
+					</a-col>
+				</a-row>
+				<a-row :gutter="48">
 					<a-col :xs="24" :md="12">
-						<a-form-item label="公司名称">
+<a-form-item label="公司名称">
 							<a-input
 								v-decorator="[
 									'name',
@@ -48,7 +53,25 @@
 								placeholder="请输入公司名称"
 							/>
 						</a-form-item>
-						<a-form-item label="公司介绍">
+					</a-col>
+					<a-col :xs="24" :md="12">
+<a-form-item>
+							<span slot="label">英文名称 <a-tooltip title="可选；没有填写时，英文界面显示公司名称"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
+							<a-input
+								v-decorator="[
+									'nameEn',
+									{
+										rules: [{ max: 100, message: '最多 100 个字符' }]
+									}
+								]"
+								placeholder="可选"
+							/>
+						</a-form-item>
+					</a-col>
+				</a-row>
+				<a-row :gutter="48">
+					<a-col :xs="24" :md="12">
+<a-form-item label="公司介绍">
 							<a-textarea
 								v-decorator="[
 									'description',
@@ -60,7 +83,26 @@
 								placeholder="请输入公司介绍"
 							/>
 						</a-form-item>
-						<a-form-item label="公司地址">
+					</a-col>
+					<a-col :xs="24" :md="12">
+<a-form-item>
+							<span slot="label">英文介绍 <a-tooltip title="可选；没有填写时，英文界面显示公司介绍"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
+							<a-textarea
+								v-decorator="[
+									'descriptionEn',
+									{
+										rules: [{ max: 20000, message: '最多 20000 个字符' }]
+									}
+								]"
+								:rows="4"
+								placeholder="可选"
+							/>
+						</a-form-item>
+					</a-col>
+				</a-row>
+				<a-row :gutter="48">
+					<a-col :xs="24" :md="12">
+<a-form-item label="公司地址">
 							<a-input
 								v-decorator="[
 									'address',
@@ -71,56 +113,10 @@
 								placeholder="请输入公司地址"
 							/>
 						</a-form-item>
-						<a-form-item label="地图位置" extra="小程序公司页的地图用。坐标要用腾讯/高德地图的坐标（GCJ-02），不要用手机 GPS 的坐标（会偏几百米）；可在腾讯位置服务的「坐标拾取器」（lbs.qq.com/getPoint）搜索地址后复制。两项要同时填写，留空则小程序不显示地图。">
-							<a-row :gutter="12">
-								<a-col :span="12">
-									<a-input-number
-										v-decorator="['latitude']"
-										:min="-90"
-										:max="90"
-										:precision="6"
-										placeholder="纬度，如 24.479800"
-										style="width: 100%"
-									/>
-								</a-col>
-								<a-col :span="12">
-									<a-input-number
-										v-decorator="['longitude']"
-										:min="-180"
-										:max="180"
-										:precision="6"
-										placeholder="经度，如 118.089400"
-										style="width: 100%"
-									/>
-								</a-col>
-							</a-row>
-						</a-form-item>
 					</a-col>
 					<a-col :xs="24" :md="12">
-						<a-form-item label="英文名称">
-							<a-input
-								v-decorator="[
-									'nameEn',
-									{
-										rules: [{ max: 100, message: '最多 100 个字符' }]
-									}
-								]"
-								placeholder="可选；没有填写时英文界面显示公司名称"
-							/>
-						</a-form-item>
-						<a-form-item label="英文介绍">
-							<a-textarea
-								v-decorator="[
-									'descriptionEn',
-									{
-										rules: [{ max: 20000, message: '最多 20000 个字符' }]
-									}
-								]"
-								:rows="4"
-								placeholder="可选；没有填写时英文界面显示公司介绍"
-							/>
-						</a-form-item>
-						<a-form-item label="英文地址">
+<a-form-item>
+							<span slot="label">英文地址 <a-tooltip title="可选；没有填写时，英文界面显示公司地址"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
 							<a-input
 								v-decorator="[
 									'addressEn',
@@ -128,12 +124,15 @@
 										rules: [{ max: 200, message: '最多 200 个字符' }]
 									}
 								]"
-								placeholder="可选；没有填写时英文界面显示公司地址"
+								placeholder="可选"
 							/>
 						</a-form-item>
 					</a-col>
 				</a-row>
-				<a-form-item label="联系方式">
+				<a-row :gutter="48">
+					<a-col :xs="24" :md="12">
+<a-form-item>
+							<span slot="label">联系方式 <a-tooltip title="输入后按回车添加，可以添加多个联系方式"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
 					<a-select
 						v-decorator="[
 							'contacts',
@@ -144,11 +143,10 @@
 						mode="tags"
 						placeholder="输入后按回车添加"
 					/>
-					<div style="color: #999; font-size: 12px; line-height: 1.5; margin-top: 5px;">
-						输入后按回车添加，可以添加多个联系方式
-					</div>
 				</a-form-item>
-				<a-form-item label="电子邮箱">
+					</a-col>
+					<a-col :xs="24" :md="12">
+<a-form-item label="电子邮箱">
 					<a-input
 						v-decorator="[
 							'email',
@@ -162,7 +160,41 @@
 						placeholder="请输入电子邮箱"
 					/>
 				</a-form-item>
-				<a-form-item label="公司网站">
+					</a-col>
+				</a-row>
+				<a-row :gutter="48">
+					<a-col :xs="24" :md="12">
+<a-form-item>
+							<span slot="label">地图位置 <a-tooltip :overlayStyle="{ maxWidth: '380px' }" title="小程序公司页的地图用。坐标要用腾讯/高德地图的坐标（GCJ-02），不要用手机 GPS 的坐标（会偏几百米）；可在腾讯位置服务的「坐标拾取器」（lbs.qq.com/getPoint）搜索地址后复制。两项要同时填写，留空则小程序不显示地图。"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
+							<a-row :gutter="12">
+								<a-col :span="10">
+									<a-input-number
+										v-decorator="['latitude']"
+										:min="-90"
+										:max="90"
+										:precision="6"
+										placeholder="纬度"
+										style="width: 100%"
+									/>
+								</a-col>
+								<a-col :span="10">
+									<a-input-number
+										v-decorator="['longitude']"
+										:min="-180"
+										:max="180"
+										:precision="6"
+										placeholder="经度"
+										style="width: 100%"
+									/>
+								</a-col>
+								<a-col :span="4" class="map-link-col">
+									<a href="https://lbs.qq.com/getPoint/" target="_blank" rel="noopener noreferrer"><a-icon type="link" /> 拾取坐标</a>
+								</a-col>
+							</a-row>
+						</a-form-item>
+					</a-col>
+					<a-col :xs="24" :md="12">
+<a-form-item label="公司网站">
 					<a-input
 						v-decorator="[
 							'website',
@@ -176,48 +208,17 @@
 						placeholder="请输入公司网站"
 					/>
 				</a-form-item>
-				<!-- <a-form-item label="安全手册">
-					<a-upload
-						v-decorator="[
-							'safetyManual',
-							{
-								valuePropName: 'fileList',
-								getValueFromEvent: normFile
-							}
-						]"
-						name="file"
-						:fileList="pdfFileList"
-						:beforeUpload="beforeUploadPDF"
-						:remove="handleRemovePdf"
-						:disabled="pdfUploading"
-					>
-						<a-button :disabled="pdfUploading">
-							<a-icon :type="pdfUploading ? 'loading' : 'upload'" /> {{ pdfUploading ? '上传中...' : '上传PDF文件' }}
-						</a-button>
-					</a-upload>
-					<div v-if="pdfUploadError" style="margin-top: 8px;">
-						<a-alert type="error" :message="pdfUploadError" banner />
-						<a-button type="link" @click="retryPdfUpload" style="padding-left: 0;">
-							<a-icon type="reload" /> 重试上传
-						</a-button>
-					</div>
-					<div v-if="pdfFileList.length && pdfFileList[0].url" style="margin-top: 8px;">
-						<a-button type="primary" @click="handleDownloadPdf" :loading="downloadLoading">
-							<a-icon type="download" /> 下载PDF
-						</a-button>
-						<a-button type="primary" style="margin-left: 8px;" @click="handleChangePdf">
-							<a-icon type="edit" /> 修改PDF
-						</a-button>
-					</div>
-					<div style="color: #999; font-size: 12px; margin-top: 5px;">
-						提示：仅支持PDF格式，文件大小不能超过20MB。
-					</div>
-				</a-form-item> -->
-				<a-form-item>
+					</a-col>
+				</a-row>
+				<a-row :gutter="48">
+					<a-col :xs="24" :md="12">
+				<a-form-item :wrapper-col="{ span: 19, offset: 5 }">
 					<a-button v-can="'company.edit'" type="primary" html-type="submit" :loading="loading">
 						保存
 					</a-button>
 				</a-form-item>
+					</a-col>
+				</a-row>
 				</fieldset>
 			</a-form>
 		</a-card>
@@ -229,6 +230,9 @@ import { notifyError } from '@/utils/notify';
 import { can } from '@/utils/auth';
 import { toDisplayUrl } from '@/utils/cloudUrl';
 import { getCompanyInfo, updateCompanyInfo, uploadFile, uploadPdf, deletePdf, getPdfDownloadUrl } from '@/api'
+
+// 表单里注册过的字段
+const FORM_FIELDS = ['name', 'nameEn', 'description', 'descriptionEn', 'contacts', 'email', 'website', 'address', 'addressEn', 'latitude', 'longitude']
 
 export default {
 	data() {
@@ -254,11 +258,27 @@ export default {
 			originalPdfFileID: '',
 			// 用户移除了已保存的文件：点保存时通知服务端清空（并由服务端删除旧文件）
 			logoRemoved: false,
-			pdfRemoved: false
+			pdfRemoved: false,
+			savedSnapshot: null // 已保存（或刚读到）的内容快照，读到之前是 null
 		}
 	},
 	methods: {
 		toDisplayUrl,
+		// 当前表单内容 + Logo 的快照：和「已保存」时的快照不一样，就是有没保存的修改
+		formSnapshot() {
+			const norm = (v) => (v === undefined || v === null ? '' : v)
+			const v = this.form.getFieldsValue(FORM_FIELDS)
+			const o = {}
+			FORM_FIELDS.forEach((k) => { o[k] = Array.isArray(v[k]) ? v[k] : norm(v[k]) })
+			o.logo = this.logoRemoved ? '' : (this.uploadedLogoInfo ? this.uploadedLogoInfo.fileID : '')
+			return JSON.stringify(o)
+		},
+		hasUnsaved() {
+			return this.savedSnapshot !== null && this.formSnapshot() !== this.savedSnapshot
+		},
+		onUnload(e) {
+			if (this.hasUnsaved()) { e.preventDefault(); e.returnValue = '' }
+		},
 		async handleSubmit(e) {
 			e.preventDefault()
 			this.form.validateFields(async (err, values) => {
@@ -294,6 +314,7 @@ export default {
 						this.originalPdfFileID = this.uploadedPdfInfo ? this.uploadedPdfInfo.fileID : ''
 						this.logoRemoved = false
 						this.pdfRemoved = false
+						this.savedSnapshot = this.formSnapshot()
 						this.$message.success('公司信息更新成功')
 					} catch (error) {
 						notifyError(this, error, '公司信息更新失败')
@@ -339,8 +360,8 @@ export default {
 					this.originalPdfFileID = data.safetyManualFileID
 				}
 				// 只设置表单里注册过的字段；把整条记录塞进去会让 id、createdAt、logoUrl 等每个多余的键各报一次警告
-				const FORM_FIELDS = ['name', 'nameEn', 'description', 'descriptionEn', 'contacts', 'email', 'website', 'address', 'addressEn', 'latitude', 'longitude']
 				this.form.setFieldsValue(FORM_FIELDS.reduce((o, k) => (k in data ? { ...o, [k]: data[k] } : o), {}))
+				this.savedSnapshot = this.formSnapshot()
 				
 				// 设置预览图片
 				if (data.logoUrl) {
@@ -649,8 +670,15 @@ export default {
 	},
 	created() {
 		this.fetchCompanyInfo()
+		window.addEventListener('beforeunload', this.onUnload)
+	},
+	// 离开页面前，有没保存的修改要问一下
+	beforeRouteLeave(to, from, next) {
+		if (!this.hasUnsaved()) return next()
+		this.$confirm({ title: '有修改还没保存', content: '离开后这些修改会丢失，确定离开吗？', okText: '离开', okType: 'danger', cancelText: '留下', onOk: () => next(), onCancel: () => next(false) })
 	},
 	beforeDestroy() {
+		window.removeEventListener('beforeunload', this.onUnload)
 		// 离开页面时没保存的新文件不留下孤儿（尽力而为，浏览器直接关闭时做不到）
 		this.discardSessionFile('logo')
 		this.discardSessionFile('pdf')
@@ -661,7 +689,7 @@ export default {
 <style scoped>
 /* 整个表单的宽度（整行的 50%），不撑满；窄屏时占满 */
 .co-form {
-	max-width: 50%;
+	max-width: 1100px;
 }
 @media (max-width: 992px) {
 	.co-form { max-width: 100%; }
@@ -670,5 +698,14 @@ export default {
 	margin-top: 8px;
 	color: #666;
 }
+.has-logo { display: none; }
+.logo-box { width: 104px; height: 104px; padding: 8px; border: 1px dashed #d9d9d9; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: #fafafa; }
+.logo-box:hover { border-color: #1890ff; }
+.logo-box.disabled { cursor: not-allowed; opacity: 0.6; }
+.logo-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.help-icon { color: #8c8c8c; cursor: help; }
+.help-icon:hover { color: #1890ff; }
+.co-form >>> .ant-form-item-label { text-align: left; }
+.map-link-col { line-height: 40px; white-space: nowrap; }
 .co-fieldset { border: none; margin: 0; padding: 0; min-width: 0; }
 </style> 

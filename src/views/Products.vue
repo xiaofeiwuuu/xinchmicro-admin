@@ -98,7 +98,7 @@
         </a-table>
 
         <!-- 编辑模态框 -->
-        <!-- 产品详情：左边基本信息和资料文件，右边参数（只看，修改请点「编辑」） -->
+        <!-- 产品详情：左边基本信息和资料文件，右边参数（只看，没有编辑按钮；修改请回到列表点「编辑」） -->
         <a-modal v-model="detailVisible" :title="detailRecord ? detailRecord.name : '产品详情'" :footer="null" :width="960" :destroyOnClose="true" :bodyStyle="{ maxHeight: '72vh', overflowY: 'auto' }">
             <div v-if="detailRecord" class="pd-cols">
                 <div class="pd-col">
@@ -132,10 +132,6 @@
                     </div>
                 </div>
             </div>
-            <div class="pd-foot">
-                <span></span>
-                <a-button v-can="'product.edit'" type="primary" size="small" @click="editFromDetail">编辑这个产品</a-button>
-            </div>
         </a-modal>
 
         <a-modal :maskClosable="false" :title="modalTitle" :visible="visible" :confirm-loading="confirmLoading"
@@ -149,9 +145,10 @@
                 </a-button>
             </template>
             <a-form :form="form" :hide-required-mark="true">
-                <a-row :gutter="32">
+                <!-- type="flex"：左右两列等高，中间的虚线才能从上贯到下 -->
+                <a-row type="flex" :gutter="32">
                     <!-- 左：基本信息与 PDF -->
-                    <a-col :span="10">
+                    <a-col :span="12">
                         <a-form-item label="产品名称" :colon="false" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
                             <a-input 
                                 v-decorator="[
@@ -194,7 +191,8 @@
                             </a-select>
                         </a-form-item>
                 
-                        <a-form-item label="排序" :colon="false" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+                        <a-form-item :colon="false" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+                            <span slot="label">排序 <a-tooltip title="数字越小越靠前，相同则按创建时间倒序"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
                             <a-input-number
                                 v-decorator="[
                                     'sort',
@@ -208,61 +206,60 @@
                                 placeholder="数字越小越靠前"
                                 style="width: 100%;"
                             />
-                            <div style="color: #999; font-size: 12px; line-height: 1.5; margin-top: 5px;">
-                                提示：数字越小越靠前，相同则按创建时间倒序
-                            </div>
                         </a-form-item>
-                        <a-form-item label="中文PDF" :colon="false" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+                        <a-form-item :colon="false" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+                            <span slot="label">中文PDF <a-tooltip title="仅支持PDF格式，文件大小不能超过20MB。先上传PDF文件，再提交表单。"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
                             <pdf-uploader
                                 :value="uploadedFileInfo"
                                 :original-file-id="currentRecord && currentRecord.fileID ? currentRecord.fileID : ''"
+                                removable
+                                hide-button-when-uploaded
                                 button-text="上传PDF"
                                 @change="onZhPdfChange"
                                 @uploading="uploadingZh = $event"
                             />
-                            <div style="color: #999; font-size: 12px; line-height: 1.5; margin-top: 5px;">
-                                提示：仅支持PDF格式，文件大小不能超过20MB。先上传PDF文件，再提交表单。
-                            </div>
                         </a-form-item>
-                        <a-form-item label="英文PDF" :colon="false" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+                        <a-form-item :colon="false" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+                            <span slot="label">英文PDF <a-tooltip title="可选。没有英文版时，小程序切换到英文后会显示中文版 PDF。需要批量关联请使用「批量关联英文PDF」。"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
                             <pdf-uploader
                                 :value="uploadedFileInfoEn"
                                 :original-file-id="currentRecord && currentRecord.fileIDEn ? currentRecord.fileIDEn : ''"
                                 removable
+                                hide-button-when-uploaded
                                 button-text="上传英文PDF"
                                 @change="onEnPdfChange"
                                 @uploading="uploadingEn = $event"
                             />
-                            <div style="color: #999; font-size: 12px; line-height: 1.5; margin-top: 5px;">
-                                可选。没有英文版时，小程序切换到英文后会显示中文版 PDF。需要批量关联请使用「批量关联英文PDF」。
-                            </div>
                         </a-form-item>
                     </a-col>
 
                     <!-- 右：产品参数（随所属目录变化） -->
-                    <a-col :span="14">
-                        <div style="font-weight: 500; margin-bottom: 12px;">产品参数</div>
-                        <div v-if="selectedCatalog" style="max-height: calc(100vh - 280px); overflow-y: auto; padding-right: 8px;">
-                            <a-form-item
-                                v-for="param in selectedCatalog.paramTitles"
-                                :key="param.id"
-                                :label="param.title"
-                                :colon="false"
-                                :label-col="{ span: 8 }"
-                                :wrapper-col="{ span: 16 }"
-                            >
-                                <a-input
-                                    v-decorator="[
-                                        `parameters[${param.id}]`,
-                                        {
-                                            rules: [{ required: true, message: `请输入${param.title}!` }],
-                                            initialValue: currentRecord && currentRecord.parameters ? currentRecord.parameters[param.id] : ''
-                                        }
-                                    ]"
-                                    :placeholder="`请输入${param.title}`"
-                                />
-                            </a-form-item>
-                        </div>
+                    <a-col :span="12" class="col-divider">
+                        <div style="font-weight: 500; margin-bottom: 8px;">产品参数</div>
+                        <template v-if="selectedCatalog">
+                            <!-- 和产品目录的编辑弹窗右侧一样：左边是只读的参数名称（输入框样式、不能改），右边是要填的值 -->
+                            <div style="display: flex; margin-bottom: 8px; color: #999; font-size: 12px;">
+                                <div style="flex: 1; margin-right: 8px;">参数名称</div>
+                                <div style="flex: 1;">参数值</div>
+                            </div>
+                            <div style="max-height: calc(100vh - 340px); overflow-y: auto; padding-right: 4px;">
+                                <div v-for="param in selectedCatalog.paramTitles" :key="param.id" class="param-row">
+                                    <a-input :value="param.title" disabled class="param-name" />
+                                    <a-form-item class="param-value">
+                                        <a-input
+                                            v-decorator="[
+                                                `parameters[${param.id}]`,
+                                                {
+                                                    rules: [{ required: true, message: `请输入${param.title}!` }],
+                                                    initialValue: currentRecord && currentRecord.parameters ? currentRecord.parameters[param.id] : ''
+                                                }
+                                            ]"
+                                            :placeholder="`请输入${param.title}`"
+                                        />
+                                    </a-form-item>
+                                </div>
+                            </div>
+                        </template>
                         <div v-else style="color: #999; font-size: 13px; padding: 24px 0;">
                             请先在左侧选择所属目录，选择后在这里填写该目录对应的产品参数
                         </div>
@@ -398,12 +395,6 @@ export default {
         openDetail(record) {
             this.detailRecord = record;
             this.detailVisible = true;
-        },
-        // 从详情直接进入编辑
-        editFromDetail() {
-            const r = this.detailRecord;
-            this.detailVisible = false;
-            if (r) this.showModal(r);
         },
 
         // 跳到「价格库存」页并定位到这个产品（重名产品很多，带上目录；再高亮这一行）
@@ -618,6 +609,10 @@ export default {
                         if (this.uploadedFileInfo) {
                             submitData.pdfUrl = this.uploadedFileInfo.url;
                             submitData.fileID = this.uploadedFileInfo.fileID;
+                        } else if (this.currentRecord && (this.currentRecord.fileID || this.currentRecord.pdfUrl)) {
+                            // 原来有中文 PDF、现在点了「移除」：fileID 传空字符串，服务端据此清空（不带这个字段服务端不会动原文件）
+                            submitData.pdfUrl = '';
+                            submitData.fileID = '';
                         }
 
                         if (this.currentRecord) {
@@ -673,8 +668,19 @@ export default {
 </script>
 
 <style scoped>
+/* 左右两列中间的虚线（画在右列的左边，两边各留 16px） */
+.col-divider { border-left: 1px dashed #d9d9d9; }
+/* 产品参数：一行 = 只读的参数名称 + 要填的值，两个输入框一样宽 */
+.param-row { display: flex; align-items: flex-start; margin-bottom: 8px; }
+/* 两边各占一半：不用 flex:1 分配，输入框自带的内边距和边框会让它的最小宽度比 0 大，分出来左边会多 24px */
+.param-row .param-name { flex: 0 0 calc(50% - 4px); box-sizing: border-box; margin-right: 8px; }
+.param-row .param-value { flex: 0 0 calc(50% - 4px); min-width: 0; margin-bottom: 0; }
+/* 输入框是行内元素，在 40px 行高的外层里会偏下 4px，改成块级才和左边的只读框对齐 */
+.param-row .param-value input { display: block; }
+/* 表单里的提示：问号图标，鼠标移上去或手指点一下显示 */
+.help-icon { margin-left: 4px; color: #8c8c8c; cursor: help; }
+.help-icon:hover { color: #1890ff; }
 /* 详情弹窗样式（和价格库存页的详情弹窗一致） */
-.pd-foot { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: 16px; }
 .pd-title { font-weight: 600; margin: 18px 0 8px; }
 .pd-title:first-child { margin-top: 0; }
 .pd-cols { display: flex; gap: 28px; align-items: flex-start; }

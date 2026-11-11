@@ -85,22 +85,22 @@
 			@cancel="handleCancel"
 			:confirmLoading="confirmLoading"
 		>
-			<a-form-model ref="userForm" :model="userForm" :rules="userRules">
+			<a-form-model ref="userForm" :model="userForm" :rules="userRules" :label-col="{ span: 5 }" :wrapper-col="{ span: 19 }">
 				<a-form-model-item label="用户名" prop="username">
 					<a-input v-model="userForm.username" placeholder="请输入用户名" />
 				</a-form-model-item>
 				<a-form-model-item label="密码" prop="password" v-if="!userForm.id">
 					<a-input-password v-model="userForm.password" placeholder="请输入密码" />
 				</a-form-model-item>
-				<a-form-model-item label="备注（选填）" v-if="currentUser.userType === 'main'">
-					<a-input v-model="userForm.remark" :maxLength="200" placeholder="比如：仓库小王在用" />
-				</a-form-model-item>
 				<!-- 角色：只有主账号能设置，只能设在子账号上（主账号拥有全部功能） -->
-				<a-form-model-item label="角色" v-if="showRoleField">
-					<a-select v-model="userForm.roleId" allowClear placeholder="不选择：保持原有权限" style="width: 100%">
+				<a-form-model-item v-if="showRoleField" prop="roleId">
+					<span slot="label">角色 <a-tooltip title="必选。这个账号只能使用角色里勾选的功能。角色在「角色管理」里配置。"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
+					<a-select v-model="userForm.roleId" placeholder="请选择角色" style="width: 100%">
 						<a-select-option v-for="r in roles" :key="r.id" :value="r.id">{{ r.name }}</a-select-option>
 					</a-select>
-					<div class="role-hint">选了角色，这个账号只能使用角色里勾选的功能；不选则保持原来子账号的权限。角色在「角色管理」里配置。</div>
+				</a-form-model-item>
+				<a-form-model-item label="备注" v-if="currentUser.userType === 'main'">
+					<a-input v-model="userForm.remark" :maxLength="200" placeholder="比如：仓库小王在用" />
 				</a-form-model-item>
 			</a-form-model>
 		</a-modal>
@@ -113,7 +113,7 @@
 			@cancel="handleCancel"
 			:confirmLoading="confirmLoading"
 		>
-			<a-form-model ref="passwordForm" :model="passwordForm" :rules="passwordRules">
+			<a-form-model ref="passwordForm" :model="passwordForm" :rules="passwordRules" :label-col="{ span: 7 }" :wrapper-col="{ span: 17 }">
 				<a-form-model-item label="旧密码" prop="oldPassword">
 					<a-input-password v-model="passwordForm.oldPassword" placeholder="请输入旧密码" />
 				</a-form-model-item>
@@ -134,7 +134,7 @@
 			@cancel="handleCancel"
 			:confirmLoading="confirmLoading"
 		>
-			<a-form-model ref="resetPasswordForm" :model="resetPasswordForm" :rules="resetPasswordRules">
+			<a-form-model ref="resetPasswordForm" :model="resetPasswordForm" :rules="resetPasswordRules" :label-col="{ span: 7 }" :wrapper-col="{ span: 17 }">
 				<a-form-model-item label="新密码" prop="newPassword">
 					<a-input-password v-model="resetPasswordForm.newPassword" placeholder="请输入新密码" />
 				</a-form-model-item>
@@ -244,7 +244,8 @@ export default {
 				password: [
 					{ required: true, message: '请输入密码', trigger: 'blur' },
 					{ min: 6, max: 20, message: '密码长度应为6-20个字符', trigger: 'blur' }
-				]
+				],
+				roleId: [{ required: true, message: '请选择角色', trigger: 'change' }]
 			},
 			passwordModalVisible: false,
 			currentUser: {
@@ -523,5 +524,6 @@ export default {
 .role-line { margin-top: 2px; font-size: 13px; }
 .remark-text { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-all; }
 >>> .ant-table a { white-space: nowrap; }
-.role-hint { color: #8c8c8c; font-size: 12.5px; line-height: 1.6; margin-top: 4px; }
+.help-icon { color: #8c8c8c; cursor: help; }
+.help-icon:hover { color: #1890ff; }
 </style> 

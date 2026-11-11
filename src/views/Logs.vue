@@ -2,19 +2,18 @@
 	<div>
 		<!-- 搜索表单 -->
 		<a-card class="mb-24" :bordered="false">
-			<!-- 日志分两类：后台账号的操作 / 小程序用户的操作，不混在一起 -->
-			<div class="log-tabs">
-				<a-radio-group :value="source" button-style="solid" @change="onSourceChange">
-					<a-radio-button value="admin">后台日志</a-radio-button>
-					<a-radio-button value="user">用户日志</a-radio-button>
-				</a-radio-group>
-				<span class="log-tip">{{ source === 'user' ? '小程序客户的操作（下单、改资料、申请售后等）和微信支付回调，客户显示为「客户#编号」' : '后台账号的操作（新增、修改、删除、发货、开票等）' }}</span>
-			</div>
 			<a-form layout="inline" :form="form">
+				<!-- 第一行：日志类型（后台日志 / 用户日志：后台账号的操作，和小程序客户的操作、微信支付回调）+ 客户 + 操作类型 -->
+				<a-form-item>
+					<a-radio-group :value="source" button-style="solid" @change="onSourceChange">
+						<a-radio-button value="admin">后台日志</a-radio-button>
+						<a-radio-button value="user">用户日志</a-radio-button>
+					</a-radio-group>
+				</a-form-item>
 				<a-form-item :label="source === 'user' ? '客户' : '用户名'">
 					<a-input
 						v-decorator="['username']"
-						:placeholder="source === 'user' ? '客户#编号' : '请输入用户名'"
+						:placeholder="source === 'user' ? '客户昵称或编号' : '请输入用户名'"
 						style="width: 160px"
 						allowClear
 					/>
@@ -31,6 +30,7 @@
 						</a-select-option>
 					</a-select>
 				</a-form-item>
+				<div class="row-break"></div>
 				<a-form-item label="日期范围">
 					<date-range-quick v-model="dates" @change="handleSearch" />
 				</a-form-item>
@@ -52,6 +52,10 @@
 				:loading="loading"
 				@change="handleTableChange"
 			>
+				<template slot="who" slot-scope="text, record">
+					<router-link v-if="customerIdOf(record)" :to="{ path: '/shop/customers', query: { id: customerIdOf(record) } }" title="在客户管理里查看这个客户">{{ record.displayName || text }}</router-link>
+					<span v-else>{{ record.displayName || text || '-' }}</span>
+				</template>
 				<template slot="method" slot-scope="text">
 					<a-tag :color="methodColors[text]">{{ text }}</a-tag>
 				</template>
@@ -91,7 +95,8 @@ export default {
 					title: '用户名',
 					dataIndex: 'username',
 					key: 'username',
-					customRender: (v) => v || '-'
+					// 用户日志里服务端会带 displayName（客户昵称（#编号）），没有就显示原来的用户名
+					customRender: (v, record) => (record && record.displayName) || v || '-'
 				},
 				{
 					title: '用户类型',
@@ -149,10 +154,15 @@ export default {
 		// 用户日志里的「用户」是小程序客户，类型都一样，不显示类型这一列
 		columns() {
 			if (this.source !== 'user') return this.baseColumns
-			return this.baseColumns.filter((c) => c.key !== 'userType').map((c) => (c.key === 'username' ? { ...c, title: '客户' } : c))
+			return this.baseColumns.filter((c) => c.key !== 'userType').map((c) => (c.key === 'username' ? { ...c, title: '客户', customRender: undefined, scopedSlots: { customRender: 'who' } } : c))
 		}
 	},
 	methods: {
+		// 用户日志里记的是「客户#编号」，取出编号（点客户跳到客户管理用）
+		customerIdOf(record) {
+			const m = /^客户#(\d+)$/.exec((record && record.username) || '')
+			return m ? m[1] : ''
+		},
 		// 切换后台日志 / 用户日志：筛选条件清空，从第一页开始
 		onSourceChange(e) {
 			this.source = e.target.value
@@ -269,6 +279,5 @@ export default {
 .mb-24 {
 	margin-bottom: 24px;
 }
-.log-tabs { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
-.log-tip { color: #8c8c8c; font-size: 13px; }
+.row-break { display: block; height: 0; }
 </style>

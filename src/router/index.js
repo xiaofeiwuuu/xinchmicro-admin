@@ -220,6 +220,7 @@ let routes = [
 		meta:{
 			name:'对账与账单',
 			requiresAuth: true,
+			allowCopy: true, // 订单号、单号要能选中复制
 			permission: 'bills.view'
 		},
 		component: () => import('@/views/ShopBills.vue'),

@@ -155,6 +155,7 @@ let routes = [
 		meta:{
 			name:'配置助手',
 			requiresAuth: true,
+			allowCopy: true, // 变量名要能选中复制（页面上不会出现机密的值）
 			requiresMainUser: true
 		},
 		component: () => import('@/views/EnvConfig.vue'),

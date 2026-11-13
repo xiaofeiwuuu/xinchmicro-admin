@@ -1,58 +1,64 @@
 <template>
 	<div class="env">
 		<a-card :bordered="false" class="env-head">
-			<div class="env-title">服务端配置助手</div>
-			<div class="env-steps">
-				<span>① 每一项都有说明，不懂的先看说明</span>
-				<span>② <b>先点「导入」，把云托管里现在的 JSON 粘进来</b>，再改你要改的（这个页面读不出线上的密码和密钥，不导入的话复制出去的只有你填的几项）</span>
-				<span>③ 点「复制 JSON」，到微信云托管 → 服务设置 → 环境变量里<b>整份替换</b>后保存</span>
-			</div>
-			<div class="env-safe">
-				<a-icon type="lock" /> 你填的内容<b>只在这个浏览器页面里</b>，不会发给服务端、也不会保存到数据库；线上已有的密码和密钥这个页面读不出来，只能看到「已设置」。密钥类的内容刷新页面就没了，不会存在浏览器里。
-			</div>
-			<div class="env-bar">
-				<a-button @click="importVisible = true"><a-icon type="import" /> 导入线上现在的 JSON</a-button>
-				<a-button type="primary" :disabled="!filledCount || errorCount > 0" @click="copyAll"><a-icon type="copy" /> 复制 JSON（{{ filledCount }} 项）</a-button>
-				<a-button @click="clearAll" :disabled="!filledCount">清空重填</a-button>
+			<div class="env-top">
+				<span class="env-title">服务端配置助手</span>
+				<a-tooltip placement="bottomLeft" :overlayStyle="{ maxWidth: '420px' }">
+					<div slot="title">
+						<p>1. 先点「导入」，把云托管里现在的 JSON 粘进来（这个页面读不出线上的密码和密钥，不导入的话复制出去的只有你填的几项）。</p>
+						<p>2. 改你要改的，点「复制 JSON」，到微信云托管 → 服务设置 → 环境变量里整份替换并保存。</p>
+						<p style="margin: 0;">3. 你填的内容只在这个页面里，不会发给服务端，也不会保存；密钥类的内容刷新页面就没了。</p>
+					</div>
+					<a-icon type="question-circle" class="help-icon" />
+				</a-tooltip>
 				<span class="env-sum">
 					已填 <b>{{ filledCount }}</b> 项
-					<template v-if="errorCount"> · <span class="bad">{{ errorCount }} 项格式有问题（要先改掉才能复制）</span></template>
-					<template v-if="missingRequired.length"> · <span class="warn">必填的还没配：{{ missingRequired.length }} 项</span></template>
-					<template v-if="filledCount && notInForm.length"> · <span class="warn">线上已有但这里没填的 {{ notInForm.length }} 项不会出现在复制的 JSON 里（建议先「导入」）</span></template>
+					<template v-if="errorCount"> · <span class="bad">{{ errorCount }} 项格式有问题</span></template>
+					<template v-if="missingRequired.length"> · <span class="warn">必填未配 {{ missingRequired.length }} 项</span></template>
+				</span>
+				<a-input-search v-model="search" placeholder="搜索名称或变量名" allowClear style="width: 200px;" />
+				<span class="env-bar">
+					<a-button @click="importVisible = true"><a-icon type="import" /> 导入</a-button>
+					<a-button type="primary" :disabled="!filledCount || errorCount > 0" @click="copyAll"><a-icon type="copy" /> 复制 JSON</a-button>
+					<a-button @click="clearAll" :disabled="!filledCount">清空</a-button>
 				</span>
 			</div>
 		</a-card>
 
 		<a-spin :spinning="loading">
-			<a-card v-for="g in groups" :key="g.id" :bordered="false" class="env-group">
+			<a-card v-for="g in shownGroups" :key="g.id" :bordered="false" class="env-group">
 				<div class="env-group-head" @click="toggle(g.id)">
-					<a-icon :type="open[g.id] ? 'down' : 'right'" />
+					<a-icon :type="open[g.id] || search ? 'down' : 'right'" />
 					<span class="env-group-title">{{ g.title }}</span>
+					<a-tooltip v-if="g.desc" placement="right" :overlayStyle="{ maxWidth: '460px' }">
+						<div slot="title"><div v-for="(line, i) in g.desc.split('\n')" :key="i" class="grp-line">{{ line }}</div></div>
+						<a-icon type="question-circle" class="help-icon" @click.stop />
+					</a-tooltip>
+					<a v-for="l in (g.links || [])" :key="l.url" :href="l.url" target="_blank" rel="noopener noreferrer" class="env-link" @click.stop><a-icon type="link" /> {{ l.text }}</a>
 					<span class="env-group-count">{{ itemsOf(g.id).length }} 项<template v-if="filledIn(g.id)"> · 已填 {{ filledIn(g.id) }}</template></span>
 				</div>
-				<div class="env-group-desc">{{ g.desc }}</div>
-				<div v-show="open[g.id]">
-					<div v-for="it in itemsOf(g.id)" :key="it.key" class="env-item" :class="{ 'is-unused': it.need === 'unused', 'is-local': it.need === 'local' }">
-						<div class="env-item-main">
-							<div class="env-item-name">
-								<span class="env-label">{{ it.label }}</span>
-								<a-tag v-if="it.need === 'required'" color="blue">必填</a-tag>
-								<a-tag v-else-if="it.need === 'local'" color="orange">线上不要配</a-tag>
-								<a-tag v-else-if="it.need === 'unused'">可以删</a-tag>
-								<a-tag v-if="it.secret" color="red"><a-icon type="lock" /> 机密</a-tag>
-								<a-tooltip title="点一下复制变量名"><code class="env-key" @click="copyText(it.key)">{{ it.key }}</code></a-tooltip>
+				<div v-show="open[g.id] || search" class="env-items">
+					<div v-for="it in itemsOf(g.id)" :key="it.key" class="env-item" :class="{ 'is-dim': it.need === 'unused' || it.need === 'local' }">
+						<div class="env-label">
+							<div class="env-label-line">
+							<span v-if="it.need === 'required'" class="req">*</span>
+							<span class="env-name">{{ it.label }}</span>
+							<a-tooltip placement="right" :overlayStyle="{ maxWidth: '420px' }">
+								<div slot="title" class="env-tip">
+									<div>{{ it.desc }}</div>
+									<div v-if="it.danger" class="tip-danger">⚠ {{ it.danger }}</div>
+									<div class="tip-meta">变量名：{{ it.key }}</div>
+									<div v-if="tags(it)" class="tip-meta">{{ tags(it) }}</div>
+									<div v-if="it.default" class="tip-meta">默认：{{ it.default }}</div>
+									<div v-if="it.example" class="tip-meta">示例：{{ it.example }}</div>
+									<div class="tip-meta">{{ liveText(it) }}</div>
+								</div>
+								<a-icon type="question-circle" class="help-icon" :class="{ danger: !!it.danger }" />
+							</a-tooltip>
 							</div>
-							<div class="env-desc">{{ it.desc }}</div>
-							<div v-if="it.danger" class="env-danger"><a-icon type="warning" /> {{ it.danger }}</div>
-							<div class="env-meta">
-								<span v-if="it.set" class="on">线上：已设置<template v-if="it.value !== null">，当前是 <code>{{ it.value }}</code></template><template v-if="it.need === 'unused'">（可以去云托管里删掉）</template></span>
-								<span v-else class="off">线上：{{ it.need === 'required' ? '没有设置' : '没有设置（用默认值）' }}</span>
-								<span v-if="it.default">默认：{{ it.default }}</span>
-								<span v-if="it.example">示例：<code>{{ it.example }}</code></span>
-								<a v-if="it.set && it.value !== null && values[it.key] !== it.value" @click="values[it.key] = it.value">用线上的值</a>
-							</div>
+							<a-tooltip title="点一下复制变量名"><code class="env-key" @click="copyText(it.key)">{{ it.key }}</code></a-tooltip>
 						</div>
-						<div class="env-item-input">
+						<div class="env-value">
 							<!-- 开关：不设置 / 0 / 1 -->
 							<a-radio-group v-if="it.kind === 'flag'" v-model="values[it.key]" button-style="solid" size="small">
 								<a-radio-button value="">不设置</a-radio-button>
@@ -63,10 +69,10 @@
 								<a-select-option v-for="o in it.options" :key="o" :value="o">{{ o }}</a-select-option>
 							</a-select>
 							<a-textarea v-else-if="it.kind === 'pem' || it.kind === 'json'" v-model="values[it.key]" :rows="it.kind === 'pem' ? 5 : 3" :placeholder="it.kind === 'pem' ? '-----BEGIN … KEY-----\n…\n-----END … KEY-----' : it.example" spellcheck="false" />
-							<a-input v-else-if="it.secret" v-model="values[it.key]" :type="reveal[it.key] ? 'text' : 'password'" autocomplete="off" placeholder="不改就留空">
+							<a-input v-else-if="it.secret" v-model="values[it.key]" :type="reveal[it.key] ? 'text' : 'password'" autocomplete="off" :placeholder="hint(it)">
 								<a-icon slot="suffix" :type="reveal[it.key] ? 'eye-invisible' : 'eye'" @click="$set(reveal, it.key, !reveal[it.key])" />
 							</a-input>
-							<a-input v-else v-model="values[it.key]" autocomplete="off" :placeholder="it.example || (it.default ? '默认 ' + it.default : '不设置')" />
+							<a-input v-else v-model="values[it.key]" autocomplete="off" :placeholder="hint(it)" />
 							<div v-if="it.kind === 'json' && values[it.key]" class="env-tools"><a @click="formatJson(it.key)">整理成一行</a></div>
 							<div v-if="problem(it).text" class="env-problem" :class="problem(it).level">{{ problem(it).text }}</div>
 						</div>
@@ -76,8 +82,7 @@
 		</a-spin>
 
 		<a-modal v-model="importVisible" title="导入线上现在的配置" okText="导入" cancelText="取消" :width="640" @ok="doImport">
-			<p class="env-import-tip">把云托管环境变量里现有的 JSON 整个粘贴进来（就是你之前编辑的那个 1.json 的内容）。导入后每一项会填进对应的框里，你只改想改的，再复制出去。<br />导入的内容只在这个页面里用，不会发给服务端。</p>
-			<a-textarea v-model="importText" :rows="10" spellcheck="false" placeholder='{ "MYSQL_ADDRESS": "…", … }' />
+			<a-textarea v-model="importText" :rows="10" spellcheck="false" placeholder='把云托管环境变量里现有的 JSON 整个粘贴进来：{ "MYSQL_ADDRESS": "…", … }' />
 		</a-modal>
 	</div>
 </template>
@@ -110,11 +115,13 @@ const EXTRA = {
 export default {
 	name: 'EnvConfig',
 	data() {
-		return { loading: false, groups: [], items: [], values: {}, reveal: {}, open: {}, importVisible: false, importText: '' }
+		return { loading: false, groups: [], items: [], values: {}, reveal: {}, open: {}, search: '', importVisible: false, importText: '' }
 	},
 	computed: {
 		filledCount() { return this.items.filter((i) => this.isFilled(i.key)).length },
 		errorCount() { return this.items.filter((i) => this.isFilled(i.key) && this.problem(i).level === 'error').length },
+		// 有搜索结果的分组（没搜索就是全部分组）
+		shownGroups() { return this.search.trim() ? this.groups.filter((g) => this.itemsOf(g.id).length) : this.groups },
 		// 必填的，线上没设置、表单里也没填的（线上已经设置了的，这里不算缺）
 		missingRequired() { return this.items.filter((i) => i.need === 'required' && !i.set && !this.isFilled(i.key)) },
 		// 线上已经设置、但表单里没有填的（复制出去的 JSON 里不会有它们：整份替换的话要小心）
@@ -133,9 +140,9 @@ export default {
 			res.items.forEach((i) => { values[i.key] = '' })
 			Object.assign(values, this.loadDraft(res.items))
 			this.values = values
-			// 必填和常用的分组默认展开；只在本机用的、已不使用的默认收起
+			// 分组默认全部收起（项目多，一进来就是一长串）；点分组标题展开，或者用搜索
 			const open = {}
-			res.groups.forEach((g) => { open[g.id] = !['local', 'unused', 'debug'].includes(g.id) })
+			res.groups.forEach((g) => { open[g.id] = false })
 			this.open = open
 		} catch (error) {
 			notifyError(this, error, '获取配置说明失败')
@@ -144,7 +151,29 @@ export default {
 		}
 	},
 	methods: {
-		itemsOf(groupId) { return this.items.filter((i) => i.group === groupId) },
+		// 输入框里的灰色提示：线上已有就写线上的情况，没有就写默认值/示例
+		hint(it) {
+			if (it.set) return it.secret ? '线上已设置，不改就留空' : (it.value !== null ? '线上：' + it.value : '线上已设置')
+			return it.example || (it.default ? '默认 ' + it.default : '不设置')
+		},
+		tags(it) {
+			const t = []
+			if (it.need === 'required') t.push('必填')
+			if (it.need === 'local') t.push('只在本机用，线上不要配')
+			if (it.need === 'unused') t.push('代码里已经不用了，可以去云托管里删掉')
+			if (it.secret) t.push('机密：这个页面不会显示它的值')
+			return t.join('；')
+		},
+		liveText(it) {
+			if (it.set) return '线上：已设置' + (it.value !== null ? '，当前是 ' + it.value : '')
+			return '线上：' + (it.need === 'required' ? '没有设置' : '没有设置（用默认值）')
+		},
+		// 搜索：名称、变量名里包含关键字（不区分大小写）；没搜索就是全部
+		matches(it) {
+			const q = this.search.trim().toLowerCase()
+			return !q || it.label.toLowerCase().includes(q) || it.key.toLowerCase().includes(q)
+		},
+		itemsOf(groupId) { return this.items.filter((i) => i.group === groupId && this.matches(i)) },
 		filledIn(groupId) { return this.itemsOf(groupId).filter((i) => this.isFilled(i.key)).length },
 		isFilled(key) { return String(this.values[key] === undefined || this.values[key] === null ? '' : this.values[key]).trim() !== '' },
 		toggle(id) { this.$set(this.open, id, !this.open[id]) },
@@ -254,35 +283,35 @@ export default {
 <style scoped>
 .env { padding: 0 0 40px; }
 .env-head, .env-group { margin-bottom: 16px; border-radius: 8px; }
-.env-title { font-size: 20px; font-weight: 600; color: #262626; margin-bottom: 10px; }
-.env-steps { display: flex; flex-wrap: wrap; gap: 8px 28px; color: #595959; font-size: 14px; margin-bottom: 10px; }
-.env-safe { color: #595959; font-size: 13px; line-height: 22px; background: #f5f7fa; border-radius: 6px; padding: 8px 12px; margin-bottom: 14px; }
-.env-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-.env-sum { color: #595959; font-size: 13px; margin-left: 4px; }
+.env-top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; }
+.env-title { font-size: 18px; font-weight: 600; color: #262626; }
+.env-sum { color: #595959; font-size: 13px; }
 .env-sum .bad { color: #f5222d; }
 .env-sum .warn { color: #fa8c16; }
+.env-bar { margin-left: auto; display: flex; gap: 8px; }
+.help-icon { color: #8c8c8c; cursor: help; }
+.help-icon:hover { color: #1890ff; }
+.help-icon.danger { color: #f5222d; }
 .env-group-head { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
 .env-group-title { font-size: 16px; font-weight: 600; color: #262626; }
 .env-group-count { color: #8c8c8c; font-size: 13px; }
-.env-group-desc { color: #8c8c8c; font-size: 13px; margin: 4px 0 6px 20px; }
-.env-item { display: flex; gap: 24px; padding: 16px 0; border-top: 1px solid #f0f0f0; }
-.env-item:first-of-type { margin-top: 8px; }
-.env-item.is-unused .env-label, .env-item.is-local .env-label { color: #8c8c8c; }
-.env-item-main { flex: 1 1 55%; min-width: 0; }
-.env-item-input { flex: 1 1 45%; min-width: 0; }
-.env-item-name { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 4px; }
-.env-label { font-size: 15px; font-weight: 500; color: #262626; margin-right: 2px; }
-.env-key { font-size: 12px; color: #1890ff; background: #f0f7ff; padding: 1px 6px; border-radius: 4px; cursor: pointer; }
-.env-desc { color: #595959; font-size: 13px; line-height: 21px; }
-.env-danger { color: #f5222d; font-size: 13px; margin-top: 6px; }
-.env-meta { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 8px; font-size: 12px; color: #8c8c8c; }
-.env-meta code { color: #595959; background: #f5f5f5; padding: 0 4px; border-radius: 3px; word-break: break-all; }
-.env-meta .on { color: #52c41a; }
-.env-meta .off { color: #8c8c8c; }
+.env-link { font-size: 13px; }
+.grp-line + .grp-line { margin-top: 6px; }
+.env-items { margin-top: 10px; }
+.env-item { display: flex; align-items: flex-start; gap: 16px; padding: 10px 0; border-top: 1px solid #f5f5f5; }
+.env-label { flex: 0 0 240px; display: flex; flex-direction: column; justify-content: center; gap: 2px; min-height: 40px; color: #262626; }
+.env-label-line { display: flex; align-items: center; gap: 6px; }
+.env-key { align-self: flex-start; font-size: 12px; color: #8c8c8c; background: #f5f5f5; padding: 0 6px; border-radius: 3px; cursor: pointer; word-break: break-all; }
+.env-key:hover { color: #1890ff; background: #e6f7ff; }
+.env-label .req { color: #f5222d; }
+.env-item.is-dim .env-name { color: #8c8c8c; }
+.env-value { flex: 1; min-width: 0; max-width: 640px; }
+.env-tip div + div { margin-top: 4px; }
+.env-tip .tip-danger { color: #ffa39e; }
+.env-tip .tip-meta { opacity: 0.75; font-size: 12px; }
 .env-tools { margin-top: 4px; font-size: 12px; }
 .env-problem { margin-top: 4px; font-size: 12px; line-height: 18px; }
 .env-problem.error { color: #f5222d; }
 .env-problem.warn { color: #fa8c16; }
-.env-import-tip { color: #595959; font-size: 13px; line-height: 21px; }
-@media (max-width: 900px) { .env-item { flex-direction: column; gap: 10px; } }
+@media (max-width: 900px) { .env-item { flex-direction: column; gap: 4px; } .env-label { flex-basis: auto; min-height: 0; } }
 </style>

@@ -23,7 +23,10 @@
 			<span class="tool-btns">
 				<a-button :loading="exporting" @click="exportOrders">导出订单</a-button>
 				<a-button v-can="'order.ship'" @click="openBulk">批量发货</a-button>
-				<a-button :disabled="!selectedKeys.length" @click="printSelected">打印发货单{{ selectedKeys.length ? '（' + selectedKeys.length + '）' : '' }}</a-button>
+				<a-tooltip title="把当前搜索条件下所有「待发货」的订单一次打出来（一次最多 100 单），不用一个个勾选。">
+					<a-button :loading="batchLoading" @click="batchPrintPending">批量打印发货单</a-button>
+				</a-tooltip>
+				<a-button :disabled="!selectedKeys.length" @click="printSelected">打印选中的发货单{{ selectedKeys.length ? '（' + selectedKeys.length + '）' : '' }}</a-button>
 			</span>
 		</a-card>
 
@@ -356,6 +359,41 @@
 				<a-textarea v-model="action.note" :rows="2" maxLength="200" placeholder="备注（可选）" />
 			</template>
 		</a-modal>
+
+		<!-- 打印发货单：先在这里填库房/发货人/复核，和每个产品的合同编号、检验批号、备注（都可以不填，打印后手写）；也可以直接导出成 xlsx -->
+		<a-modal v-model="printVisible" title="发货单" :width="940" :maskClosable="false" :bodyStyle="{ padding: '16px 24px' }">
+			<a-form-model :label-col="{ span: 3 }" :wrapper-col="{ span: 21 }">
+				<a-form-model-item>
+					<span slot="label">打印方式 <a-tooltip :overlayStyle="{ maxWidth: '340px' }" title="针式打印机 + 四联复写纸：选「打一份」，一次打出四联。普通 A4 纸：选「打四份」，每个订单打 4 页，分别标明财务联、库房联、客户回执、客户留存。导出 xlsx 不受影响。"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
+					<a-radio-group v-model="printCopies">
+						<a-radio :value="1">打一份（复写纸）</a-radio>
+						<a-radio :value="4">打四份（普通纸）</a-radio>
+					</a-radio-group>
+				</a-form-model-item>
+				<a-form-model-item>
+					<span slot="label">经手人 <a-tooltip title="印在发货单底部的库房、发货人、复核。不填就留空，打印后手写；上次填的会自动记住。"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
+					<a-row :gutter="12">
+						<a-col :span="8"><a-input v-model="printStaff.warehouse" :maxLength="20" addonBefore="库房" placeholder="可不填" /></a-col>
+						<a-col :span="8"><a-input v-model="printStaff.sender" :maxLength="20" addonBefore="发货人" placeholder="可不填" /></a-col>
+						<a-col :span="8"><a-input v-model="printStaff.checker" :maxLength="20" addonBefore="复核" placeholder="可不填" /></a-col>
+					</a-row>
+				</a-form-model-item>
+				<a-form-model-item>
+					<span slot="label">合同编号 <a-tooltip title="同一个合同的订单，在这里填一次，点「填入全部」就写进下面每一行；每一行也可以单独改。"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
+					<a-input-search v-model="printContractAll" :maxLength="60" placeholder="可不填" enterButton="填入全部" style="max-width: 420px;" @search="fillContractAll" />
+				</a-form-model-item>
+			</a-form-model>
+			<a-table :columns="printColumns" :dataSource="printLines" rowKey="key" size="small" :pagination="false" :scroll="{ y: 260 }">
+				<template slot="pContract" slot-scope="text, line"><a-input v-model="line.contractNo" :maxLength="60" /></template>
+				<template slot="pBatch" slot-scope="text, line"><a-input v-model="line.batchNo" :maxLength="40" /></template>
+				<template slot="pRemark" slot-scope="text, line"><a-input v-model="line.remark" :maxLength="60" /></template>
+			</a-table>
+			<template slot="footer">
+				<a-button @click="printVisible = false">取消</a-button>
+				<a-button :loading="exportingDelivery" @click="exportDelivery">导出 xlsx</a-button>
+				<a-button type="primary" @click="confirmPrint">打印</a-button>
+			</template>
+		</a-modal>
 	</div>
 </template>
 
@@ -364,8 +402,8 @@ import { notifyError } from '@/utils/notify'
 import { can } from '@/utils/auth'
 import PdfUploader from '@/components/PdfUploader.vue'
 import ImagePicker from '@/components/ImagePicker.vue'
-import { getShopOrders, getShopOrder, getShopOrderLogistics, shipShopOrder, retraceShopOrder, cancelShopOrder, markShopOrderRefunded, issueShopInvoice, rejectShopInvoice, setShopOrderRemark, approveShopCancelRequest, rejectShopCancelRequest, setShopInvoiceFile, approveAfterSale, rejectAfterSale, receivedAfterSale, retryAfterSaleRefund, bulkShipShopOrders, setShopShipPhoto, checkExpressNo, getCompanyInfo, getPdfDownloadUrl, deletePdfs } from '@/api'
-import { ordersCsv, bulkShipTemplate, deliveryNotesHtml, openPrint, downloadText } from '@/utils/orderTools'
+import { getShopOrders, getShopOrder, getShopOrderLogistics, shipShopOrder, retraceShopOrder, cancelShopOrder, markShopOrderRefunded, issueShopInvoice, rejectShopInvoice, setShopOrderRemark, approveShopCancelRequest, rejectShopCancelRequest, setShopInvoiceFile, approveAfterSale, rejectAfterSale, receivedAfterSale, retryAfterSaleRefund, bulkShipShopOrders, setShopShipPhoto, checkExpressNo, getPdfDownloadUrl, deletePdfs } from '@/api'
+import { ordersCsv, bulkShipTemplate, deliveryNotesHtml, deliveryXlsx, downloadBytes, openPrint, downloadText } from '@/utils/orderTools'
 import { parseCsv } from '@/utils/shop'
 import DateRangeQuick from '@/components/DateRangeQuick.vue'
 import { ORDER_STATUS, REFUND_STATE, INVOICE_STATUS, INVOICE_TYPE, PAID_BY, LOG_ACTION, ACTOR, AFTER_SALE_TYPE, AFTER_SALE_STATUS, AFTER_SALE_REFUND_STATE, money } from '@/utils/shop'
@@ -413,8 +451,25 @@ export default {
 			logiLoading: false,
 			uploadingFile: false,
 			exporting: false,
+			exportingDelivery: false,
+			batchLoading: false,
 			selectedKeys: [],
 			selectedMap: {}, // 勾选的订单（翻页后也保留）：id → 订单
+			printVisible: false,
+			printOrders: [],
+			printFromSelection: false,
+			printStaff: { warehouse: '', sender: '', checker: '' },
+			printLines: [], // 弹窗里每个产品一行：订单号、产品、数量 + 可填的合同编号、检验批号、备注
+			printContractAll: '',
+			printColumns: [
+				{ title: '订单号', dataIndex: 'orderNo', key: 'orderNo', width: '20%' },
+				{ title: '产品', key: 'product', width: '23%', customRender: (v, l) => `${l.catalogName ? l.catalogName + ' / ' : ''}${l.name}` },
+				{ title: '数量', dataIndex: 'qty', key: 'qty', width: '8%' },
+				{ title: '合同编号', key: 'contractNo', width: '20%', scopedSlots: { customRender: 'pContract' } },
+				{ title: '检验批号', key: 'batchNo', width: '15%', scopedSlots: { customRender: 'pBatch' } },
+				{ title: '备注', key: 'remark', width: '14%', scopedSlots: { customRender: 'pRemark' } }
+			],
+			printCopies: 1, // 1 = 打一份（复写纸一次出四联）；4 = 每个订单打四页，分别标明第几联
 			bulkVisible: false,
 			bulk: { rows: [], okCount: 0, failCount: 0, done: false, running: false, error: '' },
 			showLogs: false,
@@ -741,23 +796,90 @@ export default {
 			this.selectedMap = map
 			this.selectedKeys = keys
 		},
-		async print(orders) {
-			let name = ''
-			try {
-				const c = await getCompanyInfo()
-				name = (c && c.data && c.data.name) || ''
-			} catch (e) { /* 取不到公司名就不印 */ }
-			const opened = openPrint(deliveryNotesHtml(orders, name))
-			if (!opened) this.$message.warning('浏览器拦截了打印窗口，请允许本页面弹出窗口后重试')
-			return !!opened
+		// 点「打印发货单」先弹一个小窗口填库房、发货人、复核（上次填的会记住，可以留空手写），点「打印」才真正开打印窗口
+		print(orders, fromSelection = false) {
+			let saved = {}
+			try { saved = JSON.parse(localStorage.getItem('deliveryStaff') || '{}') || {} } catch (e) { /* 读不到就留空 */ }
+			this.printStaff = { warehouse: saved.warehouse || '', sender: saved.sender || '', checker: saved.checker || '' }
+			try { this.printCopies = Number(localStorage.getItem('deliveryCopies')) === 4 ? 4 : 1 } catch (e) { this.printCopies = 1 }
+			this.printOrders = orders
+			this.printLines = orders.flatMap((o, oi) => (o.items || []).map((it, k) => ({ key: `${oi}-${k}`, oi, k, orderNo: o.orderNo, catalogName: it.catalogName || '', name: it.name, qty: it.qty, contractNo: '', batchNo: '', remark: '' })))
+			this.printContractAll = ''
+			this.printFromSelection = fromSelection
+			this.printVisible = true
 		},
 		printOne(o) {
 			this.print([o])
 		},
 		// 打印勾选的订单：打印窗口打开了就清掉勾选（印完不用再手动一个个取消）；被浏览器拦截没打开时保留勾选，允许弹窗后可以直接重试
-		async printSelected() {
-			const opened = await this.print(this.selectedKeys.map((k) => this.selectedMap[k]).filter(Boolean))
-			if (opened) {
+		printSelected() {
+			this.print(this.selectedKeys.map((k) => this.selectedMap[k]).filter(Boolean), true)
+		},
+		// 批量打印发货单：取当前搜索条件下所有「待发货」的订单（订单状态固定成待发货，其它条件照旧），先说清楚有多少单，再进打印窗口
+		async batchPrintPending() {
+			const LIMIT = 100
+			try {
+				this.batchLoading = true
+				const data = await getShopOrders({ ...this.queryParams(), status: 'pending_ship', page: 1, pageSize: LIMIT })
+				if (!data.total) return this.$message.info('当前搜索条件下没有待发货的订单。要打印别的订单，请先勾选再点「打印选中的发货单」')
+				const h = this.$createElement
+				const parts = this.filterSummary().filter((x) => !x.startsWith('订单状态'))
+				this.$confirm({
+					title: '批量打印发货单',
+					width: 440,
+					okText: '继续',
+					cancelText: '取消',
+					content: h('div', [
+						h('div', ['将打印', h('b', ' 所有待发货的订单 '), `共 ${data.total} 单。`]),
+						data.total > LIMIT ? h('div', { style: 'margin-top: 6px; color: #fa8c16;' }, `一次最多打印 ${LIMIT} 单，这次只打印最新下单的 ${LIMIT} 单；打完发货后再点一次就是剩下的。`) : null,
+						h('div', { style: 'margin-top: 8px; color: #8c8c8c;' }, parts.length ? '其它搜索条件：' + parts.join('；') : '没有设置其它搜索条件。')
+					]),
+					onOk: () => this.print(data.list.slice().reverse(), false) // 先发的先打：最早下单的排最前
+				})
+			} catch (error) {
+				notifyError(this, error, '获取待发货订单失败')
+			} finally {
+				this.batchLoading = false
+			}
+		},
+		fillContractAll() {
+			const v = this.printContractAll.trim()
+			this.printLines.forEach((l) => { l.contractNo = v })
+		},
+		// 把弹窗里填的合同编号、检验批号、备注放回每个订单的明细里（打印和导出共用）
+		ordersWithExtras() {
+			const by = {}
+			this.printLines.forEach((l) => { by[l.key] = l })
+			return this.printOrders.map((o, oi) => ({ ...o, items: (o.items || []).map((it, k) => ({ ...it, contractNo: (by[`${oi}-${k}`] || {}).contractNo, batchNo: (by[`${oi}-${k}`] || {}).batchNo, remark: (by[`${oi}-${k}`] || {}).remark })) }))
+		},
+		staffInput() {
+			const staff = { warehouse: this.printStaff.warehouse.trim(), sender: this.printStaff.sender.trim(), checker: this.printStaff.checker.trim() }
+			try { localStorage.setItem('deliveryStaff', JSON.stringify(staff)) } catch (e) { /* 存不了也能继续 */ }
+			return staff
+		},
+		// 导出 xlsx：每个订单一个工作表，版式和送货单模板一样；不关弹窗，导出后还可以继续打印
+		exportDelivery() {
+			try {
+				this.exportingDelivery = true
+				const orders = this.ordersWithExtras()
+				const bytes = deliveryXlsx(orders, this.staffInput())
+				const d = new Date()
+				const day = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
+				downloadBytes(bytes, orders.length === 1 ? `发货单-${orders[0].orderNo}.xlsx` : `发货单-${day}-${orders.length}单.xlsx`)
+				this.$message.success(orders.length > 1 ? `已导出 ${orders.length} 个订单，每个订单一个工作表` : '已导出')
+			} catch (error) {
+				this.$message.error('导出失败：' + (error.message || '未知错误'))
+			} finally {
+				this.exportingDelivery = false
+			}
+		},
+		confirmPrint() {
+			const staff = this.staffInput()
+			try { localStorage.setItem('deliveryCopies', String(this.printCopies)) } catch (e) { /* 存不了也能打印 */ }
+			const opened = openPrint(deliveryNotesHtml(this.ordersWithExtras(), staff, this.printCopies)) // 要在点击里同步开窗口，不能再 await
+			if (!opened) return this.$message.warning('浏览器拦截了打印窗口，请允许本页面弹出窗口后重试')
+			this.printVisible = false
+			if (this.printFromSelection) {
 				this.selectedKeys = []
 				this.selectedMap = {}
 			}
@@ -1124,6 +1246,8 @@ export default {
 </script>
 
 <style scoped>
+.help-icon { color: #8c8c8c; cursor: help; }
+.help-icon:hover { color: #1890ff; }
 /* 从通知点进来：这一行的背景色闪几下（蓝 → 透明，循环 3 次，共约 3.6 秒） */
 .orders-table >>> tr.row-flash > td { animation: rowFlash 1.2s ease-in-out 3; }
 @keyframes rowFlash {

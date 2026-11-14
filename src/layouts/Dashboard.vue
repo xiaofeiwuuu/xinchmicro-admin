@@ -5,6 +5,11 @@
 <template>
 	<div>
 
+		<!-- 背景网格线上跑的亮光（装饰，固定在屏幕上、垫在内容后面、不接收点击）。位置和背景网格线（每 40px 一条）对齐 -->
+		<div class="tech-bg" aria-hidden="true">
+			<i v-for="(p, n) in techPulses" :key="n" :class="[p.dir, p.alt ? 'c2' : '']" :style="{ '--k': p.k, animationDuration: p.dur + 's', animationDelay: p.delay + 's' }"></i>
+		</div>
+
 		<!-- Dashboard Layout -->
 		<a-layout class="layout-dashboard" id="layout-dashboard"
 			:class="[navbarFixed ? 'navbar-fixed' : '', !sidebarCollapsed ? 'has-sidebar' : '', sidebarMini ? 'sidebar-mini' : '', layoutClass]">
@@ -63,6 +68,11 @@ export default ({
 	},
 	data() {
 		return {
+			// 沿着背景网格线跑的亮光（刻意只留 5 个、跑得慢，不抢注意力）：dir h 横线（从左到右）/ v 竖线（从上到下）；k 是第几条线（×40px）；dur 跑一趟的秒数；delay 负数，让一开始就分散在各处
+			techPulses: [
+				...[[5, 26, -4], [14, 32, -18], [20, 28, -10]].map(([k, dur, delay], i) => ({ dir: 'h', k, dur, delay, alt: i === 1 })),
+				...[[8, 30, -6], [27, 34, -22]].map(([k, dur, delay], i) => ({ dir: 'v', k, dur, delay, alt: i === 0 })),
+			],
 			// Sidebar collapsed status.
 			sidebarCollapsed: false,
 

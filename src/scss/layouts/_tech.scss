@@ -1,0 +1,158 @@
+// _tech.scss
+//
+// 登录后各页面的「科技感」点缀。保持白色主题：只加淡淡的网格和光、顶部的流光细线、卡片的角标、侧边栏的芯片 logo，
+// 都是纯 CSS / SVG（背景网格线上跑的亮光是几个固定定位的小 DOM），不影响布局（背景和细线是 fixed 的、不接收点击），也不占内容区的位置。
+// 关掉所有动画：系统设置了「减少动态效果」时自动停掉。
+
+// ---- 页面背景：极淡的蓝色网格 + 两团淡光 + 右下角的芯片线稿水印 ----
+// 用 body 的伪元素（fixed、z-index 负数、不接收点击）垫在所有内容后面；layout 本身是透明的，所以能透出来
+body::before {
+	content: '';
+	position: fixed;
+	left: 0; top: 0; right: 0; bottom: 0;
+	z-index: -1;
+	pointer-events: none;
+	background:
+		radial-gradient(760px 460px at 100% 0%, rgba(22, 119, 255, 0.09), transparent 70%),
+		radial-gradient(620px 420px at 0% 100%, rgba(19, 194, 194, 0.08), transparent 70%),
+		linear-gradient(rgba(22, 119, 255, 0.05) 1px, transparent 1px),
+		linear-gradient(90deg, rgba(22, 119, 255, 0.05) 1px, transparent 1px);
+	background-size: auto, auto, 40px 40px, 40px 40px;
+}
+body::after {
+	content: '';
+	position: fixed;
+	right: -50px; bottom: -50px;
+	width: 400px; height: 400px;
+	z-index: -1;
+	pointer-events: none;
+	opacity: 0.1;
+	background: url("data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%20240%20240%22%20fill=%22none%22%20stroke=%22%231677ff%22%20stroke-width=%221.6%22%20stroke-linecap=%22round%22%20stroke-linejoin=%22round%22%3E%3Crect%20x=%2278%22%20y=%2278%22%20width=%2284%22%20height=%2284%22%20rx=%2210%22/%3E%3Crect%20x=%2298%22%20y=%2298%22%20width=%2244%22%20height=%2244%22%20rx=%225%22/%3E%3Ccircle%20cx=%2290%22%20cy=%2290%22%20r=%223%22/%3E%3Cpath%20d=%22M95%2078V58M107%2078V50M119%2078V44M131%2078V50M143%2078V58M95%20162v20M107%20162v28M119%20162v34M131%20162v28M143%20162v20M78%2095H58M78%20107H50M78%20119H44M78%20131H50M78%20143H58M162%2095h20M162%20107h28M162%20119h34M162%20131h28M162%20143h20%22/%3E%3Cpath%20d=%22M95%2058V30H60M107%2050V20M143%2058V36h40M95%20182v26H64M143%20182v30h36M58%2095H30V60M58%20143H24v38M182%2095h26V64M182%20143h34v34M131%2050V28%22/%3E%3Ccircle%20cx=%2260%22%20cy=%2230%22%20r=%223%22/%3E%3Ccircle%20cx=%22107%22%20cy=%2220%22%20r=%223%22/%3E%3Ccircle%20cx=%22183%22%20cy=%2236%22%20r=%223%22/%3E%3Ccircle%20cx=%2264%22%20cy=%22208%22%20r=%223%22/%3E%3Ccircle%20cx=%22179%22%20cy=%22212%22%20r=%223%22/%3E%3Ccircle%20cx=%2230%22%20cy=%2260%22%20r=%223%22/%3E%3Ccircle%20cx=%2224%22%20cy=%22181%22%20r=%223%22/%3E%3Ccircle%20cx=%22208%22%20cy=%2264%22%20r=%223%22/%3E%3Ccircle%20cx=%22216%22%20cy=%22177%22%20r=%223%22/%3E%3Ccircle%20cx=%22131%22%20cy=%2228%22%20r=%223%22/%3E%3C/svg%3E") no-repeat center / contain;
+}
+// 登录页和别的整页覆盖的页面不需要（它们自己 fixed 盖满），内容区的背景层要透明才能透出网格
+.layout-dashboard,
+.layout-dashboard .ant-layout {
+	background: transparent;
+}
+
+// ---- 顶部：一条蓝青渐变的细线（静态）----
+.layout-dashboard::before {
+	content: '';
+	position: fixed;
+	left: 0; right: 0; top: 0;
+	height: 3px;
+	z-index: 1000;
+	pointer-events: none;
+	background: linear-gradient(90deg, #1677ff 0%, #36cfc9 50%, #1677ff 100%);
+}
+
+// ---- 背景网格线上跑的亮光：一小段带拖尾的亮点，沿着网格线（每 40px 一条）匀速跑过去，像电流在线路里走 ----
+// 横线从左跑到右，竖线从上跑到下；只有 5 个、一趟要 26~34 秒、亮度和光晕都很淡，刻意不抢注意力；每条的速度、起点不同。DOM 在 layouts/Dashboard.vue 里（.tech-bg）。固定在屏幕上、垫在内容后面，
+// 内容区的卡片、表格是白底的，会把它挡住，只在空白的地方露出来
+.tech-bg {
+	position: fixed;
+	left: 0; top: 0; right: 0; bottom: 0;
+	z-index: -1;
+	pointer-events: none;
+	overflow: hidden;
+}
+.tech-bg i {
+	position: absolute;
+	display: block;
+	will-change: transform;
+	animation-timing-function: linear;
+	animation-iteration-count: infinite;
+}
+.tech-bg i.h {
+	left: 0;
+	top: calc(var(--k) * 40px);
+	width: 150px; height: 1px;
+	background: linear-gradient(90deg, rgba(22, 119, 255, 0), rgba(22, 119, 255, 0.22) 60%, rgba(22, 119, 255, 0.6));
+	box-shadow: 0 0 4px rgba(22, 119, 255, 0.22);
+	animation-name: tech-run-x;
+}
+.tech-bg i.v {
+	top: 0;
+	left: calc(var(--k) * 40px);
+	width: 1px; height: 150px;
+	background: linear-gradient(180deg, rgba(22, 119, 255, 0), rgba(22, 119, 255, 0.22) 60%, rgba(22, 119, 255, 0.6));
+	box-shadow: 0 0 4px rgba(22, 119, 255, 0.22);
+	animation-name: tech-run-y;
+}
+// 隔一条换成青色，不要全是一个颜色
+.tech-bg i.c2 {
+	background: linear-gradient(90deg, rgba(19, 194, 194, 0), rgba(19, 194, 194, 0.22) 60%, rgba(19, 194, 194, 0.6));
+	box-shadow: 0 0 4px rgba(19, 194, 194, 0.22);
+}
+.tech-bg i.v.c2 {
+	background: linear-gradient(180deg, rgba(19, 194, 194, 0), rgba(19, 194, 194, 0.22) 60%, rgba(19, 194, 194, 0.6));
+}
+@keyframes tech-run-x {
+	from { transform: translateX(-200px); }
+	to { transform: translateX(100vw); }
+}
+@keyframes tech-run-y {
+	from { transform: translateY(-200px); }
+	to { transform: translateY(100vh); }
+}
+
+// ---- 卡片：顶边左侧一小段蓝青渐变的「标签条」，鼠标移上去变长 ----
+.layout-dashboard .ant-card {
+	position: relative;
+}
+.layout-dashboard .ant-card::before {
+	content: '';
+	position: absolute;
+	left: 20px; top: 0;
+	width: 36px; height: 3px;
+	pointer-events: none;
+	border-radius: 0 0 3px 3px;
+	background: linear-gradient(90deg, #1677ff, #36cfc9);
+	transition: width 0.3s;
+}
+.layout-dashboard .ant-card:hover::before {
+	width: 64px;
+}
+
+// ---- 页面标题前面一根蓝色渐变竖条 ----
+.layout-dashboard .ant-page-header-heading-title {
+	position: relative;
+	padding-left: 12px;
+}
+.layout-dashboard .ant-page-header-heading-title::before {
+	content: '';
+	position: absolute;
+	left: 0; top: 2px;
+	width: 4px; height: 18px;
+	border-radius: 2px;
+	background: linear-gradient(180deg, #1677ff, #36cfc9);
+}
+
+// ---- 侧边栏品牌：芯片 logo + 名称；下面那条分隔线换成蓝青渐变 ----
+.layout-dashboard .ant-layout-sider.sider-primary .brand {
+	display: flex;
+	align-items: center;
+}
+.layout-dashboard .brand-logo {
+	flex-shrink: 0;
+	margin-right: 10px;
+}
+.layout-dashboard .ant-layout-sider.sider-primary hr {
+	height: 2px;
+	background: linear-gradient(90deg, #1677ff, #36cfc9 60%, rgba(54, 207, 201, 0));
+	opacity: 0.55;
+}
+// 菜单收起成图标时：只留 logo，不要原来的「芯」字
+.layout-dashboard.sidebar-mini .ant-layout-sider.sider-primary .brand {
+	justify-content: center;
+}
+.layout-dashboard.sidebar-mini .ant-layout-sider.sider-primary .brand span {
+	display: none;
+}
+.layout-dashboard.sidebar-mini .brand-logo {
+	margin-right: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.tech-bg { display: none; }
+}

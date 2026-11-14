@@ -6,7 +6,15 @@
 		:class="['ant-layout-sider-' + sidebarColor, 'ant-layout-sider-' + sidebarTheme]" theme="light"
 		:style="{ backgroundColor: 'transparent', }">
 		<!-- 连点 5 次标题会显示隐藏的「配置助手」菜单（平时不放在菜单里，免得乱） -->
-		<div class="brand" @click="onBrandClick"> <span>芯辰微电子</span></div>
+		<div class="brand" @click="onBrandClick">
+			<!-- 芯片 logo：蓝色描边，纯 SVG -->
+			<svg class="brand-logo" viewBox="0 0 40 40" width="30" height="30" aria-hidden="true">
+				<rect x="9" y="9" width="22" height="22" rx="4" fill="none" stroke="#1677ff" stroke-width="2.4" />
+				<rect x="15" y="15" width="10" height="10" rx="2" fill="#1677ff" />
+				<path d="M14 9V4M20 9V4M26 9V4M14 36v-5M20 36v-5M26 36v-5M9 14H4M9 20H4M9 26H4M36 14h-5M36 20h-5M36 26h-5" stroke="#36cfc9" stroke-width="2.4" stroke-linecap="round" />
+			</svg>
+			<span>芯辰微电子</span>
+		</div>
 		<hr>
 
 		<!-- 侧边栏导航菜单 -->

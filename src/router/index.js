@@ -206,18 +206,6 @@ let routes = [
 		component: () => import('@/views/VideoList.vue'),
 	},
 	{
-		path: '/vod-test',
-		name: 'VodTest',
-		layout: "dashboard",
-		meta:{
-			name:'视频上传测试',
-			requiresAuth: true,
-			allowCopy: true,
-			requiresMainUser: true
-		},
-		component: () => import('@/views/VodTest.vue'),
-	},
-	{
 		path: '/no-permission',
 		name: 'NoPermission',
 		layout: "dashboard",

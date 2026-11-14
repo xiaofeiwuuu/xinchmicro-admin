@@ -1,7 +1,7 @@
 <template>
 	<div>
 		<!-- 搜索表单 -->
-		<a-card class="mb-24" :bordered="false">
+		<a-card class="mb-24 plain-card" :bordered="false">
 			<a-form layout="inline" :form="form">
 				<!-- 第一行：日志类型（后台日志 / 用户日志：后台账号的操作，和小程序客户的操作、微信支付回调）+ 客户 + 操作类型 -->
 				<a-form-item>
@@ -43,7 +43,7 @@
 		</a-card>
 
 		<!-- 日志列表 -->
-		<a-card :bordered="false">
+		<a-card :bordered="false" class="plain-card">
 			<a-table :scroll="tableScroll"
 				rowKey="id"
 				:columns="columns"

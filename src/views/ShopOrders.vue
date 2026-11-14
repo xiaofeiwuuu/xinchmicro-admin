@@ -1,6 +1,6 @@
 <template>
 	<div>
-		<a-card :bordered="false" class="mb-24">
+		<a-card :bordered="false" class="mb-24 plain-card">
 			<a-input v-model="filters.orderNo" placeholder="订单号" style="width: 160px; margin-right: 12px;" allowClear @pressEnter="handleSearch" />
 			<!-- 客户：搜昵称/手机号。从数据统计、客户管理跳过来时按客户筛选，客户名直接显示在框里；点清除或改字就取消按客户筛选 -->
 			<a-input :value="customerId ? customerLabel : filters.customer" placeholder="客户昵称 / 手机号" style="width: 160px; margin-right: 12px;" allowClear @change="onCustomerInput" @pressEnter="handleSearch" />
@@ -30,7 +30,7 @@
 			</span>
 		</a-card>
 
-		<a-card :bordered="false">
+		<a-card :bordered="false" class="plain-card">
 			<a-table class="orders-table" :scroll="tableScroll" rowKey="id" :columns="columns" :dataSource="orders" :pagination="pagination" :loading="loading" :rowClassName="rowClass" :rowSelection="{ selectedRowKeys: selectedKeys, onChange: onSelect }" @change="handleTableChange">
 				<!-- 订单号、客户、收货人的文字点一下就复制（页面默认不能选中文字） -->
 				<template slot="orderNo" slot-scope="text">
@@ -64,10 +64,10 @@
 				</template>
 				<template slot="action" slot-scope="text, record">
 					<div class="row-actions">
-						<a @click="openDetail(record.id)">详情</a>
+						<a-button type="link" size="small" @click="openDetail(record.id)"><a-icon type="eye" style="color: #111827" /><span class="text-dark">详情</span></a-button>
 						<!-- 其它操作都收进「更多」（按订单状态只列能做的）；有要处理的事（申请取消、售后、退款、开票）时「更多」上有个橙色小点 -->
 						<a-dropdown :trigger="['click']" placement="bottomRight">
-							<a class="more-link" @click.prevent>更多<a-icon type="down" /><i v-if="needsAction(record)" class="more-dot"></i></a>
+							<a-button class="more-link" type="link" size="small" @click.prevent><a-icon type="ellipsis" style="color: #111827" /><span class="text-dark">更多</span><i v-if="needsAction(record)" class="more-dot"></i></a-button>
 							<a-menu slot="overlay" @click="(e) => onMore(record, e.key)">
 								<template v-for="m in moreItems(record)">
 									<a-menu-divider v-if="m.divider" :key="m.key" />
@@ -495,7 +495,7 @@ export default {
 				{ title: '开票', dataIndex: 'invoiceStatus', key: 'invoiceStatus', scopedSlots: { customRender: 'invoice' } },
 				{ title: '备注', key: 'remark', scopedSlots: { customRender: 'remark' } },
 				{ title: '下单时间', dataIndex: 'createdAt', key: 'createdAt' },
-				{ title: '操作', key: 'action', scopedSlots: { customRender: 'action' } }
+				{ title: '操作', key: 'action', align: 'right', width: 170, scopedSlots: { customRender: 'action' } }
 			],
 			detailVisible: false,
 			detailLoading: false,
@@ -1261,10 +1261,8 @@ export default {
 .bulk-list { max-height: 360px; overflow-y: auto; border: 1px solid #f0f0f0; border-radius: 6px; padding: 0 10px; }
 .bulk-foot { margin-top: 14px; text-align: right; }
 .bulk-foot .ant-btn { margin-left: 8px; }
-.row-actions { gap: 4px 14px; }
 .more-link { position: relative; white-space: nowrap; }
-.more-link .anticon { font-size: 10px; margin-left: 3px; }
-.more-dot { position: absolute; top: -2px; right: -8px; width: 6px; height: 6px; border-radius: 50%; background: #fa8c16; }
+.more-dot { position: absolute; top: 2px; right: 0; width: 6px; height: 6px; border-radius: 50%; background: #fa8c16; }
 .act-danger { color: #cf1322; }
 .as-block { padding: 10px 0 4px; border-top: 1px dashed #f0f0f0; }
 .as-block:first-of-type { border-top: 0; padding-top: 0; }

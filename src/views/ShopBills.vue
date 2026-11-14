@@ -1,7 +1,7 @@
 <template>
 	<div>
 		<!-- 查询条件 -->
-		<a-card :bordered="false" class="mb-24">
+		<a-card :bordered="false" class="mb-24 plain-card">
 			<div class="bills-head">
 				<a-radio-group v-model="kind" button-style="solid" @change="onKindChange">
 					<a-radio-button value="trade">交易账单</a-radio-button>
@@ -76,7 +76,7 @@
 				</a-card>
 
 				<!-- 明细 -->
-				<a-card :bordered="false" :title="'明细（' + data.count + ' 条）'">
+				<a-card :bordered="false" class="plain-card" :title="'明细（' + data.count + ' 条）'">
 					<a-table size="small" rowKey="key" :columns="columns" :dataSource="rows" :pagination="pagination" :scroll="{ x: true }" @change="onTableChange">
 						<template slot="copy" slot-scope="text"><span v-if="text" class="copy-cell" title="点击复制" @click="copyText(text)">{{ text }}</span><span v-else>—</span></template>
 						<template slot="tstatus" slot-scope="text"><a-tag v-if="text" :color="tradeState(text).color">{{ tradeState(text).text }}</a-tag><span v-else>—</span></template>

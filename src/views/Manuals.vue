@@ -1,7 +1,7 @@
 <template>
   <div class="manuals-container">
     <!-- 搜索表单 -->
-    <div style="margin-bottom: 16px;">
+    <div style="margin-bottom: 8px;">
       <a-form layout="inline">
         <a-form-item>
           <a-select v-model="searchForm.type" placeholder="手册类型" style="width: 160px;" allowClear>
@@ -31,7 +31,7 @@
 
     <!-- 表格组件 -->
     <a-table :scroll="tableScroll" 
-      :columns="columns" 
+      :columns="tableColumns" 
       :data-source="manualsList" 
       :loading="loading" 
       rowKey="id"
@@ -222,16 +222,18 @@ export default {
     return {
       // 表格列定义
       columns: [
+        // 这里的 width 是「最窄时」的基础宽度；真正的列宽由 tableColumns 按表格实际宽度算（手册名称有上限，大屏多出来的宽度分给别的列），不是原样用这些
         { title: '手册名称', dataIndex: 'name', key: 'name' },
-        { title: '手册类型', dataIndex: 'type', key: 'type', scopedSlots: { customRender: 'type' }, minWidth: 120 },
-        { title: '文件', dataIndex: 'lang', key: 'lang', scopedSlots: { customRender: 'lang' }, minWidth: 100 },
-        { title: '排序', dataIndex: 'sort', key: 'sort', minWidth: 120, sorter: (a, b) => (a.sort || 0) - (b.sort || 0) },
-        { title: '状态', key: 'status', width: 90, scopedSlots: { customRender: 'status' } },
-        { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt', scopedSlots: { customRender: 'createdAt' }, minWidth: 180 },
-        { title: '创建者', dataIndex: 'creator', key: 'creator', scopedSlots: { customRender: 'creator' }, minWidth: 120 },
+        { title: '手册类型', dataIndex: 'type', key: 'type', scopedSlots: { customRender: 'type' }, width: 110 },
+        { title: '文件', dataIndex: 'lang', key: 'lang', scopedSlots: { customRender: 'lang' }, width: 90 },
+        { title: '排序', dataIndex: 'sort', key: 'sort', width: 80, sorter: (a, b) => (a.sort || 0) - (b.sort || 0) },
+        { title: '状态', key: 'status', width: 70, scopedSlots: { customRender: 'status' } },
+        { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt', scopedSlots: { customRender: 'createdAt' }, width: 160 },
+        { title: '创建者', dataIndex: 'creator', key: 'creator', scopedSlots: { customRender: 'creator' }, width: 100 },
         // 编辑 + 删除两个按钮并排要约 150px，列宽是平均分配的，窗口不宽时放不下，所以给固定宽度
-        { title: '操作', key: 'action', width: 150, scopedSlots: { customRender: 'action' } }
+        { title: '操作', key: 'action', align: 'right', width: 150, scopedSlots: { customRender: 'action' } }
       ],
+      tableWidth: 0, // 表格当前宽度（窗口变化时重新量），用来算每列的宽度
       loading: false,
       submitLoading: false,
       manualsList: [],
@@ -262,12 +264,56 @@ export default {
       currentXhr: null
     };
   },
+  computed: {
+    // 列宽按表格实际宽度算，让大屏和小屏看起来是一样的：
+    //   · 排序、状态、操作固定窄宽度，永远不变
+    //   · 手册名称最宽 300px（再宽就太长了，一眼扫不完），窗口窄时它拿剩下的、最窄 160px
+    //   · 屏幕再宽，多出来的宽度按各自的基础宽度比例，分给类型、文件、创建时间、创建者
+    tableColumns() {
+      const W = this.tableWidth || 1100;
+      const NAME_MAX = 300;
+      const NAME_MIN = 160;
+      const grow = ['type', 'lang', 'createdAt', 'creator'];
+      const base = {};
+      this.columns.forEach((c) => { if (c.width) base[c.key] = c.width; });
+      const fixedSum = ['sort', 'status', 'action'].reduce((n, k) => n + base[k], 0);
+      const growSum = grow.reduce((n, k) => n + base[k], 0);
+      let name = Math.max(NAME_MIN, W - fixedSum - growSum);
+      let extra = 0;
+      if (name > NAME_MAX) {
+        extra = name - NAME_MAX;
+        name = NAME_MAX;
+      }
+      const widths = { ...base, name };
+      let used = name + fixedSum;
+      grow.forEach((k) => {
+        widths[k] = Math.floor(base[k] + (extra * base[k]) / growSum);
+        used += widths[k];
+      });
+      // 取整丢掉的零头给最后一个能伸缩的列，让各列加起来正好等于表格宽度
+      if (extra > 0 && W > used) widths.creator += W - used;
+      return this.columns.map((c) => ({ ...c, width: widths[c.key] }));
+    }
+  },
   created() {
     this.fetchManuals();
+  },
+  mounted() {
+    this.measureTable();
+    window.addEventListener('resize', this.measureTable);
+  },
+  beforeDestroy() {
+    window.removeEventListener('resize', this.measureTable);
   },
   methods: {
     langLabel,
     can,
+
+    // 量表格当前的宽度（窗口变化时重新量）
+    measureTable() {
+      const el = this.$el && this.$el.querySelector && this.$el.querySelector('.ant-table-wrapper');
+      if (el && el.clientWidth) this.tableWidth = el.clientWidth;
+    },
 
     // 列表里直接切换显示 / 隐藏（二次确认）。更新接口只改带了的字段，所以只传 status
     toggleStatus(record, on) {

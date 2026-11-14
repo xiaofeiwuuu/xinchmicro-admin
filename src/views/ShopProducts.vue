@@ -1,7 +1,7 @@
 <template>
 	<div>
 		<!-- 筛选 + 全局最低价（紧凑的一张卡片，给下面的列表多留高度） -->
-		<a-card :bordered="false" class="mb-24 top-card" :bodyStyle="{ padding: '12px 24px' }">
+		<a-card :bordered="false" class="mb-24 top-card plain-card" :bodyStyle="{ padding: '0' }">
 			<div class="toolbar">
 				<div class="filters">
 					<a-select v-model="categoryId" placeholder="全部分类" allowClear style="width: 160px;" @change="onCategoryChange">
@@ -40,21 +40,21 @@
 					<a-icon type="question-circle" style="margin-left: 12px; color: #8c8c8c;" />
 				</a-tooltip>
 				<a v-if="belowMinCount > 0" class="warn" style="margin-left: 16px;" @click="showBelowMin">⚠ 有 {{ belowMinCount }} 个在售产品低于最低价，已从商城隐藏，点这里查看</a>
+				<!-- 批量操作入口（点开弹窗，不常驻页面）：放在这一行的最右边。勾选了产品才显示「已勾选 N 个」 -->
+				<div v-can="'price.edit'" class="batch-actions">
+					<span v-if="selectedKeys.length" class="muted">已勾选 {{ selectedKeys.length }} 个产品 <a @click="selectedKeys = []">清除勾选</a></span>
+					<a-tooltip title="可以先勾选产品，也可以对当前筛选结果的全部产品操作。">
+						<a-icon type="question-circle" style="color: #8c8c8c;" />
+					</a-tooltip>
+					<a-button type="primary" size="small" @click="openBatch()"><a-icon type="edit" /> 批量设置</a-button>
+					<a-button size="small" @click="openBatch('on')">一键上架</a-button>
+					<a-button type="danger" ghost size="small" @click="openBatch('off')">一键下架</a-button>
+				</div>
 			</div>
 		</a-card>
 
-		<a-card :bordered="false">
-			<!-- 批量操作入口：点开弹窗，不常驻页面 -->
-			<div v-can="'price.edit'" class="batch-bar" style="margin-bottom: 12px;">
-				<div class="batch-hint">
-					<span class="muted">{{ selectedKeys.length ? '已勾选 ' + selectedKeys.length + ' 个产品' : '可以先勾选产品，也可以对当前筛选结果的全部产品操作' }}</span>
-					<a v-if="selectedKeys.length" style="margin-left: 8px;" @click="selectedKeys = []">清除勾选</a>
-				</div>
-				<a-button type="primary" @click="openBatch()"><a-icon type="edit" /> 批量设置</a-button>
-				<a-button style="margin-left: 8px;" @click="openBatch('on')">一键上架</a-button>
-				<a-button type="danger" ghost style="margin-left: 8px;" @click="openBatch('off')">一键下架</a-button>
-			</div>
-			<a-table :scroll="tableScroll" :rowClassName="(r) => (r.productId === focusId ? 'row-focus' : '')" rowKey="productId" :columns="columns" :dataSource="rows" :pagination="pagination" :loading="loading" :rowSelection="rowSelection" @change="handleTableChange">
+		<a-card :bordered="false" class="plain-card">
+			<a-table :scroll="tableScroll" :rowClassName="(r) => (r.productId === focusId ? 'row-focus' : '')" rowKey="productId" :columns="tableColumns" :dataSource="rows" :pagination="pagination" :loading="loading" :rowSelection="rowSelection" @change="handleTableChange">
 				<template slot="name" slot-scope="text, record">
 					<a class="name-link" @click="openDetail(record)">{{ text }}</a>
 					<div style="color: #8c8c8c; font-size: 12px;">{{ record.catalog ? (record.catalog.category ? record.catalog.category.name + ' / ' : '') + record.catalog.name : '' }}</div>
@@ -93,12 +93,14 @@
 				</template>
 				<template slot="action" slot-scope="text, record">
 					<div class="row-actions" style="justify-content: flex-end;">
-						<a-button v-can="'price.edit'" type="link" size="small" @click="openEdit(record)">编辑</a-button>
-						<a-button v-can="'price.edit'" type="link" size="small" @click="openTiers(record)">阶梯价</a-button>
-					</div>
-					<div class="row-actions" style="justify-content: flex-end;">
-						<a-button v-can="'price.edit'" type="link" size="small" @click="openStock(record)">调整库存</a-button>
-						<a-button type="link" size="small" @click="openStockLogs(record)">库存记录</a-button>
+						<a-button v-can="'price.edit'" type="link" size="small" @click="openEdit(record)"><icon-edit /><span class="text-dark">编辑</span></a-button>
+						<!-- 阶梯价、调整库存、库存记录收进「更多」，和产品、订单、客户页一致；各项按权限显示 -->
+						<a-dropdown v-if="moreItems().length" :trigger="['click']" placement="bottomRight">
+							<a-button type="link" size="small" @click.prevent><a-icon type="ellipsis" style="color: #111827" /><span class="text-dark">更多</span></a-button>
+							<a-menu slot="overlay" @click="(e) => onMore(record, e.key)">
+								<a-menu-item v-for="m in moreItems()" :key="m.key">{{ m.label }}</a-menu-item>
+							</a-menu>
+						</a-dropdown>
 					</div>
 				</template>
 			</a-table>
@@ -512,6 +514,7 @@
 </template>
 
 <script>
+import IconEdit from '@/components/IconEdit.vue';
 import { notifyError } from '@/utils/notify'
 import { copyToClipboard } from '@/utils/copy'
 import { isMainUser, can } from '@/utils/auth'
@@ -547,6 +550,7 @@ import { newPagination, applyTableChange } from '@/utils/pagination'
 
 export default {
 	mixins: [fixedListLayout],
+	components: { IconEdit },
 	data() {
 		return {
 			LIMITS,
@@ -582,15 +586,17 @@ export default {
 			batchVisible: false,
 			step: 'form', // form 选范围和内容 / confirm 预览影响范围 / done 完成
 			confirm: { matched: 0, desc: [], sample: [], skipped: [], skippedCount: 0, updated: 0, payload: null },
+			tableWidth: 0, // 表格当前宽度（窗口变化时重新量），用来算每列的宽度
 			columns: [
 				{ title: '产品', dataIndex: 'name', key: 'name', scopedSlots: { customRender: 'name' } },
-				{ title: '价格（元）', key: 'price', scopedSlots: { customRender: 'price' } },
-				{ title: '会员价（元）', key: 'memberPrice', scopedSlots: { customRender: 'memberPrice' } },
-				{ title: '阶梯价', key: 'tiers', scopedSlots: { customRender: 'tiers' } },
-				{ title: '库存', key: 'stock', scopedSlots: { customRender: 'stock' } },
-				{ title: '起订量', key: 'minOrderQty', scopedSlots: { customRender: 'minOrderQty' } },
-				{ title: '最大购买数量', key: 'maxOrderQty', scopedSlots: { customRender: 'maxOrderQty' } },
-				{ title: '上架', key: 'onSale', scopedSlots: { customRender: 'onSale' } },
+				// 这里的 width 是「基础宽度」；真正的列宽由 tableColumns 按表格实际宽度算（产品名最宽、有上限，大屏多出来的宽度分给价格、会员价、阶梯价、最大购买数量）
+				{ title: '价格（元）', key: 'price', width: 100, scopedSlots: { customRender: 'price' } },
+				{ title: '会员价（元）', key: 'memberPrice', width: 110, scopedSlots: { customRender: 'memberPrice' } },
+				{ title: '阶梯价', key: 'tiers', width: 90, scopedSlots: { customRender: 'tiers' } },
+				{ title: '库存', key: 'stock', width: 90, scopedSlots: { customRender: 'stock' } },
+				{ title: '起订量', key: 'minOrderQty', width: 80, scopedSlots: { customRender: 'minOrderQty' } },
+				{ title: '最大购买数量', key: 'maxOrderQty', width: 110, scopedSlots: { customRender: 'maxOrderQty' } },
+				{ title: '上架', key: 'onSale', width: 90, scopedSlots: { customRender: 'onSale' } },
 				{ title: '操作', key: 'action', width: 170, align: 'right', scopedSlots: { customRender: 'action' } }
 			],
 			// 产品详情弹窗
@@ -636,6 +642,31 @@ export default {
 		}
 	},
 	computed: {
+		// 列宽按表格实际宽度算（做法同手册管理）：库存、起订量、上架、操作固定窄宽度；产品列拿剩下的，最宽 380px（再宽就太长了）、窄屏时最窄 150px；
+		// 屏幕再宽，多出来的宽度按基础宽度的比例分给价格、会员价、阶梯价、最大购买数量；窗口很窄、产品列不够 150px 时，这四列最多收窄到 75%
+		tableColumns() {
+			const W = (this.tableWidth || 1100) - 60 // 勾选列 60px
+			const NAME_MAX = 380
+			const NAME_MIN = 150
+			const grow = ['price', 'memberPrice', 'tiers', 'maxOrderQty']
+			const base = {}
+			this.columns.forEach((c) => { if (c.width) base[c.key] = c.width })
+			const fixedSum = ['stock', 'minOrderQty', 'onSale', 'action'].reduce((n, k) => n + base[k], 0)
+			const growSum = grow.reduce((n, k) => n + base[k], 0)
+			let name = W - fixedSum - growSum
+			const widths = { ...base }
+			if (name > NAME_MAX) {
+				const extra = name - NAME_MAX
+				name = NAME_MAX
+				grow.forEach((k) => { widths[k] = Math.floor(base[k] + (extra * base[k]) / growSum) })
+			} else if (name < NAME_MIN) {
+				const f = Math.max(0.75, (growSum - (NAME_MIN - name)) / growSum)
+				grow.forEach((k) => { widths[k] = Math.floor(base[k] * f) })
+				name = NAME_MIN
+			}
+			widths.name = name
+			return this.columns.map((c) => ({ ...c, width: widths[c.dataIndex === 'name' ? 'name' : c.key] }))
+		},
 		tierBlocks() {
 			return [{ key: 'tier', label: '阶梯价' }, { key: 'mtier', label: '会员阶梯价' }]
 		},
@@ -691,8 +722,13 @@ export default {
 	beforeRouteLeave(to, from, next) {
 		this.askLeave().then((go) => next(go ? undefined : false))
 	},
+	mounted() {
+		this.measureTable()
+		window.addEventListener('resize', this.measureTable)
+	},
 	beforeDestroy() {
 		window.removeEventListener('beforeunload', this.onUnload)
+		window.removeEventListener('resize', this.measureTable)
 	},
 	created() {
 		window.addEventListener('beforeunload', this.onUnload)
@@ -706,6 +742,23 @@ export default {
 		this.fetch()
 	},
 	methods: {
+		// 「更多」里的项：阶梯价、调整库存（要修改价格库存权限）、库存记录（任何能看这页的人）
+		moreItems() {
+			const items = [];
+			if (can('price.edit')) items.push({ key: 'tiers', label: '阶梯价' }, { key: 'stock', label: '调整库存' });
+			items.push({ key: 'logs', label: '库存记录' });
+			return items;
+		},
+		onMore(record, key) {
+			if (key === 'tiers') this.openTiers(record);
+			else if (key === 'stock') this.openStock(record);
+			else if (key === 'logs') this.openStockLogs(record);
+		},
+		// 量表格当前的宽度（窗口变化时重新量）
+		measureTable() {
+			const el = this.$el && this.$el.querySelector && this.$el.querySelector('.ant-table-wrapper')
+			if (el && el.clientWidth) this.tableWidth = el.clientWidth
+		},
 		async copyName(text) {
 			if (await copyToClipboard(text)) this.$message.success('已复制：' + text)
 			else this.$message.warning('复制失败，请手动复制')
@@ -1311,7 +1364,6 @@ export default {
 </script>
 
 <style scoped>
-.row-actions >>> .ant-btn { height: 24px; line-height: 24px; }
 .cell-links { display: flex; gap: 12px; margin-top: 2px; white-space: nowrap; }
 .help-icon { color: #8c8c8c; cursor: help; }
 .help-icon:hover { color: #1890ff; }
@@ -1372,8 +1424,7 @@ export default {
 .top-card .min-row { margin-top: 10px; padding-top: 10px; border-top: 1px dashed #f0f0f0; }
 .label-inline { margin-right: 10px; color: #595959; font-weight: 500; }
 .warn { color: #d46b08; }
-.batch-hint { flex: 1; min-width: 0; }
-.batch-bar { display: flex; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+.batch-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; padding-left: 16px; }
 .row { display: flex; align-items: center; flex-wrap: wrap; }
 .gap { margin: 0 8px; }
 .muted { color: #8c8c8c; font-size: 12px; }

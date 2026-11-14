@@ -10,9 +10,10 @@
 
 const MIN_Y = 140; // 数据区至少这么高才锁定整页（约两三行）
 const HEAD_H = 55; // 取不到表头高度时的默认值
-const PAGER_H = 64; // 分页条（含上下间距）
-const BOTTOM_GAP = 44; // 表格卡片下内边距 + 页面底部留白
-const SAFETY = 4; // 留几个像素余量，避免小数舍入造成整页多出一两个像素的滚动
+const PAGER_H = 52; // 取不到分页条时的默认值：分页条 40 + 上外边距 12（_table.scss 里把分页条的外边距改成了上 12、下 0）
+// 所有列表页统一：分页条下边到窗口底部的距离（px）。表格放在卡片里时，卡片自己的下内边距（一般 16px）就算在里面，不会再多出一份，所以每个页面看到的都是差不多的数
+const BOTTOM_TARGET = 16;
+const SAFETY = 4; // 留几个像素余量，避免小数舍入造成整页多出一两个像素的滚动（所以实际是 BOTTOM_TARGET + SAFETY ≈ 20px）
 
 let lockers = 0; // 同时有几个列表页要求锁定（路由切换时新旧页面会短暂重叠）
 const setLocked = (on) => document.body.classList.toggle('fixed-list-locked', on);
@@ -24,6 +25,16 @@ function scrollParent(el) {
     if ((oy === 'auto' || oy === 'scroll') && p.scrollHeight > p.clientHeight + 1) return p;
   }
   return window;
+}
+
+// 表格下面（它的各层祖先，一直到内容区）的下内边距、下边框、下外边距加起来有多少：比如表格放在卡片里，卡片下面还有 16px 内边距
+function spaceBelow(el) {
+  let sum = 0;
+  for (let p = el.parentElement; p && !(p.classList && p.classList.contains('ant-layout-content')); p = p.parentElement) {
+    const cs = window.getComputedStyle(p);
+    sum += (parseFloat(cs.paddingBottom) || 0) + (parseFloat(cs.borderBottomWidth) || 0) + (parseFloat(cs.marginBottom) || 0);
+  }
+  return sum;
 }
 
 // 表格在可滚动区域里的位置（和当前滚动到哪里无关）和可见区域高度
@@ -71,7 +82,11 @@ export default {
       const thead = wrap.querySelector('.ant-table-thead');
       const head = thead ? thead.offsetHeight : HEAD_H;
       const m = metrics(wrap);
-      const free = m.viewH - m.top - head - PAGER_H - BOTTOM_GAP - SAFETY;
+      const pager = wrap.querySelector('.ant-table-pagination');
+      const pagerH = pager ? pager.offsetHeight + (parseFloat(window.getComputedStyle(pager).marginTop) || 0) + (parseFloat(window.getComputedStyle(pager).marginBottom) || 0) : PAGER_H;
+      // 分页条下面要留的空白：目标值，或者表格下面各层祖先（比如卡片）实际占的空白，取大的那个（卡片的内边距去不掉，只能让出来）
+      const below = Math.max(BOTTOM_TARGET, spaceBelow(wrap));
+      const free = m.viewH - m.top - head - pagerH - below - SAFETY;
       const fits = free >= MIN_Y;
       const y = Math.max(MIN_Y, Math.floor(free));
       if (Math.abs(this.tableScroll.y - y) >= 1) this.tableScroll = { y };

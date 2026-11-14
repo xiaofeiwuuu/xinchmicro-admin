@@ -7,20 +7,16 @@
 		:style="{ backgroundColor: 'transparent', }">
 		<!-- 连点 5 次标题会显示隐藏的「配置助手」菜单（平时不放在菜单里，免得乱） -->
 		<div class="brand" @click="onBrandClick">
-			<!-- 芯片 logo：蓝色描边，纯 SVG -->
-			<svg class="brand-logo" viewBox="0 0 40 40" width="30" height="30" aria-hidden="true">
-				<rect x="9" y="9" width="22" height="22" rx="4" fill="none" stroke="#1677ff" stroke-width="2.4" />
-				<rect x="15" y="15" width="10" height="10" rx="2" fill="#1677ff" />
-				<path d="M14 9V4M20 9V4M26 9V4M14 36v-5M20 36v-5M26 36v-5M9 14H4M9 20H4M9 26H4M36 14h-5M36 20h-5M36 26h-5" stroke="#36cfc9" stroke-width="2.4" stroke-linecap="round" />
-			</svg>
+			<!-- 公司 Logo（src/assets/logo.png，从「公司信息」里那张抠出来的透明底） -->
+			<img class="brand-logo" :src="logo" alt="芯辰微电子" width="36" height="36" />
 			<span>芯辰微电子</span>
 		</div>
 		<hr>
 
 		<!-- 侧边栏导航菜单 -->
 		<a-menu theme="light" mode="inline">
-			<a-menu-item class="menu-item-header" disabled v-if="can('category.view') || can('catalog.view') || can('product.view') || can('manual.view')">产品</a-menu-item>
-			<a-menu-item v-if="can('category.view')">
+			<a-menu-item :class="{ folded: !groupOpen('product') }" class="menu-item-header" disabled @click.native="toggleGroup('product')" v-if="can('category.view') || can('catalog.view') || can('product.view') || can('manual.view')"><span class="mh-text">产品</span><a-icon type="down" class="mh-arrow" /></a-menu-item>
+			<a-menu-item v-show="groupOpen('product')" v-if="can('category.view')">
 				<a-tooltip placement="right" :title="mini ? '产品分类' : ''">
 					<router-link to="/categories">
 					<span class="icon">
@@ -34,7 +30,7 @@
 				</router-link>
 				</a-tooltip>
 			</a-menu-item>
-			<a-menu-item v-if="can('catalog.view')">
+			<a-menu-item v-show="groupOpen('product')" v-if="can('catalog.view')">
 				<a-tooltip placement="right" :title="mini ? '产品目录' : ''">
 					<router-link to="/catalogs">
 					<span class="icon">
@@ -47,7 +43,7 @@
 				</router-link>
 				</a-tooltip>
 			</a-menu-item>
-			<a-menu-item v-if="can('product.view')">
+			<a-menu-item v-show="groupOpen('product')" v-if="can('product.view')">
 				<a-tooltip placement="right" :title="mini ? '产品详情' : ''">
 					<router-link to="/products">
 					<span class="icon">
@@ -59,7 +55,7 @@
 				</router-link>
 				</a-tooltip>
 			</a-menu-item>
-			<a-menu-item v-if="can('manual.view')">
+			<a-menu-item v-show="groupOpen('product')" v-if="can('manual.view')">
 				<a-tooltip placement="right" :title="mini ? '手册管理' : ''">
 					<router-link to="/manuals">
 					<span class="icon">
@@ -72,8 +68,8 @@
 				</router-link>
 				</a-tooltip>
 			</a-menu-item>
-			<a-menu-item class="menu-item-header" disabled v-if="can('customer.view') || can('stats.view') || can('bills.view') || can('order.view') || can('price.view')">商城</a-menu-item>
-			<a-menu-item v-if="can('customer.view')">
+			<a-menu-item :class="{ folded: !groupOpen('shop') }" class="menu-item-header" disabled @click.native="toggleGroup('shop')" v-if="can('customer.view') || can('stats.view') || can('bills.view') || can('order.view') || can('price.view')"><span class="mh-text">商城</span><a-icon type="down" class="mh-arrow" /></a-menu-item>
+			<a-menu-item v-show="groupOpen('shop')" v-if="can('customer.view')">
 				<a-tooltip placement="right" :title="mini ? '客户管理' : ''">
 					<router-link to="/shop/customers">
 					<span class="icon">
@@ -85,7 +81,7 @@
 				</router-link>
 				</a-tooltip>
 			</a-menu-item>
-			<a-menu-item v-if="can('stats.view')">
+			<a-menu-item v-show="groupOpen('shop')" v-if="can('stats.view')">
 				<a-tooltip placement="right" :title="mini ? '数据统计' : ''">
 					<router-link to="/shop/stats">
 					<span class="icon">
@@ -97,7 +93,7 @@
 				</router-link>
 				</a-tooltip>
 			</a-menu-item>
-			<a-menu-item v-if="can('stats.view')">
+			<a-menu-item v-show="groupOpen('shop')" v-if="can('stats.view')">
 				<a-tooltip placement="right" :title="mini ? '产品销量' : ''">
 					<router-link to="/shop/product-sales">
 					<span class="icon">
@@ -109,7 +105,7 @@
 				</router-link>
 				</a-tooltip>
 			</a-menu-item>
-			<a-menu-item v-if="can('bills.view')">
+			<a-menu-item v-show="groupOpen('shop')" v-if="can('bills.view')">
 				<a-tooltip placement="right" :title="mini ? '对账与账单' : ''">
 					<router-link to="/shop/bills">
 					<span class="icon">
@@ -121,7 +117,7 @@
 				</router-link>
 				</a-tooltip>
 			</a-menu-item>
-			<a-menu-item v-if="can('order.view')">
+			<a-menu-item v-show="groupOpen('shop')" v-if="can('order.view')">
 				<a-tooltip placement="right" :title="mini ? '订单管理' : ''">
 					<router-link to="/shop/orders">
 					<span class="icon">
@@ -133,7 +129,7 @@
 				</router-link>
 				</a-tooltip>
 			</a-menu-item>
-			<a-menu-item v-if="can('price.view')">
+			<a-menu-item v-show="groupOpen('shop')" v-if="can('price.view')">
 				<a-tooltip placement="right" :title="mini ? '价格库存' : ''">
 					<router-link to="/shop/products">
 					<span class="icon">
@@ -145,8 +141,8 @@
 				</router-link>
 				</a-tooltip>
 			</a-menu-item>
-			<a-menu-item class="menu-item-header" disabled v-if="can('video.view') || can('video.orders')">教学视频</a-menu-item>
-			<a-menu-item v-if="can('video.view')">
+			<a-menu-item :class="{ folded: !groupOpen('video') }" class="menu-item-header" disabled @click.native="toggleGroup('video')" v-if="can('video.view') || can('video.orders')"><span class="mh-text">教学视频</span><a-icon type="down" class="mh-arrow" /></a-menu-item>
+			<a-menu-item v-show="groupOpen('video')" v-if="can('video.view')">
 				<a-tooltip placement="right" :title="mini ? '课程管理' : ''">
 					<router-link to="/video-courses">
 					<span class="icon">
@@ -156,7 +152,7 @@
 				</router-link>
 				</a-tooltip>
 			</a-menu-item>
-			<a-menu-item v-if="can('video.view')">
+			<a-menu-item v-show="groupOpen('video')" v-if="can('video.view')">
 				<a-tooltip placement="right" :title="mini ? '章节管理' : ''">
 					<router-link to="/video-chapters">
 					<span class="icon">
@@ -166,7 +162,7 @@
 				</router-link>
 				</a-tooltip>
 			</a-menu-item>
-			<a-menu-item v-if="can('video.view')">
+			<a-menu-item v-show="groupOpen('video')" v-if="can('video.view')">
 				<a-tooltip placement="right" :title="mini ? '视频管理' : ''">
 					<router-link to="/videos">
 					<span class="icon">
@@ -176,7 +172,7 @@
 				</router-link>
 				</a-tooltip>
 			</a-menu-item>
-			<a-menu-item v-if="can('video.orders')">
+			<a-menu-item v-show="groupOpen('video')" v-if="can('video.orders')">
 				<a-tooltip placement="right" :title="mini ? '视频订单' : ''">
 					<router-link to="/video-orders">
 					<span class="icon">
@@ -186,8 +182,8 @@
 				</router-link>
 				</a-tooltip>
 			</a-menu-item>
-			<a-menu-item class="menu-item-header" disabled v-if="can('company.view') || can('carousel.view') || can('announcement.view') || can('legal.view')">公司</a-menu-item>
-			<a-menu-item v-if="can('company.view')">
+			<a-menu-item :class="{ folded: !groupOpen('company') }" class="menu-item-header" disabled @click.native="toggleGroup('company')" v-if="can('company.view') || can('carousel.view') || can('announcement.view') || can('legal.view')"><span class="mh-text">公司</span><a-icon type="down" class="mh-arrow" /></a-menu-item>
+			<a-menu-item v-show="groupOpen('company')" v-if="can('company.view')">
 				<a-tooltip placement="right" :title="mini ? '公司信息' : ''">
 					<router-link to="/company">
 					<span class="icon">
@@ -200,7 +196,7 @@
 				</router-link>
 				</a-tooltip>
 			</a-menu-item>
-			<a-menu-item v-if="can('carousel.view')">
+			<a-menu-item v-show="groupOpen('company')" v-if="can('carousel.view')">
 				<a-tooltip placement="right" :title="mini ? '轮播图管理' : ''">
 					<router-link to="/carousels">
 					<span class="icon">
@@ -212,7 +208,7 @@
 				</router-link>
 				</a-tooltip>
 			</a-menu-item>
-			<a-menu-item v-if="can('announcement.view')">
+			<a-menu-item v-show="groupOpen('company')" v-if="can('announcement.view')">
 				<a-tooltip placement="right" :title="mini ? '公告管理' : ''">
 					<router-link to="/announcements">
 					<span class="icon">
@@ -226,7 +222,7 @@
 				</router-link>
 				</a-tooltip>
 			</a-menu-item>
-			<a-menu-item v-if="can('legal.view')">
+			<a-menu-item v-show="groupOpen('company')" v-if="can('legal.view')">
 				<a-tooltip placement="right" :title="mini ? '协议与规则' : ''">
 					<router-link to="/legal">
 					<span class="icon">
@@ -239,8 +235,8 @@
 				</router-link>
 				</a-tooltip>
 			</a-menu-item>
-			<a-menu-item class="menu-item-header" disabled v-if="isMainUser">系统</a-menu-item>
-			<a-menu-item v-if="isMainUser">
+			<a-menu-item :class="{ folded: !groupOpen('system') }" class="menu-item-header" disabled @click.native="toggleGroup('system')" v-if="isMainUser"><span class="mh-text">系统</span><a-icon type="down" class="mh-arrow" /></a-menu-item>
+			<a-menu-item v-show="groupOpen('system')" v-if="isMainUser">
 				<a-tooltip placement="right" :title="mini ? '账户管理' : ''">
 					<router-link to="/users">
 					<span class="icon">
@@ -252,7 +248,7 @@
 				</router-link>
 				</a-tooltip>
 			</a-menu-item>
-			<a-menu-item v-if="isMainUser">
+			<a-menu-item v-show="groupOpen('system')" v-if="isMainUser">
 				<a-tooltip placement="right" :title="mini ? '角色管理' : ''">
 					<router-link to="/roles">
 					<span class="icon">
@@ -264,7 +260,7 @@
 				</router-link>
 				</a-tooltip>
 			</a-menu-item>
-			<a-menu-item v-if="isMainUser">
+			<a-menu-item v-show="groupOpen('system')" v-if="isMainUser">
 				<a-tooltip placement="right" :title="mini ? '日志管理' : ''">
 					<router-link to="/logs">
 					<span class="icon">
@@ -276,7 +272,7 @@
 				</router-link>
 				</a-tooltip>
 			</a-menu-item>
-			<a-menu-item v-if="isMainUser">
+			<a-menu-item v-show="groupOpen('system')" v-if="isMainUser">
 				<a-tooltip placement="right" :title="mini ? '文件管理' : ''">
 					<router-link to="/files">
 					<span class="icon">
@@ -289,7 +285,7 @@
 				</router-link>
 				</a-tooltip>
 			</a-menu-item>
-			<a-menu-item v-if="isMainUser && showEnv">
+			<a-menu-item v-show="groupOpen('system')" v-if="isMainUser && showEnv">
 				<a-tooltip placement="right" :title="mini ? '配置助手' : ''">
 					<router-link to="/env">
 					<span class="icon">
@@ -317,6 +313,7 @@
 </template>
 
 <script>
+import logo from '@/assets/logo.png'
 
 export default ({
 	props: {
@@ -359,14 +356,50 @@ export default ({
 	data() {
 		let shown = false
 		try { shown = sessionStorage.getItem('envMenu') === '1' } catch (e) { /* 读不了就当没显示 */ }
+		// 分组折叠状态（记在浏览器里）：{ product: true } 表示「产品」这一组收起来了
+		let fold = {}
+		try { fold = JSON.parse(localStorage.getItem('menuFold') || '{}') || {} } catch (e) { /* 读不了就都展开 */ }
 		return {
+			logo,
+			fold,
 			// 隐藏的「配置助手」菜单：连点 5 次标题才显示，关掉浏览器标签页后又会藏起来
 			showEnv: shown,
 			brandCount: 0,
 			brandLast: 0,
 		}
 	},
+	watch: {
+		// 进入某个页面时，它所在的分组自动展开（不然收起了的分组里的当前页看不见）
+		'$route.path': {
+			immediate: true,
+			handler(path) {
+				const g = this.groupOfPath(path)
+				if (g && this.fold[g]) this.setFold(g, false)
+			},
+		},
+	},
 	methods: {
+		// 当前页属于哪一组（按路径前缀，和菜单里的分组一一对应）
+		groupOfPath(path) {
+			if (/^\/(categories|catalogs|products|manuals)/.test(path)) return 'product'
+			if (/^\/shop\//.test(path)) return 'shop'
+			if (/^\/video/.test(path)) return 'video'
+			if (/^\/(company|carousels|announcements|legal)/.test(path)) return 'company'
+			if (/^\/(users|roles|logs|files|env)/.test(path)) return 'system'
+			return ''
+		},
+		// 这一组是不是展开的。菜单收起成图标时（mini）一律展开，不然图标会不见
+		groupOpen(g) {
+			return this.mini || !this.fold[g]
+		},
+		setFold(g, folded) {
+			this.fold = { ...this.fold, [g]: folded }
+			try { localStorage.setItem('menuFold', JSON.stringify(this.fold)) } catch (e) { /* 存不了就算了，只是刷新后又全展开 */ }
+		},
+		toggleGroup(g) {
+			if (this.mini) return
+			this.setFold(g, !this.fold[g])
+		},
 		// 连点标题 5 次（每两次之间不超过 1.5 秒）：显示「配置助手」
 		onBrandClick() {
 			if (!this.isMainUser || this.showEnv) return

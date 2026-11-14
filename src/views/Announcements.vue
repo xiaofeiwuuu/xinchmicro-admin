@@ -2,12 +2,13 @@
      「生效」= 启用 + 在显示时间段内；小程序一次最多取最新的 5 条。 -->
 <template>
 	<div>
-		<a-card :bordered="false" class="mb-24">
-			<a-button v-can="'announcement.edit'" type="primary" icon="plus" @click="openAdd">新增公告</a-button>
-			<span class="hint">客户打开小程序时弹窗显示；每条公告每台设备只弹一次，修改内容后会再弹一次。</span>
-		</a-card>
+		<!-- 新增按钮直接放在页面上，不再单独包一张白卡片（内边距会让按钮四周空一圈）；说明文字收进问号提示 -->
+		<div style="margin-bottom: 16px;">
+			<a-button v-can="'announcement.edit'" type="primary" icon="plus" size="small" @click="openAdd">新增公告</a-button>
+			<a-tooltip title="客户打开小程序时弹窗显示；每条公告每台设备只弹一次，修改内容后会再弹一次。"><a-icon type="question-circle" style="margin-left: 8px; color: #9ca3af;" /></a-tooltip>
+		</div>
 
-		<a-card :bordered="false">
+		<a-card class="plain-card" :bordered="false">
 			<a-table :scroll="tableScroll" rowKey="id" :columns="columns" :dataSource="list" :pagination="pagination" :loading="loading" @change="handleTableChange">
 				<template slot="content" slot-scope="text">
 					<a-tooltip :title="text"><span class="content-cell">{{ text }}</span></a-tooltip>
@@ -22,10 +23,15 @@
 				<template slot="updatedAt" slot-scope="text">{{ fmt(text, '-') }}</template>
 				<template slot="action" slot-scope="text, record">
 					<div class="row-actions" v-can="'announcement.edit'">
-						<a @click="openEdit(record)">编辑</a>
-						<a v-if="record.status === 'active'" @click="toggle(record)">停用</a>
-						<a v-else @click="toggle(record)">启用</a>
-						<a class="act-danger" @click="remove(record)">删除</a>
+						<a-button type="link" size="small" @click="openEdit(record)"><icon-edit /><span class="text-dark">编辑</span></a-button>
+						<!-- 启用/停用、删除收进「更多」，和别的页面一致 -->
+						<a-dropdown :trigger="['click']" placement="bottomRight">
+							<a-button type="link" size="small" @click.prevent><a-icon type="ellipsis" style="color: #111827" /><span class="text-dark">更多</span></a-button>
+							<a-menu slot="overlay" @click="(e) => onMore(record, e.key)">
+								<a-menu-item key="toggle">{{ record.status === 'active' ? '停用' : '启用' }}</a-menu-item>
+								<a-menu-item key="delete"><span class="act-danger">删除</span></a-menu-item>
+							</a-menu>
+						</a-dropdown>
 					</div>
 				</template>
 			</a-table>
@@ -73,6 +79,8 @@ import moment from 'moment'
 import 'moment/locale/zh-cn'
 import pickerLocale from 'ant-design-vue/lib/date-picker/locale/zh_CN'
 import fixedListLayout from '@/mixins/fixedListLayout'
+import IconEdit from '@/components/IconEdit.vue';
+import IconDelete from '@/components/IconDelete.vue';
 import { newPagination, applyTableChange } from '@/utils/pagination'
 import { notifyError } from '@/utils/notify'
 import { getAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement } from '@/api'
@@ -88,6 +96,7 @@ const blank = () => ({ title: '', content: '', titleEn: '', contentEn: '', activ
 export default {
 	name: 'Announcements',
 	mixins: [fixedListLayout],
+	components: { IconEdit },
 	data() {
 		return {
 			PHASE,
@@ -99,7 +108,7 @@ export default {
 				{ title: '状态', dataIndex: 'phase', key: 'phase', scopedSlots: { customRender: 'phase' } },
 				{ title: '显示时间', key: 'period', scopedSlots: { customRender: 'period' } },
 				{ title: '更新时间', dataIndex: 'updatedAt', key: 'updatedAt', scopedSlots: { customRender: 'updatedAt' } },
-				{ title: '操作', key: 'action', scopedSlots: { customRender: 'action' } }
+				{ title: '操作', key: 'action', align: 'right', scopedSlots: { customRender: 'action' } }
 			],
 			list: [],
 			loading: false,
@@ -116,6 +125,10 @@ export default {
 		this.load()
 	},
 	methods: {
+		onMore(record, key) {
+			if (key === 'toggle') this.toggle(record)
+			else if (key === 'delete') this.remove(record)
+		},
 		fmt(v, empty) {
 			return v ? moment(v).format('YYYY-MM-DD HH:mm') : empty
 		},
@@ -235,7 +248,6 @@ export default {
 .count { text-align: right; color: #bfbfbf; font-size: 12px; }
 .sw-text { margin-left: 8px; color: #595959; }
 .content-cell { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-wrap; }
-.row-actions { gap: 4px 14px; }
 .act-danger { color: #cf1322; }
 /* 已停用、已结束：灰色标签（antd 的 default 色在这套主题里字是白的，看不见） */
 .tag-off { background: #f5f5f5; border-color: #d9d9d9; color: #8c8c8c; }

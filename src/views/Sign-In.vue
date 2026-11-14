@@ -8,13 +8,12 @@
 	<div class="login-page">
 		<div class="lp-grid"></div>
 
+		<!-- 登录卡片 + 3D 场景 作为一个整体，在页面里居中（窗口很宽时两边留白一样，不会卡片贴在最左边、中间空一大片） -->
+		<div class="lp-wrap">
 		<div class="lp-left">
 			<div class="lp-brand">
-				<svg class="lp-logo" viewBox="0 0 40 40" width="40" height="40" aria-hidden="true">
-					<rect x="9" y="9" width="22" height="22" rx="4" fill="none" stroke="#4fc8ff" stroke-width="2.4" />
-					<rect x="15" y="15" width="10" height="10" rx="2" fill="#4fc8ff" />
-					<path d="M14 9V4M20 9V4M26 9V4M14 36v-5M20 36v-5M26 36v-5M9 14H4M9 20H4M9 26H4M36 14h-5M36 20h-5M36 26h-5" stroke="#4fc8ff" stroke-width="2.4" stroke-linecap="round" />
-				</svg>
+				<!-- 公司 Logo（从「公司信息」里那张抠出来的透明底 PNG：src/assets/logo.png；原图是 logo-original.jpg） -->
+				<img class="lp-logo" :src="logo" alt="芯辰微电子" />
 				<div>
 					<div class="lp-name">芯辰微电子</div>
 					<div class="lp-sub">管理后台</div>
@@ -55,8 +54,6 @@
 				</a-form>
 				<!-- / 登录表单 -->
 			</div>
-
-			<div class="lp-copy">© 厦门芯辰微电子有限公司</div>
 		</div>
 
 		<!-- 右边：3D 芯片场景。按窗口大小整体缩放（scale 由 JS 算），窗口太窄时整块隐藏 -->
@@ -86,6 +83,9 @@
 				<span v-for="(d, i) in dots" :key="'d' + i" class="dot" :style="{ left: d.left + '%', top: d.top + '%', animationDuration: d.dur + 's', animationDelay: d.delay + 's' }"></span>
 			</div>
 		</div>
+		</div>
+
+		<div class="lp-copy">© 厦门芯辰微电子有限公司</div>
 	</div>
 </template>
 
@@ -94,11 +94,13 @@ import { notifyError } from '@/utils/notify';
 import { saveAuth } from '@/utils/auth';
 import { login } from '@/api'
 import { PINS, TRACES, DOTS } from '@/utils/chipScene'
+import logo from '@/assets/logo.png'
 
 export default ({
 	data() {
 		return {
 			loading: false,
+			logo,
 			pins: PINS,
 			traces: TRACES,
 			dots: DOTS,
@@ -119,8 +121,8 @@ export default ({
 		fit() {
 			const el = this.$refs.stage;
 			if (!el) return;
-			// 场景本身 640×640，旋转后实际占 760×680 左右；留一点边距
-			this.scale = Math.max(0.5, Math.min(el.clientWidth / 800, el.clientHeight / 720, 1.2));
+			// 场景本身 640×640，旋转 40° 后实际占约 902px 宽（640×(cos40°+sin40°)），倾斜 58° 后约 560px 高（含芯片浮起和阴影）；留一点边距
+			this.scale = Math.max(0.45, Math.min(el.clientWidth / 960, el.clientHeight / 640, 1.15));
 		},
 		async handleSubmit(e) {
 			e.preventDefault();
@@ -162,11 +164,13 @@ export default ({
 </style>
 
 <style lang="scss" scoped>
-.login-page { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 1000; display: flex; overflow: hidden; background: radial-gradient(1200px 760px at 72% 50%, #12365f 0%, #0a1627 55%, #060c17 100%); }
+.login-page { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 1000; display: flex; justify-content: center; overflow: hidden; background: radial-gradient(1200px 760px at 72% 50%, #12365f 0%, #0a1627 55%, #060c17 100%); }
 .lp-grid { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background-image: linear-gradient(rgba(90, 170, 255, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(90, 170, 255, 0.05) 1px, transparent 1px); background-size: 48px 48px; pointer-events: none; }
-.lp-left { position: relative; z-index: 2; flex: 0 0 min(520px, 46%); display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 32px; box-sizing: border-box; }
+.lp-wrap { position: relative; z-index: 2; display: flex; width: 100%; max-width: 1480px; height: 100%; }
+.lp-left { position: relative; z-index: 2; flex: 0 0 min(500px, 44%); display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 32px; box-sizing: border-box; }
 .lp-brand { width: 100%; max-width: 400px; display: flex; align-items: center; margin-bottom: 28px; }
-.lp-logo { flex-shrink: 0; margin-right: 14px; filter: drop-shadow(0 0 8px rgba(79, 200, 255, 0.6)); }
+/* 深蓝的盾牌放在深色背景上看不清，所以垫一块白色圆角底，再加一圈淡淡的光 */
+.lp-logo { flex-shrink: 0; box-sizing: border-box; width: 54px; height: 54px; padding: 7px; margin-right: 14px; object-fit: contain; background: #fff; border-radius: 14px; box-shadow: 0 0 18px rgba(120, 190, 255, 0.4); }
 .lp-name { color: #fff; font-size: 24px; font-weight: 700; letter-spacing: 3px; line-height: 1.2; }
 .lp-sub { color: #7fb8e8; font-size: 14px; letter-spacing: 6px; margin-top: 4px; }
 .lp-card { width: 100%; max-width: 400px; box-sizing: border-box; padding: 32px 32px 12px; border-radius: 16px; background: linear-gradient(160deg, rgba(20, 48, 84, 0.78), rgba(8, 20, 38, 0.82)); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border: 1px solid rgba(90, 175, 255, 0.35); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(40, 140, 255, 0.18), inset 0 1px 0 rgba(160, 215, 255, 0.18); }
@@ -183,7 +187,7 @@ export default ({
 .lp-card ::v-deep .ant-form-explain { color: #ff9a97; }
 .lp-card ::v-deep .ant-btn-primary { height: 44px; font-size: 16px; letter-spacing: 6px; border: 0; border-radius: 8px; background: linear-gradient(90deg, #1677ff 0%, #25b7ff 100%); box-shadow: 0 6px 20px rgba(37, 160, 255, 0.4); transition: box-shadow 0.2s, filter 0.2s; }
 .lp-card ::v-deep .ant-btn-primary:hover, .lp-card ::v-deep .ant-btn-primary:focus { filter: brightness(1.1); box-shadow: 0 8px 28px rgba(60, 190, 255, 0.6); }
-.lp-copy { position: absolute; left: 0; right: 0; bottom: 18px; text-align: center; color: rgba(160, 200, 240, 0.5); font-size: 12px; }
+.lp-copy { position: absolute; z-index: 2; left: 0; right: 0; bottom: 18px; text-align: center; color: rgba(160, 200, 240, 0.5); font-size: 12px; }
 .lp-right { position: relative; flex: 1; min-width: 0; }
 @media (max-width: 900px) {
 	.lp-left { flex: 1 1 100%; }

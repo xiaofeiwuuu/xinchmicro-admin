@@ -96,6 +96,41 @@ body::after {
 	to { transform: translateY(100vh); }
 }
 
+// ---- 表格：白底 + 一圈淡蓝的细边 + 淡阴影 + 圆角，让表格从背景里清楚地「浮」出来（表头和背景都是蓝色系，没有这圈边会糊在一起）----
+// 用 box-shadow 画边（不占位置，不影响 fixedListLayout 量高度）；表格放在卡片里时卡片已经是白底，不再加
+.layout-dashboard .ant-table {
+	background: #fff;
+	border-radius: 12px;
+	overflow: hidden;
+	box-shadow: 0 0 0 1px #d9e5f5, 0 4px 14px rgba(22, 119, 255, 0.07);
+}
+.layout-dashboard .ant-card:not(.plain-card) .ant-card-body .ant-table {
+	box-shadow: none;
+	border-radius: 0;
+}
+
+// ---- 去掉底色的卡片（商城里的列表页：筛选区和表格直接放在页面背景上，和产品那几个页面一样，不再外面多包一层白底）----
+// 用法：<a-card class="plain-card">。卡片的标签条、内边距、阴影、标题栏的底色和底线都去掉；表格自己有白底和细边（见上）
+.layout-dashboard .ant-card.plain-card {
+	background: transparent;
+	box-shadow: none;
+}
+.layout-dashboard .ant-card.plain-card::before {
+	display: none;
+}
+.layout-dashboard .ant-card.plain-card > .ant-card-body {
+	padding: 0;
+}
+.layout-dashboard .ant-card.plain-card > .ant-card-head {
+	background: transparent;
+	border-bottom: 0;
+	padding: 0 2px;
+	min-height: 36px;
+}
+.layout-dashboard .ant-card.plain-card.mb-24 {
+	margin-bottom: 16px;
+}
+
 // ---- 卡片：顶边左侧一小段蓝青渐变的「标签条」，鼠标移上去变长 ----
 .layout-dashboard .ant-card {
 	position: relative;
@@ -134,6 +169,7 @@ body::after {
 	align-items: center;
 }
 .layout-dashboard .brand-logo {
+	object-fit: contain;
 	flex-shrink: 0;
 	margin-right: 10px;
 }
@@ -151,6 +187,59 @@ body::after {
 }
 .layout-dashboard.sidebar-mini .brand-logo {
 	margin-right: 0;
+}
+
+// ---- 侧边栏菜单 ----
+// 分组标题（产品、商城…）：可以点，点一下收起/展开这一组，右边的小箭头跟着转；鼠标放上去变蓝。
+// 菜单收起成图标时（sidebar-mini）标题本来就变成一条细线，这里的样式只在没收起时生效，箭头也不显示
+.layout-dashboard:not(.sidebar-mini) .ant-layout-sider.sider-primary .ant-menu-item.menu-item-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	cursor: pointer;
+	border-radius: 8px;
+	transition: color 0.2s, background 0.2s;
+}
+.layout-dashboard:not(.sidebar-mini) .ant-layout-sider.sider-primary .ant-menu-item.menu-item-header:hover {
+	color: #1677ff;
+	background: rgba(22, 119, 255, 0.05);
+}
+.layout-dashboard .ant-layout-sider.sider-primary .menu-item-header .mh-arrow {
+	font-size: 11px;
+	transition: transform 0.2s;
+}
+.layout-dashboard .ant-layout-sider.sider-primary .menu-item-header.folded .mh-arrow {
+	transform: rotate(-90deg);
+}
+.layout-dashboard.sidebar-mini .ant-layout-sider.sider-primary .menu-item-header .mh-arrow {
+	display: none;
+}
+// 当前页：左边一根蓝青渐变的竖条 + 淡蓝色渐变底 + 文字变蓝（图标方块还是蓝色实心）；悬停：淡蓝色的底
+.layout-dashboard .ant-layout-sider.sider-primary .ant-menu-item a {
+	position: relative;
+	transition: background 0.2s;
+}
+.layout-dashboard .ant-layout-sider.sider-primary .ant-menu-item a:hover {
+	background: rgba(22, 119, 255, 0.06);
+}
+.layout-dashboard .ant-layout-sider.sider-primary .ant-menu-item a.router-link-active {
+	background: linear-gradient(90deg, rgba(22, 119, 255, 0.12), rgba(22, 119, 255, 0.02) 90%) !important;
+	box-shadow: none !important;
+}
+.layout-dashboard .ant-layout-sider.sider-primary .ant-menu-item a.router-link-active::before {
+	content: '';
+	position: absolute;
+	left: 0; top: 8px; bottom: 8px;
+	width: 3px;
+	border-radius: 0 3px 3px 0;
+	background: linear-gradient(180deg, #1677ff, #36cfc9);
+}
+.layout-dashboard .ant-layout-sider.sider-primary .ant-menu-item a.router-link-active .label {
+	color: #1677ff;
+}
+// 菜单收起成图标时，当前页的竖条贴着方块左边就够了，不要整行的淡蓝底
+.layout-dashboard.sidebar-mini .ant-layout-sider.sider-primary .ant-menu-item a.router-link-active {
+	background: transparent !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -18,9 +18,10 @@
 	color: $color-gray-7;
 	font-weight: $fw-bold;
 	// 表头要有底色：数据区在表头下面单独滚动时，一眼能看出表头是固定的
-	background-color: #f5f7fa;
+	// 比页面背景（淡蓝加网格）深一档的蓝灰，再配一条深一点的底线，表头才不会糊进背景里
+	background-color: #e9f0fa;
 	font-size: 12px;
-	border-bottom: 1px solid #e8eaed;
+	border-bottom: 1px solid #d5e1f2;
 }
 // 固定表头（数据区单独滚动时 antd 把表头和数据拆成两张表）。
 // antd 为了藏住表头自带的横向滚动条，给表头加了 margin-bottom: -15px，数据区因此往上顶，盖住表头底部 15px，
@@ -45,6 +46,11 @@
 .ant-table-thead > tr > th, .ant-table-tbody > tr > td {
 	// 左右留 12px：列宽平均分配后每列不宽，空白太多会把内容挤成几行
 	padding: 16px 12px;
+}
+// 数据行的上下再收紧一点：14px（表头还是 16px）。固定表头的数据区高度是量出来的，行矮了同样大小的窗口能多放几行
+.ant-table-tbody > tr > td {
+	padding-top: 14px;
+	padding-bottom: 14px;
 }
 .ant-table-tbody > tr:last-child > td {
 	border-bottom: 0;
@@ -138,14 +144,31 @@
 body.fixed-list-locked {
 	overflow: hidden;
 
+	// 列表页分页条统一：和数据区之间 12px，下面不留外边距（分页条离窗口底部的距离由 fixedListLayout 统一控制成约 20px）。
+	// 放不下、退回整页滚动时（没有这个类）分页条还是 antd 默认的上下各 16px
+	.ant-table-wrapper .ant-table-pagination.ant-pagination {
+		margin: 12px 0 0;
+	}
+	// 页脚是空的，但它自己有 20px 的下外边距，会把分页条往上顶
+	.layout-dashboard .ant-layout-footer {
+		margin-bottom: 0;
+	}
+
 	#layout-dashboard.layout-dashboard {
 		height: 100vh;
 		overflow: hidden;
 	}
 }
-// 表格数据区的滚动条细一点，不抢眼
-.ant-table-body, .ant-table-scroll .ant-table-body {
-	scrollbar-width: thin;
+// 表格里所有的滚动条都隐藏（数据区的竖向、宽表格的横向）：还是能用滚轮、触控板、手指滚动，只是不画滚动条。
+// fixedListLayout 会量滚动条宽度给表头补右内边距，隐藏后宽度是 0，表头和数据照样对齐
+.ant-table-body, .ant-table-scroll .ant-table-body, .ant-table-header, .ant-table-content {
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+}
+.ant-table-body::-webkit-scrollbar, .ant-table-scroll .ant-table-body::-webkit-scrollbar, .ant-table-header::-webkit-scrollbar, .ant-table-content::-webkit-scrollbar {
+	display: none;
+	width: 0;
+	height: 0;
 }
 // 数据行不够一屏时不要留一条空的滚动条轨道（antd 默认永远显示）；有没有滚动条的宽度差由 fixedListLayout 量出来补给表头
 .ant-table-scroll .ant-table-body {
@@ -158,11 +181,42 @@ body.fixed-list-locked {
 }
 
 // 操作列：几个文字按钮并排，列窄放不下时整个按钮换到下一行（不会把按钮拆开，也不用分隔线）
+// 按钮之间的间距、图标大小、图标和文字的间距在这里统一，页面里不要再各写各的（曾经有的页面 0、有的 14px，a-icon 图标 12px、自定义 SVG 图标 16px，图标和文字的间距有 0 也有 5px）
 .row-actions {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
+	justify-content: flex-end; // 操作列统一靠右（列定义里也要写 align: 'right'，表头才跟着靠右）
 	.ant-btn-link {
 		padding: 0 6px;
+		// 图标统一 16px、和文字隔 5px（a-icon 和自定义的 IconEdit / IconDelete 都一样）
+		> .anticon, > svg {
+			width: 16px;
+			height: 16px;
+			font-size: 16px;
+			margin-right: 0;
+			vertical-align: middle;
+		}
+		> .anticon {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+		}
+		.anticon svg {
+			margin-right: 0;
+		}
+		> .anticon + span,
+		> svg + span {
+			margin-left: 5px;
+			vertical-align: middle;
+		}
 	}
+}
+
+// 点一下复制的名称（分类、手册、视频、课程、章节……）：鼠标放上去变蓝，提示「点击复制」
+.copy-cell {
+	cursor: pointer;
+}
+.copy-cell:hover {
+	color: #1890ff;
 }

@@ -1,4 +1,4 @@
-<!-- 教学视频：视频订单。谁买了哪个视频、实付多少、什么时候付的。只读（视频不退款、不开发票，所以没有操作）。 -->
+<!-- 教学视频：视频订单。谁买了哪个视频、实付多少、什么时候付的。列表只放必要的几列，其余（课程、手机号、原价、付款时间、微信支付单号、备注）都在「详情」里。只读（视频不退款、不开发票，所以没有别的操作）。 -->
 <template>
 	<div>
 		<div style="margin-bottom: 16px;">
@@ -16,29 +16,45 @@
 				</a-form-item>
 			</a-form>
 		</div>
-		<div class="summary">已付款 <b>{{ summary.paidCount }}</b> 单，合计 <b>¥{{ summary.paidAmount }}</b>
-			<a-tooltip title="只统计已付款的订单，按上面的关键词和日期筛选，不受「订单状态」和分页影响。"><a-icon type="question-circle" class="help-icon" /></a-tooltip>
-		</div>
 
 		<a-table :scroll="tableScroll" :columns="columns" :data-source="rows" :loading="loading" rowKey="id" :pagination="pagination" @change="handleTableChange">
 			<template slot="orderNo" slot-scope="text"><span class="copy-cell" title="点击复制" @click="copy(text)">{{ text }}</span></template>
-			<template slot="video" slot-scope="text, r">
-				<div>{{ r.title }}</div>
-				<div v-if="r.courseTitle" class="sub">{{ r.courseTitle }}</div>
-			</template>
+			<template slot="video" slot-scope="text, r"><span class="copy-cell" title="点击复制" @click="copy(r.title)">{{ r.title }}</span></template>
 			<template slot="customer" slot-scope="text, r">
 				<router-link :to="{ path: '/shop/customers', query: { id: r.customerId } }">{{ r.customerName }}</router-link>
-				<div v-if="r.customerPhone" class="sub">{{ r.customerPhone }}</div>
 			</template>
-			<template slot="amount" slot-scope="text, r">
-				<span>¥{{ r.amount }}</span>
-				<span v-if="r.listPrice !== r.amount" class="sub" style="margin-left: 6px; text-decoration: line-through;">¥{{ r.listPrice }}</span>
-				<a-tag v-if="r.listPrice !== r.amount" color="orange" style="margin-left: 6px;">会员价</a-tag>
-			</template>
+			<template slot="amount" slot-scope="text, r">¥{{ r.amount }}</template>
 			<template slot="status" slot-scope="text"><a-tag :color="tag(text).color">{{ tag(text).text }}</a-tag></template>
-			<template slot="paidAt" slot-scope="text">{{ text || '-' }}</template>
-			<template slot="note" slot-scope="text">{{ text || '-' }}</template>
+			<template slot="action" slot-scope="text, r">
+				<a-button type="link" size="small" @click="openDetail(r)"><a-icon type="eye" style="color: #111827" /><span class="text-dark">详情</span></a-button>
+			</template>
 		</a-table>
+
+		<!-- 详情：一张卡片，上面是金额 + 状态 + 订单号，下面是其余信息；没有按钮，右上角叉关闭 -->
+		<a-modal title="订单详情" :visible="detailVisible" :width="620" :footer="null" @cancel="detailVisible = false">
+			<div v-if="detail" class="dt-card">
+				<div class="dt-head">
+					<div class="dt-amount">¥{{ detail.amount }}</div>
+					<div class="dt-main">
+						<a-tag :color="tag(detail.status).color">{{ tag(detail.status).text }}</a-tag>
+						<a-tag v-if="detail.listPrice !== detail.amount" color="orange">会员价</a-tag>
+						<div class="dt-no"><span class="copy-cell" title="点击复制" @click="copy(detail.orderNo)">{{ detail.orderNo }}</span></div>
+					</div>
+				</div>
+				<div class="dt-grid">
+					<div class="dt-k">视频</div><div class="dt-v"><span class="copy-cell" title="点击复制" @click="copy(detail.title)">{{ detail.title }}</span></div>
+					<div class="dt-k">所属课程</div><div class="dt-v">{{ detail.courseTitle || '-' }}</div>
+					<div class="dt-k">客户</div><div class="dt-v"><router-link :to="{ path: '/shop/customers', query: { id: detail.customerId } }">{{ detail.customerName }}</router-link></div>
+					<div class="dt-k">手机号</div><div class="dt-v">{{ detail.customerPhone || '-' }}</div>
+					<div class="dt-k">原价</div><div class="dt-v">¥{{ detail.listPrice }}</div>
+					<div class="dt-k">实付</div><div class="dt-v">¥{{ detail.amount }}<span v-if="detail.listPrice !== detail.amount" class="dt-sub">（会员价，比原价少 ¥{{ (detail.listPrice - detail.amount).toFixed(2).replace(/\.00$/, '') }}）</span></div>
+					<div class="dt-k">下单时间</div><div class="dt-v">{{ detail.createdAt || '-' }}</div>
+					<div class="dt-k">付款时间</div><div class="dt-v">{{ detail.paidAt || '-' }}</div>
+					<div class="dt-k">微信支付单号</div><div class="dt-v"><span v-if="detail.transactionId" class="copy-cell" title="点击复制" @click="copy(detail.transactionId)">{{ detail.transactionId }}</span><span v-else class="dt-empty">没有</span></div>
+					<div class="dt-k">备注</div><div class="dt-v dt-pre"><template v-if="detail.note">{{ detail.note }}</template><span v-else class="dt-empty">没有</span></div>
+				</div>
+			</div>
+		</a-modal>
 	</div>
 </template>
 
@@ -64,17 +80,19 @@ export default {
 			STATUSES,
 			keyword: '', status: undefined, dates: [],
 			applied: { keyword: '', status: undefined, dates: [] },
-			rows: [], loading: false, pagination: newPagination(),
+			detailVisible: false, detail: null,
+			rows: [], loading: false, // 已付款几单、合计多少放在分页那一行（只统计已付款的，按关键词和日期筛选，不受「订单状态」和分页影响）
+			pagination: newPagination({ showTotal: (t) => `共 ${t} 条　已付款 ${this.summary.paidCount} 单，合计 ¥${this.summary.paidAmount}` }),
 			summary: { paidCount: 0, paidAmount: 0 },
+			// 列表只放必要的：订单号、视频、客户、实付、状态、下单时间；其余在「详情」里。状态、操作窄，其余平分
 			columns: [
 				{ title: '订单号', dataIndex: 'orderNo', key: 'orderNo', scopedSlots: { customRender: 'orderNo' } },
 				{ title: '视频', key: 'video', scopedSlots: { customRender: 'video' } },
 				{ title: '客户', key: 'customer', scopedSlots: { customRender: 'customer' } },
 				{ title: '实付', key: 'amount', scopedSlots: { customRender: 'amount' } },
-				{ title: '状态', dataIndex: 'status', key: 'status', scopedSlots: { customRender: 'status' } },
+				{ title: '状态', dataIndex: 'status', key: 'status', width: 90, scopedSlots: { customRender: 'status' } },
 				{ title: '下单时间', dataIndex: 'createdAt', key: 'createdAt' },
-				{ title: '付款时间', dataIndex: 'paidAt', key: 'paidAt', scopedSlots: { customRender: 'paidAt' } },
-				{ title: '备注', dataIndex: 'note', key: 'note', scopedSlots: { customRender: 'note' } }
+				{ title: '操作', key: 'action', align: 'right', width: 100, scopedSlots: { customRender: 'action' } }
 			]
 		};
 	},
@@ -82,6 +100,10 @@ export default {
 		this.load();
 	},
 	methods: {
+		openDetail(r) {
+			this.detail = r;
+			this.detailVisible = true;
+		},
 		tag(s) {
 			return STATUSES.find((x) => x.value === s) || { text: s, color: undefined };
 		},
@@ -125,8 +147,19 @@ export default {
 </script>
 
 <style scoped>
-.summary { margin-bottom: 12px; color: #666; }
-.summary b { color: #111827; }
+.dt-card { border: 1px solid #ebeef5; border-radius: 10px; overflow: hidden; }
+.dt-head { display: flex; align-items: center; padding: 18px 20px; background: linear-gradient(135deg, #f4f8ff, #fafcff); border-bottom: 1px solid #ebeef5; }
+.dt-amount { font-size: 30px; font-weight: 700; color: #111827; line-height: 1; min-width: 120px; }
+.dt-main { margin-left: 20px; }
+.dt-no { margin-top: 8px; color: #6b7280; font-size: 13px; }
+.dt-grid { display: grid; grid-template-columns: 130px 1fr; }
+.dt-k, .dt-v { padding: 10px 16px; border-bottom: 1px solid #f3f4f6; }
+.dt-k:nth-last-child(2), .dt-v:last-child { border-bottom: 0; }
+.dt-k { color: #6b7280; background: #fcfcfd; }
+.dt-v { background: #fff; word-break: break-all; }
+.dt-sub { color: #fa8c16; margin-left: 6px; font-size: 12px; }
+.dt-pre { white-space: pre-wrap; }
+.dt-empty { color: #bfbfbf; }
 .sub { color: #999; font-size: 12px; }
 .copy-cell { cursor: pointer; }
 </style>

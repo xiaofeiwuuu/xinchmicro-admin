@@ -1,5 +1,5 @@
 <template>
-  <a-card :bordered="false">
+  <a-card :bordered="false" class="plain-card">
     <!-- 概况与提示：只用灰色小字，不用色块 -->
     <div class="fm-summary">
       已登记 {{ summary.total }} 个　使用中 {{ summary.used }} 个　未使用 {{ summary.unused }} 个（{{ unusedSize }}）
@@ -43,7 +43,7 @@
         <span v-for="(u, i) in record.usedBy" :key="i" class="fm-used-by">{{ typeLabel(u.type) }}：{{ u.name }}</span>
       </template>
       <template slot="action" slot-scope="text, record">
-        <a v-if="record.deletable" class="fm-danger" @click="confirmDelete([record.id])">删除</a>
+        <a-button v-if="record.deletable" type="link" size="small" @click="confirmDelete([record.id])"><icon-delete /><span class="text-danger">删除</span></a-button>
         <span v-else-if="!record.inUse" class="fm-muted">{{ record.reason }}</span>
       </template>
     </a-table>
@@ -65,10 +65,12 @@ import { parseStorageListing, formatSize, parseSize } from '@/utils/storageListi
 const IMPORT_CHUNK = 1000; // 服务端一次最多导入 2000 个
 
 import fixedListLayout from '@/mixins/fixedListLayout'
+import IconDelete from '@/components/IconDelete.vue';
 import { newPagination, applyTableChange } from '@/utils/pagination'
 
 export default {
 	mixins: [fixedListLayout],
+	components: { IconDelete },
   data() {
     return {
       status: 'all',
@@ -87,7 +89,7 @@ export default {
         { title: '大小', dataIndex: 'size', width: '10%', scopedSlots: { customRender: 'size' } },
         { title: '上传时间', dataIndex: 'uploadedAt', width: '19%' },
         { title: '状态', key: 'status', width: '19%', scopedSlots: { customRender: 'status' } },
-        { title: '操作', key: 'action', width: '14%', scopedSlots: { customRender: 'action' } }
+        { title: '操作', key: 'action', align: 'right', width: '14%', scopedSlots: { customRender: 'action' } }
       ]
     };
   },

@@ -1,7 +1,7 @@
 <template>
     <div>
         <!-- 搜索表单 -->
-        <div style="margin-bottom: 16px;">
+        <div style="margin-bottom: 8px;">
             <a-form layout="inline">
                 <a-form-item>
                     <a-input v-model="searchForm.name" placeholder="请输入产品名称" size="small" style="width: 160px" />
@@ -82,21 +82,16 @@
                     <a-icon type="eye" style="color: #111827" />
                     <span class="text-dark">详情</span>
                 </a-button>
-                <!-- 编辑按钮 -->
-                <a-button v-can="'product.edit'" type="link" size="small" @click="showModal(record)">
-                    <icon-edit />
-                    <span class="text-dark">编辑</span>
-                </a-button>
-                <!-- 去价格库存页：带上产品名和目录，在那边定位到这个产品 -->
-                <a-button v-can="'price.view'" type="link" size="small" @click="goShopProduct(record)">
-                    <icon-price />
-                    <span class="text-dark">价格库存</span>
-                </a-button>
-                <!-- 删除按钮 -->
-                <a-button v-can="'product.edit'" type="link" size="small" @click="handleDelete(record)">
-                    <icon-delete />
-                    <span class="text-danger">删除</span>
-                </a-button>
+                <!-- 编辑、价格库存、删除都收进「更多」，按权限显示，和订单管理、客户管理一致 -->
+                <a-dropdown v-if="moreItems().length" :trigger="['click']" placement="bottomRight">
+                    <a-button type="link" size="small" @click.prevent>
+                        <a-icon type="ellipsis" style="color: #111827" />
+                        <span class="text-dark">更多</span>
+                    </a-button>
+                    <a-menu slot="overlay" @click="(e) => onMore(record, e.key)">
+                        <a-menu-item v-for="m in moreItems()" :key="m.key"><span :class="{ 'act-danger': m.danger }">{{ m.label }}</span></a-menu-item>
+                    </a-menu>
+                </a-dropdown>
             </span>
         </a-table>
 
@@ -325,7 +320,7 @@ const columns = [
     },
     {
         title: '操作',
-        key: 'action',
+        key: 'action', align: 'right',
         scopedSlots: { customRender: 'action' },
     },
 ];
@@ -394,6 +389,19 @@ export default {
         this.fetchData();
     },
     methods: {
+        // 「更多」里的项：编辑、去价格库存、删除（删除红字）；按权限显示
+        moreItems() {
+            const items = [];
+            if (can('product.edit')) items.push({ key: 'edit', label: '编辑' });
+            if (can('price.view')) items.push({ key: 'price', label: '价格库存' });
+            if (can('product.edit')) items.push({ key: 'delete', label: '删除', danger: true });
+            return items;
+        },
+        onMore(record, key) {
+            if (key === 'edit') this.showModal(record);
+            else if (key === 'price') this.goShopProduct(record);
+            else if (key === 'delete') this.handleDelete(record);
+        },
         can,
         // 列表里直接切换显示 / 隐藏（二次确认）。更新接口要带名称、目录；参数、PDF、英文名这些不带就保持原样
         toggleStatus(record, on) {
@@ -703,6 +711,7 @@ export default {
 </script>
 
 <style scoped>
+.act-danger { color: #cf1322; }
 /* 左右两列中间的虚线（画在右列的左边，两边各留 16px） */
 .col-divider { border-left: 1px dashed #d9d9d9; }
 /* 产品参数：一行 = 只读的参数名称 + 要填的值，两个输入框一样宽 */

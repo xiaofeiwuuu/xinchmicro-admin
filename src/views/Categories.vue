@@ -1,7 +1,7 @@
 <template>
     <div>
         <!-- 搜索表单 -->
-        <div style="margin-bottom: 16px;">
+        <div style="margin-bottom: 8px;">
             <a-form layout="inline">
                 <a-form-item>
                     <a-input v-model="searchForm.name" placeholder="请输入分类名称" size="small" style="width: 160px" />
@@ -134,7 +134,7 @@ const columns = [
     },
     {
         title: '操作',
-        key: 'action',
+        key: 'action', align: 'right',
         // 编辑 + 删除两个按钮并排要约 150px；列宽是平均分配的，窗口不宽时平均下来放不下，会把删除挤到下一行，所以这一列给固定宽度（其余列仍平分剩下的）
         width: 150,
         scopedSlots: { customRender: 'action' },

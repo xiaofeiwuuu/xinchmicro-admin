@@ -1,6 +1,6 @@
 <template>
 	<div>
-		<a-card :bordered="false" class="mb-24">
+		<a-card :bordered="false" class="mb-24 plain-card">
 			<a-input v-model="customerId" placeholder="编号" style="width: 160px; margin-right: 12px;" allowClear @pressEnter="handleSearch" />
 			<a-input v-model="nickname" placeholder="昵称" style="width: 160px; margin-right: 12px;" allowClear @pressEnter="handleSearch" />
 			<a-input v-model="phone" placeholder="手机号" style="width: 160px; margin-right: 12px;" allowClear @pressEnter="handleSearch" />
@@ -23,7 +23,7 @@
 			<a-button style="margin-left: 8px;" @click="handleReset">重置</a-button>
 		</a-card>
 
-		<a-card :bordered="false">
+		<a-card :bordered="false" class="plain-card">
 			<a-table :scroll="tableScroll"
 				rowKey="id"
 				:columns="columns"
@@ -51,10 +51,14 @@
 				</template>
 				<template slot="action" slot-scope="text, record">
 					<div class="row-actions">
-						<a @click="openDetail(record.id)">详情</a>
-						<a v-can="'customer.edit'" @click="openRemark(record)">备注</a>
-						<a v-if="main" @click="confirmMember(record)">{{ record.isMember ? '取消会员' : '设为会员' }}</a>
-						<a v-if="record.status !== 'deleted'" v-can="'customer.edit'" :style="{ color: record.status === 'active' ? '#ff4d4f' : '#1890ff' }" @click="confirmToggle(record)">{{ record.status === 'active' ? '拉黑' : '恢复' }}</a>
+						<a-button type="link" size="small" @click="openDetail(record.id)"><a-icon type="eye" style="color: #111827" /><span class="text-dark">详情</span></a-button>
+						<!-- 备注、会员、拉黑都收进「更多」，和订单管理一致；各项按权限显示，一项都没有就不显示「更多」 -->
+						<a-dropdown v-if="moreItems(record).length" :trigger="['click']" placement="bottomRight">
+							<a-button type="link" size="small" @click.prevent><a-icon type="ellipsis" style="color: #111827" /><span class="text-dark">更多</span></a-button>
+							<a-menu slot="overlay" @click="(e) => onMore(record, e.key)">
+								<a-menu-item v-for="m in moreItems(record)" :key="m.key"><span :class="{ 'act-danger': m.danger }">{{ m.label }}</span></a-menu-item>
+							</a-menu>
+						</a-dropdown>
 					</div>
 				</template>
 			</a-table>
@@ -142,6 +146,7 @@
 </template>
 
 <script>
+import IconEdit from '@/components/IconEdit.vue';
 import { notifyError } from '@/utils/notify'
 import { copyToClipboard } from '@/utils/copy'
 import { getShopCustomers, getShopCustomer, setShopCustomerStatus, setShopCustomerRemark, setShopCustomerMember } from '@/api'
@@ -152,6 +157,7 @@ import { newPagination, applyTableChange } from '@/utils/pagination'
 
 export default {
 	mixins: [fixedListLayout],
+	components: { IconEdit },
 	data() {
 		return {
 			FOLD: 2, // 收货地址、发票抬头默认只显示前 2 个，其余收起
@@ -188,7 +194,7 @@ export default {
 				{ title: '订单数', dataIndex: 'orderCount', key: 'orderCount', width: 100, sorter: true, sortDirections: ['descend', 'ascend'] },
 				{ title: '状态', dataIndex: 'status', key: 'status', width: 90, scopedSlots: { customRender: 'status' } },
 				{ title: '最近登录', dataIndex: 'lastLoginAt', key: 'lastLoginAt', customRender: (v) => v || '-' },
-				{ title: '操作', key: 'action', scopedSlots: { customRender: 'action' } }
+				{ title: '操作', key: 'action', align: 'right', width: 170, scopedSlots: { customRender: 'action' } }
 			]
 		}
 	},
@@ -213,6 +219,19 @@ export default {
 		},
 	},
 	methods: {
+		// 「更多」里的项：备注（要修改客户权限）、设为/取消会员（仅主账号）、拉黑/恢复（要修改客户权限，已注销的没有）
+		moreItems(record) {
+			const items = [];
+			if (can('customer.edit')) items.push({ key: 'remark', label: '备注' });
+			if (this.main) items.push({ key: 'member', label: record.isMember ? '取消会员' : '设为会员' });
+			if (record.status !== 'deleted' && can('customer.edit')) items.push({ key: 'toggle', label: record.status === 'active' ? '拉黑' : '恢复', danger: record.status === 'active' });
+			return items;
+		},
+		onMore(record, key) {
+			if (key === 'remark') this.openRemark(record);
+			else if (key === 'member') this.confirmMember(record);
+			else if (key === 'toggle') this.confirmToggle(record);
+		},
 		// 头像链接失效（文件被删、过期）时退回默认头像；清掉 onerror 防止默认头像也加载失败时死循环
 		onAvatarError(e) {
 			const img = e.target
@@ -352,7 +371,6 @@ export default {
 .copy-cell:hover { color: #1890ff; }
 .avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; }
 .avatar-lg { width: 64px; height: 64px; font-size: 24px; flex-shrink: 0; }
-.row-actions { gap: 4px 14px; }
 .remark-cell { display: inline-block; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
 .cd-sum { padding: 16px 20px; margin-bottom: 16px; background: #fff; border: 1px solid #f0f0f0; border-radius: 8px; }
 .cd-top { display: flex; justify-content: flex-start; align-items: flex-start; gap: 56px; }
@@ -386,4 +404,5 @@ export default {
 .cd-tile-head { font-weight: 500; line-height: 24px; margin-bottom: 2px; word-break: break-all; }
 .cd-pre { white-space: pre-wrap; color: #595959; font-size: 13px; line-height: 20px; word-break: break-all; }
 .cd-warn { margin-top: 4px; font-size: 12px; color: #d46b08; }
+.act-danger { color: #cf1322; }
 </style>

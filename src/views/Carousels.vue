@@ -1,12 +1,11 @@
 <template>
 	<div>
-		<a-card class="mb-24" :bordered="false">
-			<a-button v-can="'carousel.edit'" type="primary" @click="showModal()">
-				<a-icon type="plus" /> 新增轮播图
-			</a-button>
-		</a-card>
+		<!-- 新增按钮直接放在页面上（不再单独包一张白色卡片，卡片的内边距会让按钮四周空一圈），表格也不再套白卡片，和其他列表页一致 -->
+		<a-button v-can="'carousel.edit'" type="primary" size="small" style="margin-bottom: 16px;" @click="showModal()">
+			<a-icon type="plus" /> 新增轮播图
+		</a-button>
 
-		<a-card :bordered="false">
+		<a-card class="plain-card" :bordered="false">
 			<a-table
 				:columns="columns"
 				:dataSource="carousels"
@@ -21,18 +20,12 @@
 					<a-switch size="small" :checked="text === 'active'" :disabled="!can('carousel.edit')" @change="(on) => toggleStatus(record, on)" />
 				</template>
 				<template slot="action" slot-scope="text, record">
-					<a-space>
-						<a v-can="'carousel.edit'" @click="showModal(record)">编辑</a>
-						<a-divider v-can="'carousel.edit'" type="vertical" />
-						<a-popconfirm v-can="'carousel.edit'"
-							title="确定要删除这个轮播图吗？"
-							@confirm="handleDelete(record.id)"
-							okText="是"
-							cancelText="否"
-						>
-							<a class="act-danger">删除</a>
+					<div class="row-actions">
+						<a-button v-can="'carousel.edit'" type="link" size="small" @click="showModal(record)"><icon-edit /><span class="text-dark">编辑</span></a-button>
+						<a-popconfirm v-can="'carousel.edit'" title="确定要删除这个轮播图吗？" okText="是" cancelText="否" @confirm="handleDelete(record.id)">
+							<a-button type="link" size="small"><icon-delete /><span class="text-danger">删除</span></a-button>
 						</a-popconfirm>
-					</a-space>
+					</div>
 				</template>
 			</a-table>
 		</a-card>
@@ -100,13 +93,15 @@
 
 <script>
 import { notifyError } from '@/utils/notify';
+import IconEdit from '@/components/IconEdit.vue';
+import IconDelete from '@/components/IconDelete.vue';
 import LinkPicker from '@/components/LinkPicker.vue';
 import { can } from '@/utils/auth';
 import { toDisplayUrl } from '@/utils/cloudUrl';
 import { getCarousels, createCarousel, updateCarousel, deleteCarousel, updateCarouselOrder, uploadFile, deletePdf } from '@/api'
 
 export default {
-	components: { LinkPicker },
+	components: { LinkPicker, IconEdit, IconDelete },
 	data() {
 		return {
 			linkPickerKey: 0,
@@ -160,7 +155,7 @@ export default {
 				},
 				{
 					title: '操作',
-					key: 'action',
+					key: 'action', align: 'right',
 					scopedSlots: { customRender: 'action' }
 				}
 			],

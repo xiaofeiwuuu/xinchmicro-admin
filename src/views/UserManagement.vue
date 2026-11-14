@@ -1,6 +1,6 @@
 <template>
 	<div>
-		<a-card :bordered="false" class="mb-24">
+		<a-card :bordered="false" class="mb-24 plain-card">
 			<div class="flex-between">
 				<div>
 					<a-input-search
@@ -19,17 +19,17 @@
 						<a-select-option value="main">主账号</a-select-option>
 						<a-select-option value="sub">子账号</a-select-option>
 					</a-select>
-					<a-button type="primary" @click="handleSearch">
+					<a-button type="primary" size="small" @click="handleSearch">
 						<a-icon type="search" /> 搜索
 					</a-button>
 				</div>
-				<a-button type="primary" @click="showCreateUserModal('sub')">
+				<a-button type="primary" size="small" @click="showCreateUserModal('sub')">
 					<a-icon type="plus" /> 创建子账号
 				</a-button>
 			</div>
 		</a-card>
 
-		<a-card :bordered="false">
+		<a-card :bordered="false" class="plain-card">
 			<a-table :scroll="tableScroll"
 				:columns="columns"
 				:dataSource="users"
@@ -61,23 +61,16 @@
 					<span v-else class="muted">-</span>
 				</template>
 				<template slot="action" slot-scope="text, record">
-					<a-space :style="{ flexWrap: 'wrap' }">
-						<a @click="showEditUserModal(record)">编辑</a>
-						<a-divider type="vertical" />
-						<a @click="showChangePasswordModal(record)">修改密码</a>
-						<a-divider type="vertical" v-if="currentUser.userType === 'main' && record.userType !== 'main'" />
-						<a @click="showResetPasswordModal(record)" v-if="currentUser.userType === 'main' && record.userType !== 'main'">重置密码</a>
-						<a-divider type="vertical" v-if="currentUser.userType === 'main' && record.id !== currentUser.id" />
-						<a-popconfirm
-							title="确定要删除此用户吗？"
-							@confirm="handleDeleteUser(record.id)"
-							okText="确定"
-							cancelText="取消"
-							v-if="currentUser.userType === 'main' && record.id !== currentUser.id"
-						>
-							<a class="text-danger">删除</a>
-						</a-popconfirm>
-					</a-space>
+					<div class="row-actions">
+						<a-button type="link" size="small" @click="showEditUserModal(record)"><icon-edit /><span class="text-dark">编辑</span></a-button>
+						<!-- 修改密码、重置密码、删除收进「更多」；重置密码和删除只有主账号能用，不能删自己 -->
+						<a-dropdown :trigger="['click']" placement="bottomRight">
+							<a-button type="link" size="small" @click.prevent><a-icon type="ellipsis" style="color: #111827" /><span class="text-dark">更多</span></a-button>
+							<a-menu slot="overlay" @click="(e) => onMore(record, e.key)">
+								<a-menu-item v-for="m in moreItems(record)" :key="m.key"><span :class="{ 'act-danger': m.danger }">{{ m.label }}</span></a-menu-item>
+							</a-menu>
+						</a-dropdown>
+					</div>
 				</template>
 			</a-table>
 		</a-card>
@@ -155,6 +148,7 @@
 import { notifyError } from '@/utils/notify';
 import { copyToClipboard } from '@/utils/copy';
 import { getUserInfo } from '@/utils/auth';
+import IconEdit from '@/components/IconEdit.vue';
 import { 
 	createMainUser, 
 	createSubUser, 
@@ -174,6 +168,7 @@ import { newPagination, applyTableChange } from '@/utils/pagination'
 
 export default {
 	mixins: [fixedListLayout],
+	components: { IconEdit },
 	data() {
 		// 验证确认密码
 		const validateConfirmPassword = (rule, value, callback) => {
@@ -232,7 +227,7 @@ export default {
 				},
 				{
 					title: '操作',
-					key: 'action',
+					key: 'action', align: 'right',
 					scopedSlots: { customRender: 'action' }
 				}
 			],
@@ -322,6 +317,24 @@ export default {
 		this.fetchRoles();
 	},
 	methods: {
+		moreItems(record) {
+			const main = this.currentUser.userType === 'main';
+			const items = [{ key: 'password', label: '修改密码' }];
+			if (main && record.userType !== 'main') items.push({ key: 'reset', label: '重置密码' });
+			if (main && record.id !== this.currentUser.id) items.push({ key: 'delete', label: '删除', danger: true });
+			return items;
+		},
+		onMore(record, key) {
+			if (key === 'password') this.showChangePasswordModal(record);
+			else if (key === 'reset') this.showResetPasswordModal(record);
+			else if (key === 'delete') {
+				this.$confirm({
+					title: '确定要删除此用户吗？',
+					okText: '删除', okType: 'danger', cancelText: '取消',
+					onOk: () => this.handleDeleteUser(record.id)
+				});
+			}
+		},
 		// 启用 / 停用账号（二次确认）：停用后这个账号不能登录，已登录的也立刻失效
 		toggleStatus(record, on) {
 			this.$confirm({
@@ -554,4 +567,5 @@ export default {
 >>> .ant-table a { white-space: nowrap; }
 .help-icon { color: #8c8c8c; cursor: help; }
 .help-icon:hover { color: #1890ff; }
+.act-danger { color: #cf1322; }
 </style> 

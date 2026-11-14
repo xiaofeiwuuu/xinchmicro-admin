@@ -1,7 +1,7 @@
 <template>
 	<div>
 		<!-- 查询：日期段（日期在前、快捷按钮在后）+ 产品名搜索。扣除退款的开关不放在搜索条件里，放在下面的汇总行 -->
-		<a-card :bordered="false" class="mb-24">
+		<a-card :bordered="false" class="mb-24 plain-card">
 			<div class="ps-head">
 				<date-range-quick v-model="dates" :quicks="QUICK" :allowClear="false" :pickerWidth="260" @change="load" />
 				<a-input v-model="keyword" placeholder="产品名称" style="width: 160px; margin-left: 12px;" allowClear @pressEnter="onSearch" />
@@ -23,7 +23,7 @@
 			</div>
 		</a-card>
 
-		<a-card :bordered="false">
+		<a-card :bordered="false" class="plain-card">
 			<a-table :scroll="tableScroll" rowKey="productId" :columns="columns" :dataSource="rows" :loading="loading" :pagination="pagination" @change="onTableChange">
 				<template slot="name" slot-scope="text">
 					<span class="copy-cell" title="点击复制" @click="copyName(text)">{{ text }}</span>

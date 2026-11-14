@@ -1,16 +1,16 @@
 <template>
 	<div>
-		<a-card :bordered="false" class="mb-24">
+		<a-card :bordered="false" class="mb-24 plain-card">
 			<div class="roles-bar">
 				<div class="roles-tip">
 					主账号拥有全部功能。子账号选择角色后，只能使用角色里勾选的功能；没有设置角色的子账号保持原来的权限
 					<span class="roles-tip-sub">（不含数据统计、对账与账单、设置会员）</span>。
 				</div>
-				<a-button type="primary" @click="openCreate"><a-icon type="plus" /> 新增角色</a-button>
+				<a-button type="primary" size="small" @click="openCreate"><a-icon type="plus" /> 新增角色</a-button>
 			</div>
 		</a-card>
 
-		<a-card :bordered="false">
+		<a-card :bordered="false" class="plain-card">
 			<a-table rowKey="id" :columns="columns" :dataSource="roles" :loading="loading" :pagination="false">
 				<template slot="name" slot-scope="text">
 					<b>{{ text }}</b>
@@ -23,13 +23,12 @@
 				</template>
 				<template slot="users" slot-scope="text">{{ text }} 个账号</template>
 				<template slot="action" slot-scope="text, record">
-					<a-space>
-						<a @click="openEdit(record)">编辑</a>
-						<a-divider type="vertical" />
+					<div class="row-actions">
+						<a-button type="link" size="small" @click="openEdit(record)"><icon-edit /><span class="text-dark">编辑</span></a-button>
 						<a-popconfirm :title="record.userCount ? `有 ${record.userCount} 个账号在使用，需要先给它们换成别的角色才能删除` : '确定删除这个角色吗？'" okText="确定" cancelText="取消" @confirm="remove(record)">
-							<a class="text-danger">删除</a>
+							<a-button type="link" size="small"><icon-delete /><span class="text-danger">删除</span></a-button>
 						</a-popconfirm>
-					</a-space>
+					</div>
 				</template>
 			</a-table>
 			<div v-if="loaded && !roles.length" class="roles-empty">还没有角色。点右上角「新增角色」，比如建一个「仓库」角色，只勾选查看订单和发货。</div>
@@ -105,9 +104,12 @@
 
 <script>
 import { getRoles, getPermissionCatalog, createRole, updateRole, deleteRole } from '@/api'
+import IconEdit from '@/components/IconEdit.vue';
+import IconDelete from '@/components/IconDelete.vue';
 import { notifyError } from '@/utils/notify'
 
 export default {
+	components: { IconEdit, IconDelete },
 	data() {
 		return {
 			loading: false,
@@ -123,7 +125,7 @@ export default {
 				{ title: '说明', dataIndex: 'description', key: 'description', scopedSlots: { customRender: 'desc' } },
 				{ title: '功能', key: 'perms', scopedSlots: { customRender: 'perms' } },
 				{ title: '使用中', dataIndex: 'userCount', key: 'userCount', scopedSlots: { customRender: 'users' } },
-				{ title: '操作', key: 'action', scopedSlots: { customRender: 'action' } }
+				{ title: '操作', key: 'action', align: 'right', scopedSlots: { customRender: 'action' } }
 			]
 		}
 	},

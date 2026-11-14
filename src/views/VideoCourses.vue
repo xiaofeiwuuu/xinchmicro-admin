@@ -1,7 +1,7 @@
 <!-- 教学视频：课程。课程 → 章节 → 视频（集），价格设在「集」上，课程只用来分组和展示。 -->
 <template>
 	<div>
-		<div style="margin-bottom: 16px;">
+		<div style="margin-bottom: 8px;">
 			<a-form layout="inline">
 				<a-form-item><a-input v-model="keyword" placeholder="请输入课程名称" size="small" style="width: 160px" /></a-form-item>
 				<a-form-item>
@@ -13,6 +13,11 @@
 		<a-button v-can="'video.edit'" type="primary" icon="plus" size="small" style="margin-bottom: 16px;" @click="openModal()">新增课程</a-button>
 
 		<a-table :scroll="tableScroll" :columns="columns" :data-source="rows" :loading="loading" rowKey="id" :pagination="pagination" @change="handleTableChange">
+			<!-- 名称：点一下复制（页面文字默认不能选中，所以做成点击复制） -->
+			<template slot="copy" slot-scope="text">
+				<span v-if="text && text !== '-'" class="copy-cell" title="点击复制" @click="copyName(text)">{{ text }}</span>
+				<span v-else>{{ text || '-' }}</span>
+			</template>
 			<template slot="status" slot-scope="text, record">
 				<a-switch size="small" :checked="record.status === 'active'" :disabled="!can('video.edit')" @change="(on) => toggle(record, on)" />
 			</template>
@@ -37,6 +42,7 @@
 import fixedListLayout from '@/mixins/fixedListLayout';
 import { newPagination, applyTableChange } from '@/utils/pagination';
 import { notifyError } from '@/utils/notify';
+import { copyToClipboard } from '@/utils/copy';
 import { can } from '@/utils/auth';
 import { flatten } from '@/utils/video';
 import { getVideoTree, saveVideoCourse, deleteVideoCourse } from '@/api';
@@ -53,12 +59,12 @@ export default {
 		return {
 			// 不写列宽：全局表格样式把列平均分配
 			columns: [
-				{ title: '课程名称', dataIndex: 'title', key: 'title' },
+				{ title: '课程名称', dataIndex: 'title', key: 'title', scopedSlots: { customRender: 'copy' } },
 				{ title: '章节数', dataIndex: 'chapterCount', key: 'chapterCount' },
 				{ title: '视频数', dataIndex: 'videoCount', key: 'videoCount' },
 				{ title: '排序', dataIndex: 'sortOrder', key: 'sortOrder' },
-				{ title: '状态', key: 'status', scopedSlots: { customRender: 'status' } },
-				{ title: '操作', key: 'action', scopedSlots: { customRender: 'action' } }
+				{ title: '状态', key: 'status', width: 80, scopedSlots: { customRender: 'status' } },
+				{ title: '操作', key: 'action', align: 'right', width: 150, scopedSlots: { customRender: 'action' } }
 			],
 			list: [], keyword: '', loading: false, pagination: newPagination(),
 			visible: false, saving: false, form: blank()
@@ -72,6 +78,10 @@ export default {
 	},
 	created() { this.load(); },
 	methods: {
+		async copyName(text) {
+			if (await copyToClipboard(text)) this.$message.success('已复制：' + text);
+			else this.$message.warning('复制失败，请手动复制');
+		},
 		can,
 		handleTableChange(p) { applyTableChange(this.pagination, p); },
 		async load() {

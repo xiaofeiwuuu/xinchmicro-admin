@@ -2,7 +2,7 @@
      转码在点播里自动进行，服务端每分钟查一次转好没有，转好才能上架。价格、会员价、试看都设在这里。 -->
 <template>
 	<div>
-		<div style="margin-bottom: 16px;">
+		<div style="margin-bottom: 8px;">
 			<a-form layout="inline">
 				<a-form-item>
 					<a-select v-model="courseId" allowClear placeholder="全部课程" size="small" style="width: 160px" @change="chapterId = undefined">
@@ -28,9 +28,18 @@
 				</a-form-item>
 			</a-form>
 		</div>
-		<a-button v-can="'video.edit'" type="primary" icon="upload" size="small" style="margin-bottom: 16px;" @click="openModal()">上传视频</a-button>
+		<div class="act-row">
+			<a-button v-can="'video.edit'" type="primary" icon="upload" size="small" @click="openModal()">上传视频</a-button>
+			<!-- 播放量、购买量、收藏数三列默认折叠起来，点这里展开；展开后每一列表头都能点着排序（先点是从高到低，再点从低到高，再点取消） -->
+			<a-button class="stat-toggle" size="small" style="margin-left: auto;" @click="toggleStats"><a-icon type="down" :class="{ flip: showStats }" /> {{ showStats ? '收起数据' : '展开数据' }}（播放量 · 购买量 · 收藏数）</a-button>
+		</div>
 
-		<a-table :scroll="tableScroll" :columns="columns" :data-source="rows" :loading="loading" rowKey="id" :pagination="pagination" @change="handleTableChange">
+		<a-table :scroll="tableScroll" :columns="tableColumns" :data-source="rows" :loading="loading" rowKey="id" :pagination="pagination" @change="handleTableChange">
+			<!-- 名称：点一下复制（页面文字默认不能选中，所以做成点击复制） -->
+			<template slot="copy" slot-scope="text">
+				<span v-if="text && text !== '-'" class="copy-cell" title="点击复制" @click="copyName(text)">{{ text }}</span>
+				<span v-else>{{ text || '-' }}</span>
+			</template>
 			<template slot="duration" slot-scope="text">{{ mmss(text) }}</template>
 			<template slot="price" slot-scope="text">{{ text === 0 ? '免费' : '¥' + yuan(text) }}</template>
 			<template slot="member" slot-scope="text">{{ text ? '¥' + yuan(text) : '-' }}</template>
@@ -44,9 +53,14 @@
 				</template>
 			</template>
 			<div slot="action" slot-scope="text, v" class="row-actions">
-				<a-button v-can="'video.edit'" type="link" size="small" @click="openModal(v)"><icon-edit /><span class="text-dark">编辑</span></a-button>
-				<a-button v-if="v.transcodeStatus !== 'ready'" v-can="'video.edit'" type="link" size="small" @click="refresh(v)"><span class="text-dark">刷新状态</span></a-button>
-				<a-button v-can="'video.edit'" type="link" size="small" @click="remove(v)"><icon-delete /><span class="text-danger">删除</span></a-button>
+				<a-button type="link" size="small" @click="openDetail(v)"><a-icon type="eye" style="color: #111827" /><span class="text-dark">详情</span></a-button>
+				<!-- 编辑、刷新转码状态、删除收进「更多」，和产品、订单、客户页一致；各项按权限显示，转码完成的视频没有「刷新」 -->
+				<a-dropdown v-if="moreItems(v).length" :trigger="['click']" placement="bottomRight">
+					<a-button type="link" size="small" @click.prevent><a-icon type="ellipsis" style="color: #111827" /><span class="text-dark">更多</span></a-button>
+					<a-menu slot="overlay" @click="(e) => onMore(v, e.key)">
+						<a-menu-item v-for="m in moreItems(v)" :key="m.key"><span :class="{ 'act-danger': m.danger }">{{ m.label }}</span></a-menu-item>
+					</a-menu>
+				</a-dropdown>
 			</div>
 		</a-table>
 
@@ -99,6 +113,37 @@
 				</a-row>
 			</a-form>
 		</a-modal>
+		<!-- 详情：课程、章节、简介、价格、数据这些放在这里，列表里只留最常看的。封面和信息放在同一张卡片里：上面是封面 + 标题 + 课程章节 + 状态，下面是其余信息；没有按钮，右上角叉关闭 -->
+		<a-modal title="视频详情" :visible="detailVisible" :width="680" :footer="null" @cancel="detailVisible = false">
+			<div v-if="detail" class="dt-card">
+				<div class="dt-head">
+					<img v-if="detail.coverUrl" :src="detail.coverUrl" class="dt-cover" alt="" />
+					<div v-else class="dt-cover dt-nocover">▶</div>
+					<div class="dt-main">
+						<div class="dt-title"><span class="copy-cell" title="点击复制" @click="copyName(detail.title)">{{ detail.title }}</span></div>
+						<div class="dt-path">
+							<span class="copy-cell" title="点击复制" @click="copyName(detail.courseTitle)">{{ detail.courseTitle }}</span>
+							<span class="dt-sep">›</span>
+							<span v-if="detail.chapterTitle && detail.chapterTitle !== '-'" class="copy-cell" title="点击复制" @click="copyName(detail.chapterTitle)">{{ detail.chapterTitle }}</span>
+							<span v-else class="dt-empty">没有放进章节</span>
+						</div>
+						<div class="dt-tags">
+							<a-tag :color="detailTag.color">{{ detailTag.text }}</a-tag>
+						</div>
+					</div>
+				</div>
+				<div class="dt-grid">
+					<div class="dt-k">价格</div><div class="dt-v">{{ detail.priceFen === 0 ? '免费' : '¥' + yuan(detail.priceFen) }}</div>
+					<div class="dt-k">会员价</div><div class="dt-v">{{ detail.memberPriceFen ? '¥' + yuan(detail.memberPriceFen) : '没有' }}</div>
+					<div class="dt-k">试看</div><div class="dt-v">{{ detail.trialSeconds ? detail.trialSeconds + ' 秒' : '不能试看' }}</div>
+					<div class="dt-k">时长</div><div class="dt-v">{{ mmss(detail.durationSec) }}</div>
+					<div class="dt-k">排序</div><div class="dt-v">{{ detail.sortOrder || 0 }}（数字小的在前）</div>
+					<div class="dt-k">数据</div><div class="dt-v">播放 {{ detail.playCount || 0 }} · 购买 {{ detail.buyCount || 0 }} · 收藏 {{ detail.favoriteCount || 0 }}</div>
+					<div class="dt-k">简介</div><div class="dt-v dt-pre"><template v-if="detail.intro">{{ detail.intro }}</template><span v-else class="dt-empty">没有简介</span></div>
+					<div class="dt-k">点播文件</div><div class="dt-v"><span class="copy-cell" title="点击复制" @click="copyName(detail.vodFileId)">{{ detail.vodFileId }}</span></div>
+				</div>
+			</div>
+		</a-modal>
 	</div>
 </template>
 
@@ -108,6 +153,7 @@ const TcVod = VodSdk.default || VodSdk.TcVod || VodSdk;
 import fixedListLayout from '@/mixins/fixedListLayout';
 import { newPagination, applyTableChange } from '@/utils/pagination';
 import { notifyError } from '@/utils/notify';
+import { copyToClipboard } from '@/utils/copy';
 import { can } from '@/utils/auth';
 import { flatten, yuan, mmss, toFen } from '@/utils/video';
 import { getVodUploadSignature, getVideoTree, saveVideoItem, deleteVideoItem, refreshVideoItem } from '@/api';
@@ -122,19 +168,25 @@ export default {
 	mixins: [fixedListLayout],
 	data() {
 		return {
+			sortKey: '', // 按哪一列排序，空 = 默认顺序
+			sortOrder: '', // descend 从高到低 / ascend 从低到高
+			detailVisible: false, // 详情弹窗
+			detail: null,
+			showStats: (() => { try { return localStorage.getItem('videoStatsOpen') === '1'; } catch (e) { return false; } })(), // 数据三列是否展开（记在浏览器里，默认折叠）
 			columns: [
-				{ title: '标题', dataIndex: 'title', key: 'title' },
-				{ title: '课程', dataIndex: 'courseTitle', key: 'courseTitle' },
-				{ title: '章节', dataIndex: 'chapterTitle', key: 'chapterTitle' },
+				{ title: '标题', dataIndex: 'title', key: 'title', scopedSlots: { customRender: 'copy' } },
 				{ title: '时长', dataIndex: 'durationSec', key: 'durationSec', scopedSlots: { customRender: 'duration' } },
 				{ title: '价格', dataIndex: 'priceFen', key: 'priceFen', scopedSlots: { customRender: 'price' } },
 				{ title: '会员价', dataIndex: 'memberPriceFen', key: 'memberPriceFen', scopedSlots: { customRender: 'member' } },
 				{ title: '试看', dataIndex: 'trialSeconds', key: 'trialSeconds', scopedSlots: { customRender: 'trial' } },
-				{ title: '播放量', dataIndex: 'playCount', key: 'playCount', customRender: (t) => t || 0 },
-				{ title: '购买量', dataIndex: 'buyCount', key: 'buyCount', customRender: (t) => t || 0 },
-				{ title: '收藏数', dataIndex: 'favoriteCount', key: 'favoriteCount', customRender: (t) => t || 0 },
-				{ title: '状态', key: 'state', scopedSlots: { customRender: 'state' } },
-				{ title: '操作', key: 'action', scopedSlots: { customRender: 'action' } }
+				{ title: '播放量', dataIndex: 'playCount', key: 'playCount', customRender: (t) => t || 0, sorter: true, sortDirections: ['descend', 'ascend'] },
+				{ title: '购买量', dataIndex: 'buyCount', key: 'buyCount', customRender: (t) => t || 0, sorter: true, sortDirections: ['descend', 'ascend'] },
+				{ title: '收藏数', dataIndex: 'favoriteCount', key: 'favoriteCount', customRender: (t) => t || 0, sorter: true, sortDirections: ['descend', 'ascend'] },
+				// 状态只有一个开关或一个「转码中」标签，窄；操作列是「详情 + 更多」两个按钮（编辑、刷新、删除在「更多」里）。课程、章节不再单独占两列，放进「详情」里
+				// 「排序」就是上传视频、编辑弹窗里填的那个数字：数字小的在前。列表默认也是按它排的（同一课程、同一章节里），这一列把它显示出来，点表头可以整体按它排
+				{ title: '排序', dataIndex: 'sortOrder', key: 'sortOrder', width: 80, customRender: (t) => (t === undefined || t === null ? 0 : t), sorter: true, sortDirections: ['ascend', 'descend'] },
+				{ title: '状态', key: 'state', width: 80, scopedSlots: { customRender: 'state' } },
+				{ title: '操作', key: 'action', align: 'right', width: 170, scopedSlots: { customRender: 'action' } }
 			],
 			courses: [], chapters: [], list: [], loading: false, pagination: newPagination(),
 			courseId: undefined, chapterId: undefined, state: undefined, keyword: '',
@@ -143,12 +195,25 @@ export default {
 		};
 	},
 	computed: {
+		// 折叠时不显示播放量、购买量、收藏数这三列
+		tableColumns() {
+			const cols = this.showStats ? this.columns : this.columns.filter((c) => !['playCount', 'buyCount', 'favoriteCount'].includes(c.key));
+			// 表头排序箭头的亮灭由 sortKey / sortOrder 决定（受控）
+			return cols.map((c) => (c.sorter ? { ...c, sortOrder: this.sortKey === c.key ? this.sortOrder : false } : c));
+		},
+		// 详情顶部的状态标签：颜色 + 文字
+		detailTag() {
+			const v = this.detail;
+			if (!v) return { text: '', color: '' };
+			if (v.transcodeStatus !== 'ready') return v.stuck ? { text: '转码可能失败', color: 'orange' } : { text: '转码中', color: 'blue' };
+			return v.onSale ? { text: '已上架', color: 'green' } : { text: '已下架', color: '' };
+		},
 		speedText() { return this.speed ? (this.speed / 1024 / 1024).toFixed(2) + ' MB/s' : ''; },
 		filterChapters() { return this.chapters.filter((c) => !this.courseId || c.courseId === this.courseId); },
 		formChapters() { return this.chapters.filter((c) => c.courseId === this.form.courseId); },
 		rows() {
 			const k = this.keyword.trim();
-			return this.list.filter((v) => {
+			const arr = this.list.filter((v) => {
 				if (this.courseId && v.courseId !== this.courseId) return false;
 				if (this.chapterId && v.chapterId !== this.chapterId) return false;
 				if (k && !v.title.includes(k)) return false;
@@ -157,6 +222,13 @@ export default {
 				if (this.state === 'off') return v.transcodeStatus === 'ready' && !v.onSale;
 				return true;
 			});
+			// 排序：数字大小，一样大的保持原来的先后（用 id 兜底，顺序稳定）
+			if (this.sortKey) {
+				const dir = this.sortOrder === 'ascend' ? 1 : -1;
+				const key = this.sortKey;
+				arr.sort((a, b) => dir * ((a[key] || 0) - (b[key] || 0)) || a.id - b.id);
+			}
+			return arr;
 		}
 	},
 	created() { this.load(); },
@@ -166,8 +238,39 @@ export default {
 	},
 	beforeDestroy() { clearInterval(this.timer); if (this.uploader) this.uploader.cancel(); },
 	methods: {
+		async copyName(text) {
+			if (await copyToClipboard(text)) this.$message.success('已复制：' + text);
+			else this.$message.warning('复制失败，请手动复制');
+		},
 		can, yuan, mmss,
-		handleTableChange(p) { applyTableChange(this.pagination, p); },
+		handleTableChange(p, filters, sorter) {
+			applyTableChange(this.pagination, p);
+			const next = sorter && sorter.order ? sorter.columnKey : '';
+			if (next !== this.sortKey || (sorter && (sorter.order || '') !== this.sortOrder)) this.pagination.current = 1; // 换了排序回到第 1 页
+			this.sortKey = next;
+			this.sortOrder = (sorter && sorter.order) || '';
+		},
+		moreItems(v) {
+			const items = [];
+			if (!can('video.edit')) return items;
+			items.push({ key: 'edit', label: '编辑' });
+			if (v.transcodeStatus !== 'ready') items.push({ key: 'refresh', label: '刷新转码状态' });
+			items.push({ key: 'delete', label: '删除', danger: true });
+			return items;
+		},
+		onMore(v, key) {
+			if (key === 'edit') this.openModal(v);
+			else if (key === 'refresh') this.refresh(v);
+			else if (key === 'delete') this.remove(v);
+		},
+		openDetail(v) {
+			this.detail = v;
+			this.detailVisible = true;
+		},
+		toggleStats() {
+			this.showStats = !this.showStats;
+			try { localStorage.setItem('videoStatsOpen', this.showStats ? '1' : '0'); } catch (e) { /* 记不住就算了 */ }
+		},
 		reset() { this.courseId = undefined; this.chapterId = undefined; this.state = undefined; this.keyword = ''; },
 		async load(silent) {
 			if (!silent) this.loading = true;
@@ -260,6 +363,26 @@ export default {
 </script>
 
 <style scoped>
+.act-danger { color: #cf1322; }
+.dt-card { border: 1px solid #ebeef5; border-radius: 10px; overflow: hidden; }
+.dt-head { display: flex; align-items: center; padding: 16px; background: linear-gradient(135deg, #f4f8ff, #fafcff); border-bottom: 1px solid #ebeef5; }
+.dt-cover { flex-shrink: 0; width: 192px; height: 108px; border-radius: 8px; object-fit: cover; background: #e9f0fa; box-shadow: 0 2px 8px rgba(22, 119, 255, 0.12); }
+.dt-nocover { display: flex; align-items: center; justify-content: center; color: #9db9e6; font-size: 32px; }
+.dt-main { flex: 1; min-width: 0; margin-left: 18px; }
+.dt-title { font-size: 17px; font-weight: 600; color: #111827; line-height: 1.4; word-break: break-all; }
+.dt-path { margin-top: 6px; color: #6b7280; font-size: 13px; }
+.dt-sep { margin: 0 6px; color: #bfbfbf; }
+.dt-tags { margin-top: 10px; }
+.dt-grid { display: grid; grid-template-columns: 90px 1fr; }
+.dt-k, .dt-v { padding: 10px 16px; border-bottom: 1px solid #f3f4f6; }
+.dt-k:nth-last-child(2), .dt-v:last-child { border-bottom: 0; }
+.dt-k { color: #6b7280; background: #fcfcfd; }
+.dt-v { background: #fff; word-break: break-all; }
+.dt-pre { white-space: pre-wrap; }
+.dt-empty { color: #bfbfbf; }
+.act-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.stat-toggle .anticon { transition: transform 0.2s; }
+.stat-toggle .flip { transform: rotate(180deg); }
 .fname { margin-top: 6px; color: #595959; line-height: 1.5; word-break: break-all; }
 .hint2 { color: #8c8c8c; font-size: 12px; margin-left: 8px; }
 .hint2.nl { margin-left: 0; display: block; }

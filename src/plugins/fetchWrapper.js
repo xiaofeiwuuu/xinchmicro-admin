@@ -63,8 +63,8 @@ const fetchWrapper = {
 
   // 弹出错误提示，并给错误打上 notified 标记：
   // 页面的 catch 里再提示前请用 utils/notify.js 的 notifyError，它会跳过已经提示过的错误，避免用户看到两条
-  notify(error, text) {
-    if (this.message) this.message.error(text || error.message);
+  notify(error, text, duration) {
+    if (this.message) this.message.error(text || error.message, duration);
     error.notified = true;
     return error;
   },
@@ -120,15 +120,25 @@ const fetchWrapper = {
       // 带着令牌的请求返回 401：令牌失效，统一清除登录态并跳转登录页。
       // 没带令牌（比如登录时密码错误）的 401 是普通业务错误，要显示服务端给的原因
       if (response.status === 401 && token) {
+        // 单点登录：账号在别处登录了，这里被挤下线（服务端返回 errorCode: KICKED）。要把原因说清楚，提示停留久一点，不然用户只看到一闪而过的「登录已过期」
+        let kickedText = '';
+        try {
+          const body = await response.clone().json();
+          if (body && body.errorCode === 'KICKED') kickedText = body.message || '你的账号已在其他地方登录，当前登录已被挤下线';
+        } catch (e) { /* 不是 JSON，按普通的登录过期处理 */ }
         clearAuth();
         if (this.router) {
           // 登录过期：登录后回到当前页面
           const cur = this.router.currentRoute;
           this.router.push(cur && cur.path !== '/login' && cur.fullPath !== '/' ? { path: '/login', query: { redirect: cur.fullPath } } : '/login').catch(() => {});
         }
-        const authError = new Error('登录已过期');
+        const authError = new Error(kickedText || '登录已过期');
         authError.isAuth = true;
-        throw this.notify(authError, '登录已过期，请重新登录');
+        if (kickedText) authError.kicked = true;
+        // 页面上好几个请求（页面数据、右上角通知轮询）同时失败时，只提示一次，不要连弹好几条
+        if (Date.now() - (this._authToastAt || 0) < 5000) { authError.notified = true; throw authError; }
+        this._authToastAt = Date.now();
+        throw kickedText ? this.notify(authError, kickedText, 8) : this.notify(authError, '登录已过期，请重新登录');
       }
 
       let res;

@@ -5,6 +5,12 @@
 			<div class="head">
 				<!-- 日期选择在前，预设按钮在后。选了自定义日期段（含首尾两天，最长一年）就用它统计，点预设按钮会清掉 -->
 				<date-range-quick v-model="customDates" :quicks="RANGES" :activeKey="range === 'custom' ? '' : range" :pickerWidth="260" @change="pickCustom" @quick="onPreset" />
+				<!-- 统计口径：商品订单和教学视频订单分开看，默认全部加起来 -->
+				<a-radio-group v-model="scope" button-style="solid" size="small" @change="load">
+					<a-radio-button value="all">全部</a-radio-button>
+					<a-radio-button value="goods">商品</a-radio-button>
+					<a-radio-button value="video">视频</a-radio-button>
+				</a-radio-group>
 				<a-button size="small" icon="reload" :loading="loading" @click="load">刷新</a-button>
 				<!-- 统计口径：原来是页面最底下一大段小字，放进问号图标里，鼠标移上去（手机点一下）才显示 -->
 				<a-tooltip placement="bottomLeft" :overlayStyle="{ maxWidth: '440px' }">
@@ -12,6 +18,7 @@
 						<p>对比的是上一个同样长、同样已经过去的时间段（今天对比昨天同一时刻之前）。</p>
 						<p>自定义日期段含首尾两天，最长 366 天，日期按北京时间。</p>
 						<p>收入 = 统计期内付款成功、且订单没有被取消的金额，按付款时间算（不是下单时间）；付款后被取消的订单算退款，不计入收入。</p>
+						<p>上面可以切换「全部 / 商品 / 视频」：全部 = 商品订单加教学视频订单；视频不退款，所以没有退款这一项；新增客户不受影响。</p>
 						<p>新增客户只算有过实际操作的（填过资料、存过地址、下过单等），小程序一打开就会有的访客记录不算。</p>
 					</div>
 					<a-icon type="question-circle" class="help-icon" />
@@ -28,7 +35,9 @@
 							<div class="kpi-label">收入</div>
 							<div class="kpi-value">{{ yuan(t.revenueFen) }}</div>
 							<div class="kpi-sub" v-html="delta(t.revenueFen, p.revenueFen)"></div>
-							<div class="kpi-note">退款 {{ yuan(t.refundFen) }}（{{ t.refundOrders }} 单）</div>
+							<div v-if="scope === 'all'" class="kpi-note">商品 {{ yuan(t.revenueFen - t.videoRevenueFen) }} · 视频 {{ yuan(t.videoRevenueFen) }}</div>
+							<div v-if="scope !== 'video'" class="kpi-note">退款 {{ yuan(t.refundFen) }}（{{ t.refundOrders }} 单）</div>
+							<div v-else class="kpi-note">视频不退款</div>
 						</a-card>
 					</a-col>
 					<a-col :xs="24" :sm="12" :xl="{ span: 6 }">
@@ -36,7 +45,7 @@
 							<div class="kpi-label">订单数</div>
 							<div class="kpi-value">{{ t.orders }}</div>
 							<div class="kpi-sub" v-html="delta(t.orders, p.orders)"></div>
-							<div class="kpi-note">客单价 {{ yuan(t.avgOrderFen) }}</div>
+							<div class="kpi-note">客单价 {{ yuan(t.avgOrderFen) }}<template v-if="scope === 'all'"> · 视频 {{ t.videoOrders }} 单</template></div>
 						</a-card>
 					</a-col>
 					<a-col :xs="24" :sm="12" :xl="{ span: 6 }">
@@ -81,7 +90,7 @@
 
 				<!-- 排行 -->
 				<a-row :gutter="24">
-					<a-col :xs="24" :xl="12">
+					<a-col v-if="scope !== 'video'" :xs="24" :xl="scope === 'all' ? 8 : 12">
 						<a-card :bordered="false" class="mb-24" title="热销产品（按销售额）">
 							<div v-if="!data.topProducts.length" class="empty">这段时间没有成交</div>
 							<div v-for="(it, i) in data.topProducts" :key="it.productId" class="rank-row">
@@ -94,7 +103,20 @@
 							</div>
 						</a-card>
 					</a-col>
-					<a-col :xs="24" :xl="12">
+					<a-col v-if="scope !== 'goods'" :xs="24" :xl="scope === 'all' ? 8 : 12">
+						<a-card :bordered="false" class="mb-24" title="热销视频（按销售额）">
+							<div v-if="!data.topVideos.length" class="empty">这段时间没有成交</div>
+							<div v-for="(it, i) in data.topVideos" :key="it.videoId" class="rank-row">
+								<span class="rank-no" :class="{ crown: i < 3 }"><icon-crown v-if="i < 3" :rank="i + 1" :size="26" /><template v-else>{{ i + 1 }}</template></span>
+								<div class="rank-main">
+									<div class="rank-line"><span class="rank-name" :title="it.title">{{ it.title }}</span><span>{{ yuan(it.revenueFen) }}</span></div>
+									<div class="rank-bar"><i :style="{ width: pct(it.revenueFen, data.topVideos[0].revenueFen), background: '#1890ff' }"></i></div>
+									<div class="rank-sub">购买 {{ it.count }} 次</div>
+								</div>
+							</div>
+						</a-card>
+					</a-col>
+					<a-col :xs="24" :xl="scope === 'all' ? 8 : 12">
 						<a-card :bordered="false" class="mb-24" title="客户消费排行">
 							<div v-if="!data.topCustomers.length" class="empty">这段时间没有成交</div>
 							<div v-for="(it, i) in data.topCustomers" :key="it.customerId" class="rank-row">
@@ -140,7 +162,7 @@ export default {
 	name: 'ShopStats',
 	components: { TrendChart, IconCrown, DateRangeQuick },
 	data() {
-		return { RANGES, range: '7d', chartType: 'bar', customDates: [], customFrom: '', customTo: '', data: null, loading: false, seq: 0 }
+		return { RANGES, range: '7d', chartType: 'bar', scope: 'all', customDates: [], customFrom: '', customTo: '', data: null, loading: false, seq: 0 }
 	},
 	computed: {
 		t() { return this.data.totals },
@@ -166,7 +188,7 @@ export default {
 			const seq = ++this.seq
 			this.loading = true
 			try {
-				const d = await getShopStats(this.range, { from: this.customFrom, to: this.customTo })
+				const d = await getShopStats(this.range, { from: this.customFrom, to: this.customTo }, this.scope)
 				if (seq === this.seq) this.data = d // 连续切换范围时，只认最后一次请求的结果
 			} catch (error) {
 				if (seq === this.seq) notifyError(this, error, '获取统计数据失败')

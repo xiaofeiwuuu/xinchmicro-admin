@@ -58,7 +58,7 @@
 				<template slot="name" slot-scope="text, record">
 					<a class="name-link" @click="openDetail(record)">{{ text }}</a>
 					<div style="color: #8c8c8c; font-size: 12px;">{{ record.catalog ? (record.catalog.category ? record.catalog.category.name + ' / ' : '') + record.catalog.name : '' }}</div>
-					<a-tooltip v-if="record.catalog && record.catalog.showInMall === false" title="这个产品所在的目录设成了「不在商城展示」，商城里看不到它、也不能下单（上架状态和价格不受影响）。要展示请到「产品目录」里打开。">
+					<a-tooltip v-if="record.catalog && record.catalog.showInMall === false" title="这个产品所在的目录，展示范围里不含商城（仅产品页展示，或都不展示），商城里看不到它、也不能下单（上架状态和价格不受影响）。要在商城展示请到「产品目录」里把展示范围改成「都展示」或「仅商城展示」。">
 						<a-tag color="orange" style="margin-top: 4px;">目录不在商城展示</a-tag>
 					</a-tooltip>
 				</template>

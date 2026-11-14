@@ -137,6 +137,47 @@
 				</router-link>
 				</a-tooltip>
 			</a-menu-item>
+			<a-menu-item class="menu-item-header" disabled v-if="can('video.view') || can('video.orders')">教学视频</a-menu-item>
+			<a-menu-item v-if="can('video.view')">
+				<a-tooltip placement="right" :title="mini ? '课程管理' : ''">
+					<router-link to="/video-courses">
+					<span class="icon">
+						<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M5 3.5H15A2 2 0 0 1 17 5.5V14.5A2 2 0 0 1 15 16.5H5A2 2 0 0 1 3 14.5V5.5A2 2 0 0 1 5 3.5ZM6.5 6.8H13.5V8.2H6.5ZM6.5 9.3H13.5V10.7H6.5ZM6.5 11.8H10.5V13.2H6.5Z" fill="#111827"/></svg>
+					</span>
+					<span class="label">课程管理</span>
+				</router-link>
+				</a-tooltip>
+			</a-menu-item>
+			<a-menu-item v-if="can('video.view')">
+				<a-tooltip placement="right" :title="mini ? '章节管理' : ''">
+					<router-link to="/video-chapters">
+					<span class="icon">
+						<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 5.5H16M4 10H16M4 14.5H16" stroke="#111827" stroke-width="2" stroke-linecap="round"/></svg>
+					</span>
+					<span class="label">章节管理</span>
+				</router-link>
+				</a-tooltip>
+			</a-menu-item>
+			<a-menu-item v-if="can('video.view')">
+				<a-tooltip placement="right" :title="mini ? '视频管理' : ''">
+					<router-link to="/videos">
+					<span class="icon">
+						<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M4.5 4.5H15.5A2 2 0 0 1 17.5 6.5V13.5A2 2 0 0 1 15.5 15.5H4.5A2 2 0 0 1 2.5 13.5V6.5A2 2 0 0 1 4.5 4.5ZM8.5 7.8L12.5 10L8.5 12.2Z" fill="#111827"/></svg>
+					</span>
+					<span class="label">视频管理</span>
+				</router-link>
+				</a-tooltip>
+			</a-menu-item>
+			<a-menu-item v-if="can('video.orders')">
+				<a-tooltip placement="right" :title="mini ? '视频订单' : ''">
+					<router-link to="/video-orders">
+					<span class="icon">
+						<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M5 2.5H15A1.5 1.5 0 0 1 16.5 4V17L14.5 15.8L12.5 17L10.5 15.8L8.5 17L6.5 15.8L3.5 17V4A1.5 1.5 0 0 1 5 2.5ZM6.5 6H13.5V7.4H6.5ZM6.5 8.7H13.5V10.1H6.5ZM6.5 11.4H10.5V12.8H6.5Z" fill="#111827"/></svg>
+					</span>
+					<span class="label">视频订单</span>
+				</router-link>
+				</a-tooltip>
+			</a-menu-item>
 			<a-menu-item class="menu-item-header" disabled v-if="can('company.view') || can('carousel.view') || can('announcement.view') || can('legal.view')">公司</a-menu-item>
 			<a-menu-item v-if="can('company.view')">
 				<a-tooltip placement="right" :title="mini ? '公司信息' : ''">

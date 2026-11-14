@@ -161,6 +161,63 @@ let routes = [
 		component: () => import('@/views/EnvConfig.vue'),
 	},
 	{
+		path: '/video-courses',
+		name: 'VideoCourses',
+		layout: "dashboard",
+		meta:{
+			name:'课程管理',
+			requiresAuth: true,
+			permission: 'video.view'
+		},
+		component: () => import('@/views/VideoCourses.vue'),
+	},
+	{
+		path: '/video-chapters',
+		name: 'VideoChapters',
+		layout: "dashboard",
+		meta:{
+			name:'章节管理',
+			requiresAuth: true,
+			permission: 'video.view'
+		},
+		component: () => import('@/views/VideoChapters.vue'),
+	},
+	{
+		path: '/video-orders',
+		name: 'VideoOrders',
+		layout: "dashboard",
+		meta:{
+			name:'视频订单',
+			requiresAuth: true,
+			allowCopy: true,
+			permission: 'video.orders'
+		},
+		component: () => import('@/views/VideoOrders.vue'),
+	},
+	{
+		path: '/videos',
+		name: 'VideoList',
+		layout: "dashboard",
+		meta:{
+			name:'视频管理',
+			requiresAuth: true,
+			permission: 'video.view'
+		},
+		component: () => import('@/views/VideoList.vue'),
+	},
+	{
+		path: '/vod-test',
+		name: 'VodTest',
+		layout: "dashboard",
+		meta:{
+			name:'视频上传测试',
+			requiresAuth: true,
+			allowCopy: true,
+			requiresMainUser: true
+		},
+		component: () => import('@/views/VodTest.vue'),
+	},
+	{
 		path: '/no-permission',
 		name: 'NoPermission',
 		layout: "dashboard",
@@ -301,7 +358,7 @@ const router = new VueRouter({
 const PAGE_ORDER = [
 	['/categories', 'category.view'], ['/catalogs', 'catalog.view'], ['/products', 'product.view'], ['/manuals', 'manual.view'],
 	['/shop/orders', 'order.view'], ['/shop/customers', 'customer.view'], ['/shop/products', 'price.view'],
-	['/shop/stats', 'stats.view'], ['/shop/product-sales', 'stats.view'], ['/shop/bills', 'bills.view'],
+	['/shop/stats', 'stats.view'], ['/shop/product-sales', 'stats.view'], ['/shop/bills', 'bills.view'], ['/video-courses', 'video.view'], ['/video-orders', 'video.orders'],
 	['/company', 'company.view'], ['/carousels', 'carousel.view'], ['/announcements', 'announcement.view'], ['/legal', 'legal.view']
 ];
 function firstAllowedPath() {

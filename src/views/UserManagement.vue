@@ -51,6 +51,11 @@
 						<span v-else class="muted">原有权限（没有设置角色）</span>
 					</div>
 				</template>
+				<template slot="status" slot-scope="text, record">
+					<a-tooltip :title="record.userType === 'main' ? '主账号不能停用' : ''">
+						<a-switch size="small" :checked="record.status !== 'inactive'" :disabled="record.userType === 'main'" @change="(on) => toggleStatus(record, on)" />
+					</a-tooltip>
+				</template>
 				<template slot="remark" slot-scope="text">
 					<span v-if="text" class="remark-text" :title="text">{{ text }}</span>
 					<span v-else class="muted">-</span>
@@ -158,6 +163,7 @@ import {
 	getUserById, 
 	updateUser, 
 	deleteUser, 
+	setUserStatus, 
 	resetUserPassword,
 	getRoles
 } from '@/api'
@@ -206,6 +212,11 @@ export default {
 					dataIndex: 'userType',
 					key: 'userType',
 					scopedSlots: { customRender: 'userType' }
+				},
+				{
+					title: '状态',
+					key: 'status',
+					scopedSlots: { customRender: 'status' }
 				},
 				{
 					title: '备注',
@@ -311,6 +322,23 @@ export default {
 		this.fetchRoles();
 	},
 	methods: {
+		// 启用 / 停用账号（二次确认）：停用后这个账号不能登录，已登录的也立刻失效
+		toggleStatus(record, on) {
+			this.$confirm({
+				title: on ? `确定启用「${record.username}」吗？` : `确定停用「${record.username}」吗？`,
+				content: on ? '启用后，这个账号可以重新登录。' : '停用后，这个账号不能登录，已经登录的也会立刻退出；账号和它的数据都保留，随时可以重新启用。',
+				okText: on ? '启用' : '停用', cancelText: '取消',
+				onOk: async () => {
+					try {
+						await setUserStatus(record.id, on ? 'active' : 'inactive');
+						this.$message.success(on ? '已启用' : '已停用');
+					} catch (error) {
+						notifyError(this, error, '', '操作失败');
+					}
+					this.fetchUsers();
+				}
+			});
+		},
 		// 点击复制（页面文字默认不能选中，需要复制的字段用点击复制）
 		async copyText(text) {
 			if (await copyToClipboard(text)) this.$message.success('已复制：' + text);

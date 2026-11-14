@@ -50,6 +50,10 @@
         <span v-else>{{ text === 'en' ? '英文版' : '中文版' }}</span>
       </template>
 
+      <template slot="status" slot-scope="text, record">
+        <a-switch size="small" :checked="record.status !== 'inactive'" :disabled="!can('manual.edit')" @change="(on) => toggleStatus(record, on)" />
+      </template>
+
       <template slot="createdAt" slot-scope="text">
         {{ formatDate(text) }}
       </template>
@@ -131,6 +135,10 @@
           </a-select>
         </a-form-item>
         <a-form-item :colon="false" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+          <span slot="label">显示 <a-tooltip title="关闭后，小程序里看不到这份手册；后台不受影响"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
+          <a-switch v-decorator="['show', { valuePropName: 'checked', initialValue: formData.show !== false }]" />
+        </a-form-item>
+        <a-form-item :colon="false" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
           <span slot="label">排序 <a-tooltip title="数字越小越靠前，相同则按创建时间倒序（小程序按这个顺序显示）"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
           <a-input-number
             v-decorator="[
@@ -190,6 +198,7 @@ import IconEdit from '@/components/IconEdit.vue';
 import IconDelete from '@/components/IconDelete.vue';
 import { notifyError } from '@/utils/notify';
 import { fileHref } from '@/utils/cloudUrl';
+import { can } from '@/utils/auth';
 import {
   getManuals,
   getManualById,
@@ -217,6 +226,7 @@ export default {
         { title: '手册类型', dataIndex: 'type', key: 'type', scopedSlots: { customRender: 'type' }, minWidth: 120 },
         { title: '文件', dataIndex: 'lang', key: 'lang', scopedSlots: { customRender: 'lang' }, minWidth: 100 },
         { title: '排序', dataIndex: 'sort', key: 'sort', minWidth: 120, sorter: (a, b) => (a.sort || 0) - (b.sort || 0) },
+        { title: '状态', key: 'status', width: 90, scopedSlots: { customRender: 'status' } },
         { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt', scopedSlots: { customRender: 'createdAt' }, minWidth: 180 },
         { title: '创建者', dataIndex: 'creator', key: 'creator', scopedSlots: { customRender: 'creator' }, minWidth: 120 },
         // 编辑 + 删除两个按钮并排要约 150px，列宽是平均分配的，窗口不宽时放不下，所以给固定宽度
@@ -257,6 +267,25 @@ export default {
   },
   methods: {
     langLabel,
+    can,
+
+    // 列表里直接切换显示 / 隐藏（二次确认）。更新接口只改带了的字段，所以只传 status
+    toggleStatus(record, on) {
+      this.$confirm({
+        title: on ? `确定显示「${record.name}」吗？` : `确定隐藏「${record.name}」吗？`,
+        content: on ? '显示后，小程序里能看到这份手册。' : '隐藏后，小程序里看不到这份手册；后台不受影响。',
+        okText: on ? '显示' : '隐藏', cancelText: '取消',
+        onOk: async () => {
+          try {
+            await updateManual(record.id, { status: on ? 'active' : 'inactive' });
+            this.$message.success(on ? '已显示' : '已隐藏');
+          } catch (error) {
+            notifyError(this, error, '操作失败');
+          }
+          this.fetchManuals();
+        }
+      });
+    },
 
     // 文件链接（直接用文件 ID 算出公开链接，点击在新标签页打开）
     fileHref,
@@ -347,6 +376,7 @@ export default {
             type: manual.type,
             lang: manual.lang || 'zh',
             sort: manual.sort != null ? manual.sort : 999,
+            show: manual.status !== 'inactive',
             fileId: manual.fileId,
             filePath: manual.filePath
           };
@@ -534,6 +564,7 @@ export default {
             type: values.type,
             lang: values.lang,
             sort: values.sort,
+            status: values.show === false ? 'inactive' : 'active',
             fileId: this.formData.fileId,
             filePath: this.formData.filePath
           };

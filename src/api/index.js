@@ -293,6 +293,13 @@ export const deleteUser = async (id) => {
     });
 }
 
+// 启用 / 停用子账号（仅主账号）：status 是 active / inactive
+export const setUserStatus = async (id, status) => {
+    return fetchWrapper.put(`${API_BASE_URL}/api/users/${id}/status`, { status }, {
+        returnFullResponse: true
+    });
+}
+
 export const resetUserPassword = async (id, data) => {
     return fetchWrapper.post(`${API_BASE_URL}/api/users/${id}/reset-password`, data, {
         returnFullResponse: true
@@ -471,11 +478,18 @@ export const downloadWxBill = async (query) => {
 
 // 统计数据（仅主账号）：range 为 today / 7d / 30d / 3m / 1y
 // custom：{ from, to } 北京时间日期（YYYY-MM-DD，含首尾，最长一年），只在 range 为 'custom' 时用
-export const getShopStats = (range, custom = {}) => fetchWrapper.get(`${API_BASE_URL}/api/admin/stats${qs({ range, ...(range === 'custom' ? custom : {}) })}`);
+// scope：all 商品加教学视频（默认）/ goods 只商品 / video 只视频
+export const getShopStats = (range, custom = {}, scope = 'all') => fetchWrapper.get(`${API_BASE_URL}/api/admin/stats${qs({ range, scope: scope === 'all' ? undefined : scope, ...(range === 'custom' ? custom : {}) })}`);
 export const getShopOrders = (query) => fetchWrapper.get(`${API_BASE_URL}/api/admin/orders${qs(query)}`);
 // 物流状态（微信物流查询组件的运单状态，只有传过运单的订单有；返回 { status, statusText }，查不到 status 为 null）
 export const getShopOrderLogistics = (id) => fetchWrapper.get(`${API_BASE_URL}/api/admin/orders/${id}/logistics`, { silent: true });
 // 服务端配置助手：每个环境变量的说明和线上有没有设置（机密项只给有/无，不给值；仅主账号）
+// 云点播（教学视频，目前只有主账号）
+// 视频订单（谁买了哪个视频）：query 有 keyword、status、from、to、page、pageSize；返回 { total, list, summary }
+export const getVideoOrders = (query) => fetchWrapper.get(`${API_BASE_URL}/api/admin/video/orders${qs(query)}`);
+export const getVodUploadSignature = () => fetchWrapper.post(`${API_BASE_URL}/api/admin/vod/upload-signature`, {}, { returnFullResponse: true });
+export const getVodPlaySignature = (fileId) => fetchWrapper.get(`${API_BASE_URL}/api/admin/vod/play-signature?fileId=${encodeURIComponent(fileId)}`, { returnFullResponse: true });
+export const getVodPlayUrl = (fileId) => fetchWrapper.get(`${API_BASE_URL}/api/admin/vod/play-url?renditions=1&fileId=${encodeURIComponent(fileId)}`, { returnFullResponse: true });
 export const getEnvCatalog = () => fetchWrapper.get(`${API_BASE_URL}/api/admin/env-catalog`);
 export const getShopOrder = (id) => fetchWrapper.get(`${API_BASE_URL}/api/admin/orders/${id}`);
 // body: { expressCompany, expressNo, photoFileID? }；发货凭证照片选填，仅后台可见
@@ -549,3 +563,19 @@ export const getPermissionCatalog = () => fetchWrapper.get(`${API_BASE_URL}/api/
 export const createRole = (data) => fetchWrapper.post(`${API_BASE_URL}/api/roles`, data);
 export const updateRole = (id, data) => fetchWrapper.put(`${API_BASE_URL}/api/roles/${id}`, data);
 export const deleteRole = (id) => fetchWrapper.delete(`${API_BASE_URL}/api/roles/${id}`);
+
+// 教学视频管理（课程 → 章节 → 视频）。金额一律整数「分」
+export const getVideoTree = async () =>
+    fetchWrapper.get(`${API_BASE_URL}/api/admin/video/tree`, { returnFullResponse: true });
+// id 为空是新建，否则是修改
+const saveVideoPart = (part, id, data) => (id
+    ? fetchWrapper.put(`${API_BASE_URL}/api/admin/video/${part}/${id}`, data, { returnFullResponse: true })
+    : fetchWrapper.post(`${API_BASE_URL}/api/admin/video/${part}`, data, { returnFullResponse: true }));
+const deleteVideoPart = (part, id) => fetchWrapper.delete(`${API_BASE_URL}/api/admin/video/${part}/${id}`, { returnFullResponse: true });
+export const saveVideoCourse = (id, data) => saveVideoPart('courses', id, data);
+export const deleteVideoCourse = (id) => deleteVideoPart('courses', id);
+export const saveVideoChapter = (id, data) => saveVideoPart('chapters', id, data);
+export const deleteVideoChapter = (id) => deleteVideoPart('chapters', id);
+export const saveVideoItem = (id, data) => saveVideoPart('videos', id, data);
+export const deleteVideoItem = (id) => deleteVideoPart('videos', id);
+export const refreshVideoItem = (id) => fetchWrapper.post(`${API_BASE_URL}/api/admin/video/videos/${id}/refresh`, {}, { returnFullResponse: true });

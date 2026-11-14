@@ -40,9 +40,10 @@
                 <span class="copy-cell" title="点击复制" @click="copyName(text)">{{ text }}</span>
                 <div v-if="record.nameEn" style="color: #999; font-size: 12px;"><span class="copy-cell" title="点击复制" @click="copyName(record.nameEn)">{{ record.nameEn }}</span></div>
             </template>
-            <template slot="showInMall" slot-scope="text">
-                <a-tag v-if="text === false" color="orange">不展示</a-tag>
-                <a-tag v-else color="green">展示</a-tag>
+            <template slot="display" slot-scope="text, record">
+                <a-select size="small" style="width: 130px;" :value="record.display || 'both'" :disabled="!can('catalog.edit')" @change="(v) => changeDisplay(record, v)">
+                    <a-select-option v-for="o in displayOptions" :key="o.value" :value="o.value">{{ o.label }}</a-select-option>
+                </a-select>
             </template>
             <template slot="category" slot-scope="text">
                 {{ text ? text.name : '-' }}
@@ -111,16 +112,10 @@
                             </a-select>
                         </a-form-item>
                         <a-form-item :colon="false" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
-                            <span slot="label">商城展示 <a-tooltip title="关闭后，这个目录下的产品不出现在商城里，也不能下单；产品页的浏览、查看文档不受影响"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
-                            <a-switch
-                                v-decorator="[
-                                    'showInMall',
-                                    {
-                                        valuePropName: 'checked',
-                                        initialValue: currentRecord ? currentRecord.showInMall !== false : true
-                                    }
-                                ]"
-                            />
+                            <span slot="label">展示范围 <a-tooltip :title="displayHelp"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
+                            <a-select v-decorator="['display', { initialValue: currentRecord ? (currentRecord.display || 'both') : 'both' }]">
+                                <a-select-option v-for="o in displayOptions" :key="o.value" :value="o.value">{{ o.label }}</a-select-option>
+                            </a-select>
                         </a-form-item>
                         <a-form-item :colon="false" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
                             <span slot="label">排序 <a-tooltip title="数字越小越靠前，相同则按创建时间倒序"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
@@ -182,6 +177,7 @@ import IconDelete from '@/components/IconDelete.vue';
 import { notifyError } from '@/utils/notify';
 import { copyToClipboard } from '@/utils/copy';
 import { getCatalogs, createCatalog, updateCatalog, deleteCatalog, getCategories } from '@/api';
+import { can } from '@/utils/auth';
 
 // 定义表格列的配置
 const columns = [
@@ -201,11 +197,11 @@ const columns = [
         scopedSlots: { customRender: 'paramTitles' },
     },
     {
-        title: '商城展示',
-        dataIndex: 'showInMall',
-        // 这一列内容很短（一个「展示」标签），给固定窄宽度，把空间留给「参数标题」
-        width: 100,
-        scopedSlots: { customRender: 'showInMall' },
+        title: '展示范围',
+        key: 'display',
+        // 一个下拉框，固定宽度，把空间留给「参数标题」
+        width: 170,
+        scopedSlots: { customRender: 'display' },
     },
     {
         title: '排序',
@@ -252,6 +248,18 @@ export default {
         };
     },
     computed: {
+        // 展示范围：一个字段管两件事——产品页（小程序的产品、搜索）和商城
+        displayOptions() {
+            return [
+                { value: 'both', label: '都展示', desc: '产品页和商城里都能看到这个目录下的产品（所属分类要是显示的）。' },
+                { value: 'product', label: '仅产品页展示', desc: '只在产品页、搜索里能看到；商城里没有这些产品，也不能下单。' },
+                { value: 'mall', label: '仅商城展示', desc: '只在商城里能看到、能下单（已上架、已定价的产品）；产品页和搜索里看不到。' },
+                { value: 'none', label: '都不展示', desc: '小程序里完全看不到这个目录和下面的产品，商城也不能下单；后台不受影响。' },
+            ];
+        },
+        displayHelp() {
+            return '决定这个目录下的产品在小程序的哪里能看到：产品页（产品、搜索）和商城。' + this.displayOptions.map((o) => `${o.label}：${o.desc}`).join('');
+        },
         // 目录名称、所属分类内容都很短：宽度 = 表格宽度的一定比例，但不超过上限，多出来的全部留给「参数标题」。
         // 不用死宽度：窗口窄时死宽度会把参数标题挤没；表格是固定布局，max-width 和 CSS min() 对列都不起作用，所以用代码按表格宽度算
         tableColumns() {
@@ -270,6 +278,33 @@ export default {
         window.removeEventListener('resize', this.measureTable);
     },
     methods: {
+        can,
+        // 列表里直接改展示范围：二次确认（下拉框是受控的，点取消不用还原）
+        changeDisplay(record, value) {
+            if (value === (record.display || 'both')) return;
+            const opt = this.displayOptions.find((o) => o.value === value);
+            this.$confirm({
+                title: `确定把「${record.name}」改为「${opt.label}」吗？`,
+                content: opt.desc,
+                okText: '确定', cancelText: '取消',
+                onOk: () => this.applyFlags(record, { display: value }, `已改为「${opt.label}」`)
+            });
+        },
+        // 列表里直接改开关：更新接口要带名称、分类、参数标题等字段，原样带上，再覆盖要改的那一项
+        async applyFlags(record, patch, okText) {
+            try {
+                await updateCatalog(record.id, {
+                    name: record.name, nameEn: record.nameEn || '', categoryId: record.categoryId,
+                    sort: record.sort, display: record.display || 'both',
+                    paramTitles: (record.paramTitles || []).map((p) => ({ id: p.id, title: p.title || p, titleEn: p.titleEn || '' })),
+                    ...patch
+                });
+                this.$message.success(okText);
+            } catch (error) {
+                notifyError(this, error, '操作失败');
+            }
+            this.fetchData();
+        },
         measureTable() {
             const el = this.$el && this.$el.querySelector && this.$el.querySelector('.ant-table-wrapper');
             if (el && el.clientWidth) this.tableWidth = el.clientWidth;
@@ -351,7 +386,7 @@ export default {
                     nameEn: record.nameEn || '',
                     categoryId: record.categoryId,
                     sort: record.sort != null ? record.sort : 999,
-                    showInMall: record.showInMall !== false,
+                    display: record.display || 'both',
                 });
                 // 复制 paramTitles 数组（保留 id）
                 this.paramTitlesList = (record.paramTitles || []).map(p => ({
@@ -407,7 +442,7 @@ export default {
                             nameEn: values.nameEn || '',
                             categoryId: values.categoryId,
                             sort: values.sort,
-                            showInMall: !!values.showInMall,
+                            display: values.display || 'both',
                             paramTitles: validParamTitles.map(p => ({
                                 id: p.id,  // 保留 id（新增时为 undefined，后端会自动生成）
                                 title: p.title.trim(),

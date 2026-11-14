@@ -29,6 +29,9 @@
                 <span v-else>-</span>
             </template>
             <!-- 操作列统一用 .row-actions：按钮并排，放不下整个按钮换行，不用竖分隔线（见 scss/components/_table.scss） -->
+            <template slot="status" slot-scope="text, record">
+                <a-switch size="small" :checked="record.status !== 'inactive'" :disabled="!can('category.edit')" @change="(on) => toggleStatus(record, on)" />
+            </template>
             <div slot="action" slot-scope="text, record" class="row-actions">
                 <!-- 编辑按钮 -->
                 <a-button v-can="'category.edit'" type="link" size="small" @click="showModal(record)">
@@ -72,6 +75,10 @@
                     />
                 </a-form-item>
                 <a-form-item :colon="false" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+                    <span slot="label">显示 <a-tooltip title="关闭后，小程序里看不到这个分类，以及它下面所有的目录和产品（包括商城）；后台不受影响"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
+                    <a-switch v-decorator="['show', { valuePropName: 'checked', initialValue: currentRecord ? currentRecord.status !== 'inactive' : true }]" />
+                </a-form-item>
+                <a-form-item :colon="false" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
                     <span slot="label">排序 <a-tooltip title="数字越小越靠前"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
                     <a-input-number 
                         v-decorator="[
@@ -97,6 +104,10 @@ import IconDelete from '@/components/IconDelete.vue';
 import { notifyError } from '@/utils/notify';
 import { copyToClipboard } from '@/utils/copy';
 import { getCategories, createCategory, updateCategory, deleteCategory } from '@/api';
+import { can } from '@/utils/auth';
+
+// 表单里的「显示」开关换成服务端的 status
+const toBody = ({ show, ...rest }) => ({ ...rest, status: show === false ? 'inactive' : 'active' });
 
 // 定义表格列的配置
 const columns = [
@@ -113,6 +124,13 @@ const columns = [
     {
         title: '排序',
         dataIndex: 'sort_order',
+    },
+    {
+        title: '状态',
+        key: 'status',
+        // 一个开关加两个字，固定窄宽度
+        width: 130,
+        scopedSlots: { customRender: 'status' },
     },
     {
         title: '操作',
@@ -151,6 +169,26 @@ export default {
         this.fetchData();
     },
     methods: {
+        can,
+        // 列表里直接切换显示 / 隐藏：更新接口要带名称等字段，原样带上
+        toggleStatus(record, on) {
+            // 二次确认：开关是受控的，点取消不用还原
+            this.$confirm({
+                title: on ? `确定显示「${record.name}」吗？` : `确定隐藏「${record.name}」吗？`,
+                content: on ? '显示后，小程序里能看到这个分类。' : '隐藏后，小程序里看不到这个分类，以及它下面所有的目录和产品（包括商城）；后台不受影响。',
+                okText: on ? '显示' : '隐藏', cancelText: '取消',
+                onOk: () => this.applyStatus(record, on)
+            });
+        },
+        async applyStatus(record, on) {
+            try {
+                await updateCategory(record.id, { name: record.name, nameEn: record.nameEn || '', sort_order: record.sort_order, status: on ? 'active' : 'inactive' });
+                this.$message.success(on ? '已显示' : '已隐藏');
+            } catch (error) {
+                notifyError(this, error, '操作失败');
+            }
+            this.fetchData();
+        },
         async copyName(text) {
             if (await copyToClipboard(text)) this.$message.success('已复制：' + text);
             else this.$message.warning('复制失败，请手动复制');
@@ -204,7 +242,8 @@ export default {
                 this.form.setFieldsValue({
                     name: record.name,
                     nameEn: record.nameEn || '',
-                    sort_order: record.sort_order
+                    sort_order: record.sort_order,
+                    show: record.status !== 'inactive'
                 });
             } else {
                 this.modalTitle = "新增分类";
@@ -247,11 +286,11 @@ export default {
                     try {
                         if (this.currentRecord) {
                             // 编辑
-                            await updateCategory(this.currentRecord.id, values);
+                            await updateCategory(this.currentRecord.id, toBody(values));
                             this.$message.success('编辑成功');
                         } else {
                             // 新增
-                            await createCategory(values);
+                            await createCategory(toBody(values));
                             this.$message.success('新增成功');
                         }
                         this.visible = false;

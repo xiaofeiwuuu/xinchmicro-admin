@@ -73,6 +73,9 @@
                     <a-tag v-else color="orange">缺英文版</a-tag>
                 </div>
             </template>
+            <template slot="status" slot-scope="text, record">
+                <a-switch size="small" :checked="record.status !== 'inactive'" :disabled="!can('product.edit')" @change="(on) => toggleStatus(record, on)" />
+            </template>
             <span slot="action" slot-scope="text, record" class="row-actions">
                 <!-- 详情按钮：只看，不改 -->
                 <a-button type="link" size="small" @click="openDetail(record)">
@@ -192,6 +195,10 @@
                         </a-form-item>
                 
                         <a-form-item :colon="false" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
+                            <span slot="label">显示 <a-tooltip title="关闭后，小程序里看不到这个产品（产品页、搜索、商城都一样）；后台不受影响"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
+                            <a-switch v-decorator="['show', { valuePropName: 'checked', initialValue: currentRecord ? currentRecord.status !== 'inactive' : true }]" />
+                        </a-form-item>
+                        <a-form-item :colon="false" :label-col="{ span: 6 }" :wrapper-col="{ span: 18 }">
                             <span slot="label">排序 <a-tooltip title="数字越小越靠前，相同则按创建时间倒序"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
                             <a-input-number
                                 v-decorator="[
@@ -278,6 +285,7 @@ import { notifyError } from '@/utils/notify';
 import { copyToClipboard } from '@/utils/copy';
 import { getProducts, createProduct, deleteProduct, getCatalogs, updateProduct, deletePdfs } from '@/api';
 import { fileHref } from '@/utils/cloudUrl';
+import { can } from '@/utils/auth';
 import PdfUploader from '@/components/PdfUploader.vue';
 import { buildProductQuery, orphanFileIDs } from '@/utils/i18nData';
 
@@ -307,6 +315,13 @@ const columns = [
         title: '排序',
         dataIndex: 'sort',
         sorter: (a, b) => (a.sort || 0) - (b.sort || 0),
+    },
+    {
+        title: '状态',
+        key: 'status',
+        // 只有一个开关，固定窄宽度
+        width: 90,
+        scopedSlots: { customRender: 'status' },
     },
     {
         title: '操作',
@@ -379,6 +394,24 @@ export default {
         this.fetchData();
     },
     methods: {
+        can,
+        // 列表里直接切换显示 / 隐藏（二次确认）。更新接口要带名称、目录；参数、PDF、英文名这些不带就保持原样
+        toggleStatus(record, on) {
+            this.$confirm({
+                title: on ? `确定显示「${record.name}」吗？` : `确定隐藏「${record.name}」吗？`,
+                content: on ? '显示后，小程序里能看到这个产品（所在目录和分类也要是显示的）。' : '隐藏后，小程序里看不到这个产品（产品页、搜索、商城都一样）；后台不受影响。',
+                okText: on ? '显示' : '隐藏', cancelText: '取消',
+                onOk: async () => {
+                    try {
+                        await updateProduct(record.id, { name: record.name, catalogId: record.catalogId, sort: record.sort, status: on ? 'active' : 'inactive' });
+                        this.$message.success(on ? '已显示' : '已隐藏');
+                    } catch (error) {
+                        notifyError(this, error, '操作失败');
+                    }
+                    this.fetchData();
+                }
+            });
+        },
         async copyName(text) {
             if (await copyToClipboard(text)) this.$message.success('已复制：' + text);
             else this.$message.warning('复制失败，请手动复制');
@@ -510,6 +543,7 @@ export default {
                     nameEn: record.nameEn || '',
                     catalogId: record.catalogId,
                     sort: record.sort != null ? record.sort : 999,
+                    show: record.status !== 'inactive',
                 });
 
                 // 触发目录变更
@@ -601,6 +635,7 @@ export default {
                             nameEn: values.nameEn || '',
                             catalogId: values.catalogId,
                             sort: values.sort,
+                            status: values.show === false ? 'inactive' : 'active',
                             parameters: parameters,
                             ...this.buildEnglishPdfFields(),
                         };

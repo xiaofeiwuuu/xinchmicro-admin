@@ -17,10 +17,8 @@
 				<template slot="image" slot-scope="text">
 					<img :src="toDisplayUrl(text)" style="max-width: 100px; max-height: 60px;" />
 				</template>
-				<template slot="status" slot-scope="text">
-					<a-tag :color="text === 'active' ? 'green' : 'red'">
-						{{ text === 'active' ? '启用' : '禁用' }}
-					</a-tag>
+				<template slot="status" slot-scope="text, record">
+					<a-switch size="small" :checked="text === 'active'" :disabled="!can('carousel.edit')" @change="(on) => toggleStatus(record, on)" />
 				</template>
 				<template slot="action" slot-scope="text, record">
 					<a-space>
@@ -103,6 +101,7 @@
 <script>
 import { notifyError } from '@/utils/notify';
 import LinkPicker from '@/components/LinkPicker.vue';
+import { can } from '@/utils/auth';
 import { toDisplayUrl } from '@/utils/cloudUrl';
 import { getCarousels, createCarousel, updateCarousel, deleteCarousel, updateCarouselOrder, uploadFile, deletePdf } from '@/api'
 
@@ -180,6 +179,24 @@ export default {
 		}
 	},
 	methods: {
+		can,
+		// 列表里直接启用 / 停用（二次确认）。更新接口会用传来的标题、链接覆盖，所以原样带上
+		toggleStatus(record, on) {
+			this.$confirm({
+				title: on ? `确定启用「${record.title || '这张轮播图'}」吗？` : `确定停用「${record.title || '这张轮播图'}」吗？`,
+				content: on ? '启用后，小程序首页会显示这张轮播图。' : '停用后，小程序首页不再显示这张轮播图；图片和设置都保留，随时可以重新启用。',
+				okText: on ? '启用' : '停用', cancelText: '取消',
+				onOk: async () => {
+					try {
+						await updateCarousel(record.id, { title: record.title, imageUrl: record.imageUrl, link: record.link, order: record.order, status: on ? 'active' : 'inactive' })
+						this.$message.success(on ? '已启用' : '已停用')
+					} catch (error) {
+						notifyError(this, error, '', '操作失败')
+					}
+					this.fetchCarousels()
+				}
+			})
+		},
 		async fetchCarousels() {
 			try {
 				this.loading = true

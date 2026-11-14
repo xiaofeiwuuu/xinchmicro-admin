@@ -4,6 +4,8 @@
 			<a-input v-model="customerId" placeholder="编号" style="width: 160px; margin-right: 12px;" allowClear @pressEnter="handleSearch" />
 			<a-input v-model="nickname" placeholder="昵称" style="width: 160px; margin-right: 12px;" allowClear @pressEnter="handleSearch" />
 			<a-input v-model="phone" placeholder="手机号" style="width: 160px; margin-right: 12px;" allowClear @pressEnter="handleSearch" />
+			<!-- 溯源：教学视频画面上飘的那串 8 位码，输进来就能查出是哪个客户（已注销的也查得到） -->
+			<a-input v-model="mark" placeholder="视频水印码" style="width: 160px; margin-right: 12px;" allowClear @pressEnter="handleSearch" />
 			<a-select v-model="scope" style="width: 160px; margin-right: 12px;" @change="handleSearch">
 				<a-select-option value="engaged">有资料或订单</a-select-option>
 				<a-select-option value="all">全部访客</a-select-option>
@@ -84,6 +86,7 @@
 								<div class="cd-line"><span class="k">编号</span><span class="copy-cell" title="点击复制" @click="copyName('#' + detail.id)">#{{ detail.id }}</span></div>
 								<div class="cd-line"><span class="k">手机号</span><span v-if="detail.phone" class="copy-cell" title="点击复制" @click="copyName(detail.phone)">{{ detail.phone }}</span><span v-else>未绑定</span></div>
 								<div class="cd-line"><span class="k">最近登录</span>{{ detail.lastLoginAt || '-' }}</div>
+								<div class="cd-line"><span class="k">视频水印码 <a-tooltip title="这个客户看教学视频时，画面上飘的就是这串码。录屏流出来的视频上看到这个码，就能在客户管理里查到是他。没看过视频的客户没有。"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span><span v-if="detail.videoMark" class="copy-cell" title="点击复制" @click="copyName(detail.videoMark)">{{ detail.videoMark }}</span><span v-else>-</span></div>
 							</div>
 						</div>
 						<div class="cd-times">
@@ -156,6 +159,7 @@ export default {
 			showAllTitles: false,
 			BLOCK_TIP: '拉黑后，这个微信号不能再使用小程序：打开只会看到「账号已被限制」页面，不能登录、下单、支付。',
 			customerId: '',
+			mark: '',
 			nickname: '',
 			phone: '',
 			status: undefined,
@@ -221,7 +225,7 @@ export default {
 		async fetch() {
 			try {
 				this.loading = true
-				const data = await getShopCustomers({ id: this.customerId.trim() || undefined, nickname: this.nickname.trim(), phone: this.phone.trim(), status: this.status, member: this.member, engaged: this.scope === 'engaged' ? '1' : undefined, page: this.pagination.current, pageSize: this.pagination.pageSize, sortBy: this.sortOrder ? 'orderCount' : undefined, order: this.sortOrder === 'ascend' ? 'asc' : this.sortOrder === 'descend' ? 'desc' : undefined })
+				const data = await getShopCustomers({ id: this.customerId.trim() || undefined, mark: this.mark.trim() || undefined, nickname: this.nickname.trim(), phone: this.phone.trim(), status: this.status, member: this.member, engaged: this.scope === 'engaged' ? '1' : undefined, page: this.pagination.current, pageSize: this.pagination.pageSize, sortBy: this.sortOrder ? 'orderCount' : undefined, order: this.sortOrder === 'ascend' ? 'asc' : this.sortOrder === 'descend' ? 'desc' : undefined })
 				this.customers = data.list
 				this.pagination.total = data.total
 			} catch (error) {
@@ -237,6 +241,7 @@ export default {
 		// 重置：清空关键词和状态，范围回到默认的「有过操作的客户」
 		handleReset() {
 			this.customerId = ''
+			this.mark = ''
 			this.nickname = ''
 			this.phone = ''
 			this.status = undefined

@@ -68,12 +68,12 @@
 			</div>
 		</a-table>
 
-		<a-modal :title="form.id ? '编辑视频' : '上传视频'" :visible="visible" :confirmLoading="saving" :width="1000" :maskClosable="false" :okButtonProps="{ props: { disabled: uploading || (!form.id && !form.vodFileId) } }" okText="保存" @ok="save" @cancel="close">
+		<a-modal :title="form.id ? (form.replaceFile ? '重新上传视频' : '编辑视频') : '上传视频'" :visible="visible" :confirmLoading="saving" :width="1000" :maskClosable="false" :okButtonProps="{ props: { disabled: uploading || ((!form.id || form.replaceFile) && !form.vodFileId) } }" okText="保存" @ok="save" @cancel="close">
 			<a-form layout="horizontal" :label-col="{ span: 5 }" :wrapper-col="{ span: 19 }">
 				<a-row type="flex" :gutter="0">
 					<!-- 左：视频文件和归属 -->
 					<a-col :xs="24" :md="12" class="col-left">
-						<a-form-item v-if="!form.id" required>
+						<a-form-item v-if="!form.id || form.replaceFile" required>
 							<span slot="label">视频文件 <a-tooltip title="选好文件就开始上传，上传期间先别关闭这个窗口；文件很大时先压缩会快很多。"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
 							<!-- 和其它页面的上传一样用 antd 的上传按钮（原来是浏览器自带的文件输入框，样式不一致）。beforeUpload 返回 false：不用 antd 自己上传，选了文件交给腾讯云的上传 SDK -->
 							<a-upload :show-upload-list="false" accept="video/*" :before-upload="beforePick" :disabled="uploading || !!form.vodFileId">
@@ -82,7 +82,8 @@
 							<div v-if="fileName" class="fname">{{ fileName }}</div>
 							<div v-if="uploading || percent > 0" class="bar"><div class="fill" :style="{ width: percent + '%' }"></div></div>
 							<div v-if="uploading" class="hint2 nl">上传中 {{ percent }}%　{{ speedText }}</div>
-							<div v-else-if="form.vodFileId" class="hint2 nl ok">已上传，点「保存」后开始转码</div>
+							<div v-else-if="form.vodFileId" class="hint2 nl ok">已上传，点「保存」后开始转码{{ form.replaceFile ? '（会先下架，转码完成后再上架）' : '' }}</div>
+							<div v-else-if="form.replaceFile" class="hint2 nl">原来的文件在云点播里已经没有了，重新选一个视频文件替换它；标题、价格、购买记录都会保留。</div>
 						</a-form-item>
 						<a-form-item label="所属课程" required>
 							<a-select v-model="form.courseId" :disabled="!!form.id" placeholder="请选择课程" @change="form.chapterId = undefined">
@@ -111,7 +112,7 @@
 						<a-form-item :label-col="{ span: 9 }" :wrapper-col="{ span: 15 }"><span slot="label">排序 <a-tooltip title="数字小的在前"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span><a-input-number v-model="form.sortOrder" :precision="0" style="width: 160px" /></a-form-item>
 						<a-form-item :label-col="{ span: 9 }" :wrapper-col="{ span: 15 }">
 							<span slot="label">状态 <a-tooltip v-if="form.id && !form.ready" title="视频还没转码完成，转码完成后才能上架"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
-							<a-switch v-model="form.onSale" :disabled="!!form.id && !form.ready" checked-children="上架" un-checked-children="下架" />
+							<a-switch v-model="form.onSale" :disabled="(!!form.id && !form.ready) || !!form.replaceFile" checked-children="上架" un-checked-children="下架" />
 						</a-form-item>
 					</a-col>
 				</a-row>
@@ -143,6 +144,11 @@
 						<template slot="size" slot-scope="text">{{ sizeText(text) }}</template>
 						<template slot="ctime" slot-scope="text">{{ timeText(text) }}</template>
 						<template slot="vids" slot-scope="text">{{ (text || []).join('、') || '-' }}</template>
+						<!-- 视频找不到文件：直接在这里处理，不用关弹窗去列表里找 -->
+						<div slot="missAct" slot-scope="text, r" class="row-actions">
+							<a-button v-can="'video.edit'" type="link" size="small" @click="reuploadMissing(r)"><a-icon type="upload" /><span class="text-dark">重新上传</span></a-button>
+							<a-button v-can="'video.edit'" type="link" size="small" @click="deleteMissing(r)"><icon-delete /><span class="text-danger">删除记录</span></a-button>
+						</div>
 					</a-table>
 					<div class="vf-foot">
 						<a-button size="small" @click="loadVodFiles"><a-icon type="reload" />重新统计</a-button>
@@ -266,7 +272,8 @@ export default {
 			if (this.vfView === 'missing') return [
 				{ title: '视频标题', dataIndex: 'title', key: 'title', ellipsis: true },
 				{ title: '所属课程', dataIndex: 'courseTitle', key: 'courseTitle', ellipsis: true },
-				{ title: '记录的点播文件 ID', dataIndex: 'vodFileId', key: 'vodFileId', width: 190, scopedSlots: { customRender: 'fid' } }
+				{ title: '记录的点播文件 ID', dataIndex: 'vodFileId', key: 'vodFileId', width: 180, scopedSlots: { customRender: 'fid' } },
+				{ title: '操作', key: 'act', width: 200, align: 'right', scopedSlots: { customRender: 'missAct' } }
 			];
 			return [name, fid, size, ctime];
 		},
@@ -280,7 +287,7 @@ export default {
 				orphan: '点播里有、但没有任何视频在用的文件，可以清理。如果这个点播应用还被别的业务共用，里面可能有别人的视频，删之前请认真核对文件名。删除后不能恢复。',
 				recent: `上传还不到 ${h} 小时的文件，可能刚传完、正在填表单还没点「保存」，所以先不算孤儿、不能删。满 ${h} 小时还没有视频用它，就会出现在「孤儿」里，到时可以清理。`,
 				used: '正在被视频使用的文件，不能删。',
-				missing: '这些视频记录指向的点播文件不存在，所以播不出来。要么重新上传视频，要么在视频列表里把这条记录删掉（如果是测试数据）。'
+				missing: '这些视频记录指向的点播文件不存在，所以播不出来。可以点「重新上传」换成新视频文件（标题、价格、购买记录都保留），或者「删除记录」（已经有人购买过的不能删）。'
 			}[this.vfView];
 		},
 		vfEmpty() { return { orphan: '没有孤儿文件，不用清理', recent: '没有刚上传的文件', used: '还没有视频在用点播文件', missing: '所有视频记录都能在点播里找到文件' }[this.vfView]; },
@@ -358,6 +365,22 @@ export default {
 				this.vfView = this.vf.orphanCount ? 'orphan' : (this.vf.missingCount ? 'missing' : 'used');
 				this.vfSelected = [];
 			} catch (e) { notifyError(this, e, '统计云点播文件'); } finally { this.vfLoading = false; }
+		},
+		// 视频找不到文件 → 重新上传：打开编辑弹窗，多出选文件的步骤；保存时换成新文件
+		reuploadMissing(r) {
+			const v = this.list.find((x) => x.id === r.videoId);
+			if (!v) return this.$message.warning('没在视频列表里找到这个视频，请刷新页面后再试');
+			this.openModal(v);
+			this.form = { ...this.form, replaceFile: true, vodFileId: '', onSale: false }; // 换了文件要重新转码，先下架
+		},
+		// 视频找不到文件 → 删除这条记录（点播里本来就没有文件，只删记录）
+		deleteMissing(r) {
+			this.$confirm({
+				title: `确定删除视频「${r.title}」这条记录吗？`,
+				content: '云点播里已经没有它的文件，只会删掉这条记录，不能恢复。已经有人购买过的视频不能删，会提示。',
+				okText: '删除', okType: 'danger', cancelText: '取消',
+				onOk: async () => { if (await this.run(() => deleteVideoItem(r.videoId), '已删除', '删除视频失败')) this.loadVodFiles(); }
+			});
 		},
 		confirmDeleteVodFiles() {
 			const n = this.vfSelected.length;
@@ -444,17 +467,22 @@ export default {
 			if (!f.title.trim()) return this.$message.warning('请填写标题');
 			const body = { title: f.title, chapterId: f.chapterId || null, priceFen: toFen(f.price) || 0, memberPriceFen: toFen(f.memberPrice), trialSeconds: f.trialSeconds || 0, intro: f.intro, sortOrder: f.sortOrder || 0 };
 			// 编辑时转码没完成的视频，开关是灰的，不带上下架（保持原样）；新增时想上架的，服务端看转码完没完成
-			if (!f.id || f.ready) body.onSale = !!f.onSale;
+			if ((!f.id || f.ready) && !f.replaceFile) body.onSale = !!f.onSale; // 换文件的视频要重新转码，服务端会先下架
 			if (!f.id) { body.courseId = f.courseId; body.vodFileId = f.vodFileId; }
+			if (f.replaceFile) {
+				if (!f.vodFileId) return this.$message.warning('请先选择新的视频文件');
+				body.vodFileId = f.vodFileId;
+			}
 			this.saving = true;
 			try {
 				const res = await saveVideoItem(f.id, body);
 				if (res && res.code === 0) {
-					if (f.id) this.$message.success('已保存');
+					if (f.id) this.$message.success(f.replaceFile ? '已换成新文件，正在转码，转码完成后请到列表里上架' : '已保存');
 					else if (res.data.onSale) this.$message.success('已添加并上架');
 					else this.$message.success(f.onSale ? '已添加，视频还在转码，转码完成后请到列表里上架' : '已添加，转码完成后可以上架');
 					await this.load(true);
 					this.visible = false;
+					if (this.vfVisible) this.loadVodFiles(); // 云点播文件弹窗开着的话刷新它
 				}
 			} catch (e) { notifyError(this, e, '保存视频失败'); } finally { this.saving = false; }
 		},

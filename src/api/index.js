@@ -487,6 +487,11 @@ export const getShopOrderLogistics = (id) => fetchWrapper.get(`${API_BASE_URL}/a
 // 云点播（教学视频，目前只有主账号）
 // 视频订单（谁买了哪个视频）：query 有 keyword、status、from、to、page、pageSize；返回 { total, list, summary }
 export const getVideoOrders = (query) => fetchWrapper.get(`${API_BASE_URL}/api/admin/video/orders${qs(query)}`);
+// 手动开通/赠送视频（付款异常补开通、送客户、内部测试；不是购买，不算成交）
+export const getVideoGrants = (query) => fetchWrapper.get(`${API_BASE_URL}/api/admin/video/grants${qs(query)}`);
+export const createVideoGrant = (data) => fetchWrapper.post(`${API_BASE_URL}/api/admin/video/grants`, data);
+export const revokeVideoGrant = (id) => fetchWrapper.post(`${API_BASE_URL}/api/admin/video/grants/${id}/revoke`, {});
+export const searchGrantCustomers = (keyword) => fetchWrapper.get(`${API_BASE_URL}/api/admin/video/grant-customers?keyword=${encodeURIComponent(keyword)}`);
 export const getVodUploadSignature = () => fetchWrapper.post(`${API_BASE_URL}/api/admin/vod/upload-signature`, {}, { returnFullResponse: true });
 export const getVodPlaySignature = (fileId) => fetchWrapper.get(`${API_BASE_URL}/api/admin/vod/play-signature?fileId=${encodeURIComponent(fileId)}`, { returnFullResponse: true });
 export const getVodPlayUrl = (fileId) => fetchWrapper.get(`${API_BASE_URL}/api/admin/vod/play-url?renditions=1&fileId=${encodeURIComponent(fileId)}`, { returnFullResponse: true });

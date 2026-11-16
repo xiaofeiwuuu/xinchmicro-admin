@@ -49,6 +49,14 @@
 				<template slot="status" slot-scope="text">
 					<a-tag :color="{ active: 'green', disabled: 'red', deleted: '' }[text]">{{ { active: '正常', disabled: '已拉黑', deleted: '已注销' }[text] }}</a-tag>
 				</template>
+				<!-- 订单数：上面是总数（商品 + 视频），下面分别点到商品订单页、视频订单页，只看这个客户（没有对应权限的账号只显示数字） -->
+				<template slot="orders" slot-scope="text, record">
+					<div class="oc-total">{{ record.orderCount }}</div>
+					<div class="oc-links">
+						<a v-if="record.goodsOrderCount && canGoods" @click="goGoodsOrders(record)">商品 {{ record.goodsOrderCount }}</a><span v-else>商品 {{ record.goodsOrderCount }}</span>
+						<a v-if="record.videoOrderCount && canVideo" @click="goVideoOrders(record)">视频 {{ record.videoOrderCount }}</a><span v-else>视频 {{ record.videoOrderCount }}</span>
+					</div>
+				</template>
 				<template slot="action" slot-scope="text, record">
 					<div class="row-actions">
 						<a-button type="link" size="small" @click="openDetail(record.id)"><a-icon type="eye" style="color: #111827" /><span class="text-dark">详情</span></a-button>
@@ -221,7 +229,7 @@ export default {
 				{ title: '昵称', dataIndex: 'nickname', key: 'nickname', scopedSlots: { customRender: 'nickname' } },
 				{ title: '手机号', dataIndex: 'phone', key: 'phone', scopedSlots: { customRender: 'phone' } },
 				{ title: '备注', dataIndex: 'remark', key: 'remark', scopedSlots: { customRender: 'remark' } },
-				{ title: '订单数', dataIndex: 'orderCount', key: 'orderCount', width: 100, sorter: true, sortDirections: ['descend', 'ascend'] },
+				{ title: '订单数', dataIndex: 'orderCount', key: 'orderCount', width: 130, sorter: true, sortDirections: ['descend', 'ascend'], scopedSlots: { customRender: 'orders' } },
 				{ title: '状态', dataIndex: 'status', key: 'status', width: 90, scopedSlots: { customRender: 'status' } },
 				{ title: '最近登录', dataIndex: 'lastLoginAt', key: 'lastLoginAt', customRender: (v) => v || '-' },
 				{ title: '操作', key: 'action', align: 'right', width: 170, scopedSlots: { customRender: 'action' } }
@@ -235,6 +243,8 @@ export default {
 		this.fetch()
 	},
 	computed: {
+		canGoods() { return can('order.view') },
+		canVideo() { return can('video.orders') },
 		// 商品 + 视频的合计（金额按分相加，避免小数误差）
 		totals() {
 			const d = this.detail; const g = (d && d.stats) || {}; const v = (d && d.videoStats) || {};
@@ -355,6 +365,12 @@ export default {
 			}
 		},
 		money(v) { return '¥' + Number(v || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
+		goGoodsOrders(r) {
+			this.$router.push({ path: '/shop/orders', query: { customerId: String(r.id), name: r.nickname || '' } })
+		},
+		goVideoOrders(r) {
+			this.$router.push({ path: '/video-orders', query: { keyword: '#' + r.id } })
+		},
 		viewVideoOrders() {
 			this.$router.push({ path: '/video-orders', query: { keyword: '#' + this.detail.id } })
 		},
@@ -462,5 +478,8 @@ export default {
 .cd-tile-head { font-weight: 500; line-height: 24px; margin-bottom: 2px; word-break: break-all; }
 .cd-pre { white-space: pre-wrap; color: #595959; font-size: 13px; line-height: 20px; word-break: break-all; }
 .cd-warn { margin-top: 4px; font-size: 12px; color: #d46b08; }
+.oc-total { font-weight: 600; line-height: 22px; }
+.oc-links { font-size: 12px; line-height: 18px; color: #8c8c8c; }
+.oc-links > * + * { margin-left: 10px; }
 .act-danger { color: #cf1322; }
 </style>

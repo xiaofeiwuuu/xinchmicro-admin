@@ -11,10 +11,10 @@ export const langLabel = (lang) => {
 };
 
 // 手册列表的查询参数：去掉空值。语言不选时传 all——服务端不带 lang 时只返回中文手册
-export function buildManualQuery({ page, pageSize, type, keyword, lang } = {}) {
+export function buildManualQuery({ page, pageSize, type, name, lang } = {}) {
   const query = { page, pageSize, lang: lang || 'all' };
   if (type) query.type = type;
-  if (typeof keyword === 'string' && keyword.trim()) query.keyword = keyword.trim();
+  if (typeof name === 'string' && name.trim()) query.name = name.trim();
   return query;
 }
 

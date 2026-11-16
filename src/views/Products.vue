@@ -441,7 +441,7 @@ export default {
         // 跳到「价格库存」页并定位到这个产品（重名产品很多，带上目录；再高亮这一行）
         goShopProduct(record) {
             const catalogId = record.catalogId || (record.catalog && record.catalog.id);
-            const query = { keyword: record.name, focus: String(record.id) };
+            const query = { name: record.name, focus: String(record.id) };
             if (catalogId) query.catalogId = String(catalogId);
             this.$router.push({ path: '/shop/products', query });
         },

@@ -15,7 +15,7 @@
           </a-select>
         </a-form-item>
         <a-form-item>
-          <a-input v-model="searchForm.keyword" placeholder="搜索手册名称" style="width: 160px;" />
+          <a-input v-model="searchForm.name" placeholder="搜索手册名称" style="width: 160px;" />
         </a-form-item>
         <a-form-item>
           <a-button type="primary" size="small" @click="handleSearch">查询</a-button>
@@ -242,7 +242,7 @@ export default {
       searchForm: {
         type: undefined,
         lang: undefined,
-        keyword: ''
+        name: ''
       },
       dialogVisible: false,
       dialogType: 'add', // 'add' 或 'edit'
@@ -385,7 +385,7 @@ export default {
       this.searchForm = {
         type: undefined,
         lang: undefined,
-        keyword: ''
+        name: ''
       };
       this.pagination.current = 1;
       this.fetchManuals();

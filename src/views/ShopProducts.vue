@@ -10,7 +10,7 @@
 					<a-select v-model="catalogId" placeholder="全部目录" allowClear style="width: 160px;" @change="handleSearch">
 						<a-select-option v-for="c in catalogOptions" :key="c.id" :value="c.id">{{ c.name }}</a-select-option>
 					</a-select>
-					<a-input-search v-model="keyword" placeholder="搜索产品名称" style="width: 160px;" allowClear @search="handleSearch" />
+					<a-input-search v-model="productName" placeholder="搜索产品名称" style="width: 160px;" allowClear @search="handleSearch" />
 					<a-select v-model="filter" style="width: 160px;" @change="handleSearch">
 						<a-select-option value="">全部产品</a-select-option>
 						<a-select-option value="unconfigured">还没设置价格</a-select-option>
@@ -564,7 +564,7 @@ export default {
 			catalogs: [],
 			categoryId: undefined,
 			catalogId: undefined,
-			keyword: '',
+			productName: '',
 			// 从「产品详情」页跳过来时要高亮的产品 ID
 			focusId: null,
 			filter: '',
@@ -575,7 +575,7 @@ export default {
 			leaveVisible: false,
 			leaveSaving: false,
 			leaveCount: 0,
-			applied: { categoryId: undefined, catalogId: undefined, keyword: '', filter: '' },
+			applied: { categoryId: undefined, catalogId: undefined, name: '', filter: '' },
 			pagination: newPagination(),
 			selectedKeys: [],
 			// 批量设置
@@ -711,8 +711,8 @@ export default {
 	watch: {
 		// 已经在这个页面时点了右上角的库存通知：按通知里的产品名重新搜
 		'$route.query'(q, old) {
-			if (!q.keyword || (q.keyword === old.keyword && q.n === old.n)) return
-			this.keyword = String(q.keyword)
+			if (!q.name || (q.name === old.name && q.n === old.n)) return
+			this.productName = String(q.name)
 			this.catalogId = undefined
 			this.focusId = null
 			this.handleSearch()
@@ -732,9 +732,9 @@ export default {
 	},
 	created() {
 		window.addEventListener('beforeunload', this.onUnload)
-		// 从「产品详情」页跳过来：?keyword=产品名&catalogId=目录ID&focus=产品ID
+		// 从「产品详情」页跳过来：?name=产品名&catalogId=目录ID&focus=产品ID
 		const q = this.$route.query || {}
-		if (q.keyword) this.keyword = String(q.keyword)
+		if (q.name) this.productName = String(q.name)
 		if (q.catalogId && !isNaN(Number(q.catalogId))) this.catalogId = Number(q.catalogId)
 		if (q.focus && !isNaN(Number(q.focus))) this.focusId = Number(q.focus)
 		this.loadSettings()
@@ -826,7 +826,7 @@ export default {
 		showBelowMin() {
 			this.categoryId = undefined
 			this.catalogId = undefined
-			this.keyword = ''
+			this.productName = ''
 			this.filter = 'belowMin'
 			this.handleSearch()
 		},
@@ -849,7 +849,7 @@ export default {
 			Object.assign(this, this.applied)
 		},
 		query() {
-			return { categoryId: this.categoryId, catalogId: this.catalogId, keyword: this.keyword.trim(), filter: this.filter }
+			return { categoryId: this.categoryId, catalogId: this.catalogId, name: this.productName.trim(), filter: this.filter }
 		},
 		async fetch() {
 			this.applied = this.query()
@@ -873,7 +873,7 @@ export default {
 		handleReset() {
 			this.categoryId = undefined
 			this.catalogId = undefined
-			this.keyword = ''
+			this.productName = ''
 			this.filter = ''
 			this.handleSearch()
 		},

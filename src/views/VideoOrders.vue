@@ -3,7 +3,11 @@
 	<div>
 		<div style="margin-bottom: 16px;">
 			<a-form layout="inline">
-				<a-form-item><a-input v-model="keyword" placeholder="订单号 / 视频 / 客户" size="small" style="width: 160px" @pressEnter="search" /></a-form-item>
+				<!-- 每个字段一个输入框，不合并 -->
+				<a-form-item><a-input v-model="f.orderNo" placeholder="订单号" size="small" style="width: 160px" allowClear @pressEnter="search" /></a-form-item>
+				<a-form-item><a-input v-model="f.title" placeholder="视频标题" size="small" style="width: 160px" allowClear @pressEnter="search" /></a-form-item>
+				<a-form-item><a-input v-model="f.customerId" placeholder="客户编号" size="small" style="width: 160px" allowClear @pressEnter="search" /></a-form-item>
+				<a-form-item><a-input v-model="f.nickname" placeholder="客户昵称" size="small" style="width: 160px" allowClear @pressEnter="search" /></a-form-item>
 				<a-form-item>
 					<a-select v-model="status" size="small" style="width: 160px" placeholder="订单状态" allowClear>
 						<a-select-option v-for="s in STATUSES" :key="s.value" :value="s.value">{{ s.text }}</a-select-option>
@@ -90,7 +94,11 @@
 					<a-radio-button value="active">有效</a-radio-button>
 					<a-radio-button value="revoked">已撤销</a-radio-button>
 				</a-radio-group>
-				<a-input-search v-model="rKeyword" size="small" allow-clear placeholder="客户编号 / 昵称 / 视频 / 原因" style="width: 220px; margin-left: 12px" @search="loadRecords(1)" />
+				<a-input v-model="rf.customerId" size="small" allow-clear placeholder="客户编号" style="width: 110px; margin-left: 12px" @pressEnter="loadRecords(1)" />
+				<a-input v-model="rf.nickname" size="small" allow-clear placeholder="客户昵称" style="width: 120px; margin-left: 8px" @pressEnter="loadRecords(1)" />
+				<a-input v-model="rf.videoTitle" size="small" allow-clear placeholder="视频标题" style="width: 140px; margin-left: 8px" @pressEnter="loadRecords(1)" />
+				<a-input v-model="rf.reason" size="small" allow-clear placeholder="原因" style="width: 120px; margin-left: 8px" @pressEnter="loadRecords(1)" />
+				<a-button type="primary" size="small" style="margin-left: 8px" @click="loadRecords(1)">查询</a-button>
 			</div>
 			<a-table size="small" rowKey="id" :columns="rColumns" :data-source="rRows" :loading="rLoading" :pagination="rPage" :scroll="{ y: 360 }" @change="(p) => loadRecords(p.current)">
 				<template slot="cust" slot-scope="t, r"><span>{{ r.customerName || '（没有昵称）' }}</span> <span class="sub">#{{ r.customerId }}{{ r.customerPhone ? ' · ' + r.customerPhone : '' }}</span></template>
@@ -126,12 +134,12 @@ export default {
 	data() {
 		return {
 			STATUSES,
-			keyword: '', status: undefined, dates: [],
-			applied: { keyword: '', status: undefined, dates: [] },
+			f: { orderNo: '', title: '', customerId: '', nickname: '' }, status: undefined, dates: [],
+			applied: { orderNo: '', title: '', customerId: '', nickname: '', status: undefined, dates: [] },
 			detailVisible: false, detail: null, exporting: false,
 			refundVisible: false, refundTarget: null, refundReason: '', refunding: false,
 			// 开通记录
-			rVisible: false, rLoading: false, rStatus: '', rKeyword: '', rRows: [], rPage: { current: 1, pageSize: 10, total: 0, showTotal: (t) => `共 ${t} 条` },
+			rVisible: false, rLoading: false, rStatus: '', rf: { customerId: '', nickname: '', videoTitle: '', reason: '' }, rRows: [], rPage: { current: 1, pageSize: 10, total: 0, showTotal: (t) => `共 ${t} 条` },
 			rColumns: [
 				{ title: '客户', key: 'cust', scopedSlots: { customRender: 'cust' } },
 				{ title: '视频', key: 'vid', scopedSlots: { customRender: 'vid' } },
@@ -156,23 +164,26 @@ export default {
 		};
 	},
 	watch: {
-		// 在这个页面上点了通知铃铛里的视频订单：按订单号搜出这一单
-		'$route.query.keyword'(v) { if (v) { this.keyword = String(v); this.search(); } }
+		// 从客户管理（customerId）或通知铃铛（orderNo）点过来：按对应的字段筛选
+		'$route.query'(q) { if (q.customerId || q.orderNo) { this.f = { orderNo: String(q.orderNo || ''), title: '', customerId: String(q.customerId || ''), nickname: '' }; this.search(); } }
 	},
 	mounted() {
-		// 从通知铃铛点进来：带着订单号，直接只看这一单
-		const k = this.$route && this.$route.query && this.$route.query.keyword;
-		if (k) { this.keyword = String(k); this.applied = { ...this.applied, keyword: this.keyword }; }
+		// 从客户管理或通知铃铛点进来：带着客户编号或订单号，直接按它筛选
+		const q = (this.$route && this.$route.query) || {};
+		if (q.customerId || q.orderNo) {
+			this.f = { orderNo: String(q.orderNo || ''), title: '', customerId: String(q.customerId || ''), nickname: '' };
+			this.applied = { ...this.applied, ...this.f };
+		}
 		this.load();
 	},
 	methods: {
 		timeText(t) { if (!t) return ''; const d = new Date(t); return Number.isNaN(d.getTime()) ? '' : d.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false }); },
 		// ---- 开通记录 ----
-		openRecords() { this.rVisible = true; this.rStatus = ''; this.rKeyword = ''; this.loadRecords(1); },
+		openRecords() { this.rVisible = true; this.rStatus = ''; this.rf = { customerId: '', nickname: '', videoTitle: '', reason: '' }; this.loadRecords(1); },
 		async loadRecords(page) {
 			this.rLoading = true;
 			try {
-				const r = await getVideoGrants({ page, pageSize: this.rPage.pageSize, status: this.rStatus || undefined, keyword: this.rKeyword.trim() || undefined });
+				const r = await getVideoGrants({ page, pageSize: this.rPage.pageSize, status: this.rStatus || undefined, customerId: this.rf.customerId.trim() || undefined, nickname: this.rf.nickname.trim() || undefined, videoTitle: this.rf.videoTitle.trim() || undefined, reason: this.rf.reason.trim() || undefined });
 				this.rRows = r.list; this.rPage = { ...this.rPage, current: r.page, total: r.total };
 			} catch (e) { notifyError(this, e, '获取开通记录失败'); } finally { this.rLoading = false; }
 		},
@@ -187,7 +198,10 @@ export default {
 		// 导出：按当前搜索条件分页取全部（每页 100，最多 5000 单），CSV 带 BOM，Excel 直接打开
 		exportOrders() {
 			const a = this.applied; const parts = [];
-			if (a.keyword) parts.push(`关键词「${a.keyword}」`);
+			if (a.orderNo) parts.push(`订单号：${a.orderNo}`);
+			if (a.title) parts.push(`视频标题：${a.title}`);
+			if (a.customerId) parts.push(`客户编号：${a.customerId}`);
+			if (a.nickname) parts.push(`客户昵称：${a.nickname}`);
 			if (a.status) parts.push(`状态：${(STATUSES.find((x) => x.value === a.status) || {}).text || a.status}`);
 			if (a.dates && a.dates[0]) parts.push(`下单日期：${a.dates[0].format('YYYY-MM-DD')} 到 ${a.dates[1].format('YYYY-MM-DD')}`);
 			const h = this.$createElement;
@@ -207,7 +221,7 @@ export default {
 				const all = [];
 				for (let page = 1; all.length < MAX; page++) {
 					const data = await getVideoOrders({
-						keyword: a.keyword || undefined, status: a.status,
+						orderNo: a.orderNo || undefined, title: a.title || undefined, customerId: a.customerId || undefined, nickname: a.nickname || undefined, status: a.status,
 						from: a.dates[0] ? a.dates[0].format('YYYY-MM-DD') : undefined, to: a.dates[1] ? a.dates[1].format('YYYY-MM-DD') : undefined,
 						page, pageSize: 100
 					});
@@ -249,12 +263,14 @@ export default {
 			else this.$message.warning('复制失败，请手动复制');
 		},
 		search() {
-			this.applied = { keyword: this.keyword.trim(), status: this.status, dates: this.dates };
+			const t = (x) => String(x || '').trim();
+			this.applied = { orderNo: t(this.f.orderNo), title: t(this.f.title), customerId: t(this.f.customerId), nickname: t(this.f.nickname), status: this.status, dates: this.dates };
 			this.pagination.current = 1;
 			this.load();
 		},
 		reset() {
-			this.keyword = ''; this.status = undefined; this.dates = [];
+			this.f = { orderNo: '', title: '', customerId: '', nickname: '' }; this.status = undefined; this.dates = [];
+			if (Object.keys(this.$route.query).length) this.$router.replace({ path: '/video-orders' }).catch(() => {});
 			this.search();
 		},
 		async load() {
@@ -262,7 +278,7 @@ export default {
 			this.loading = true;
 			try {
 				const data = await getVideoOrders({
-					keyword: a.keyword || undefined, status: a.status,
+					orderNo: a.orderNo || undefined, title: a.title || undefined, customerId: a.customerId || undefined, nickname: a.nickname || undefined, status: a.status,
 					from: a.dates[0] ? a.dates[0].format('YYYY-MM-DD') : undefined, to: a.dates[1] ? a.dates[1].format('YYYY-MM-DD') : undefined,
 					page: this.pagination.current, pageSize: this.pagination.pageSize
 				});

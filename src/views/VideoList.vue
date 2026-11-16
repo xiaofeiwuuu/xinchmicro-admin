@@ -21,7 +21,7 @@
 						<a-select-option value="off">已下架</a-select-option>
 					</a-select>
 				</a-form-item>
-				<a-form-item><a-input v-model="keyword" placeholder="请输入视频标题" size="small" style="width: 160px" /></a-form-item>
+				<a-form-item><a-input v-model="videoTitle" placeholder="请输入视频标题" size="small" style="width: 160px" /></a-form-item>
 				<a-form-item>
 					<a-button type="primary" size="small" @click="pagination.current = 1">查询</a-button>
 					<a-button style="margin-left: 8px" size="small" @click="reset">重置</a-button>
@@ -247,7 +247,7 @@ export default {
 				{ title: '操作', key: 'action', align: 'right', width: 170, scopedSlots: { customRender: 'action' } }
 			],
 			courses: [], chapters: [], list: [], loading: false, pagination: newPagination(),
-			courseId: undefined, chapterId: undefined, state: undefined, keyword: '',
+			courseId: undefined, chapterId: undefined, state: undefined, videoTitle: '',
 			visible: false, saving: false, form: blank(),
 			uploading: false, percent: 0, speed: 0, uploader: null, timer: null, fileName: ''
 		};
@@ -290,7 +290,7 @@ export default {
 		filterChapters() { return this.chapters.filter((c) => !this.courseId || c.courseId === this.courseId); },
 		formChapters() { return this.chapters.filter((c) => c.courseId === this.form.courseId); },
 		rows() {
-			const k = this.keyword.trim();
+			const k = this.videoTitle.trim();
 			const arr = this.list.filter((v) => {
 				if (this.courseId && v.courseId !== this.courseId) return false;
 				if (this.chapterId && v.chapterId !== this.chapterId) return false;
@@ -397,7 +397,7 @@ export default {
 			this.showStats = !this.showStats;
 			try { localStorage.setItem('videoStatsOpen', this.showStats ? '1' : '0'); } catch (e) { /* 记不住就算了 */ }
 		},
-		reset() { this.courseId = undefined; this.chapterId = undefined; this.state = undefined; this.keyword = ''; },
+		reset() { this.courseId = undefined; this.chapterId = undefined; this.state = undefined; this.videoTitle = ''; },
 		async load(silent) {
 			if (!silent) this.loading = true;
 			try {

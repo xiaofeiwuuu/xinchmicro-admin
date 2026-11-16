@@ -168,15 +168,15 @@ export default {
       if (this.type === LINK_TYPES.catalog) name = (this.catalogs.find((c) => c.id === id) || {}).name;
       this.emit(buildLink(this.type, id, name));
     },
-    onSearch(keyword) {
+    onSearch(text) {
       clearTimeout(this.timer);
-      this.timer = setTimeout(() => this.search(keyword), 300);
+      this.timer = setTimeout(() => this.search(text), 300);
     },
-    async search(keyword) {
+    async search(text) {
       const seq = ++this.searchSeq;
       this.searching = true;
       try {
-        const res = await getProducts({ name: keyword || '', page: 1, pageSize: 20 });
+        const res = await getProducts({ name: text || '', page: 1, pageSize: 20 });
         if (seq !== this.searchSeq) return; // 只采用最后一次搜索的结果
         const list = asList(res).map((p) => ({ id: p.id, label: productLabel(p) }));
         // 已选中的产品始终保留在选项里，否则搜索别的词时已选项会变成数字

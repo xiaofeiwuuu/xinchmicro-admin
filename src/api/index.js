@@ -485,7 +485,7 @@ export const getShopOrders = (query) => fetchWrapper.get(`${API_BASE_URL}/api/ad
 export const getShopOrderLogistics = (id) => fetchWrapper.get(`${API_BASE_URL}/api/admin/orders/${id}/logistics`, { silent: true });
 // 服务端配置助手：每个环境变量的说明和线上有没有设置（机密项只给有/无，不给值；仅主账号）
 // 云点播（教学视频，目前只有主账号）
-// 视频订单（谁买了哪个视频）：query 有 keyword、status、from、to、page、pageSize；返回 { total, list, summary }
+// 视频订单（谁买了哪个视频）：query 有 orderNo、title（视频标题）、customerId、nickname（客户昵称）、status、from、to、page、pageSize，每个字段单独一个参数；返回 { total, list, summary }
 export const getVideoOrders = (query) => fetchWrapper.get(`${API_BASE_URL}/api/admin/video/orders${qs(query)}`);
 // 手动开通/赠送视频（付款异常补开通、送客户、内部测试；不是购买，不算成交）
 // 视频订单退款（后台发起，全额；客户在小程序不能申请）
@@ -541,7 +541,7 @@ export const updateShopSettings = (body) => fetchWrapper.put(`${API_BASE_URL}/ap
 export const getProductSales = (query) => fetchWrapper.get(`${API_BASE_URL}/api/admin/product-sales${qs(query)}`);
 export const updateProductSale = (productId, body) => fetchWrapper.put(`${API_BASE_URL}/api/admin/product-sales/${productId}`, body);
 // 批量保存：有不合法的行时服务端一行都不保存，错误里带 errors: [{ index, message }]
-// 批量设置一批产品：范围是 { productIds } 或 { query: { categoryId, catalogId, keyword, filter } }，set 是要改的内容；dryRun 只预览
+// 批量设置一批产品：范围是 { productIds } 或 { query: { categoryId, catalogId, name, filter } }，set 是要改的内容；dryRun 只预览
 export const batchProductSales = (body) => fetchWrapper.post(`${API_BASE_URL}/api/admin/product-sales/batch`, body);
 // dryRun: true 只检查和预览（返回会改哪些产品、每个字段从什么改成什么），不写入
 // reason：库存修改原因（导入里有库存变化时必填，预览返回 needsReason 告诉页面要不要填）

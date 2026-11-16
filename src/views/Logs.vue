@@ -10,14 +10,18 @@
 						<a-radio-button value="user">用户日志</a-radio-button>
 					</a-radio-group>
 				</a-form-item>
-				<a-form-item :label="source === 'user' ? '客户' : '用户名'">
-					<a-input
-						v-decorator="['username']"
-						:placeholder="source === 'user' ? '客户昵称或编号' : '请输入用户名'"
-						style="width: 160px"
-						allowClear
-					/>
+				<!-- 后台日志按用户名；用户日志按客户编号、客户昵称，各自一个输入框，不合并 -->
+				<a-form-item v-if="source !== 'user'" label="用户名">
+					<a-input v-decorator="['username']" placeholder="请输入用户名" style="width: 160px" allowClear />
 				</a-form-item>
+				<template v-else>
+					<a-form-item label="客户编号">
+						<a-input v-decorator="['customerId']" placeholder="请输入客户编号" style="width: 160px" allowClear />
+					</a-form-item>
+					<a-form-item label="客户昵称">
+						<a-input v-decorator="['nickname']" placeholder="请输入客户昵称" style="width: 160px" allowClear />
+					</a-form-item>
+				</template>
 				<a-form-item label="操作类型">
 					<a-select
 						v-decorator="['action']"
@@ -192,7 +196,9 @@ export default {
 					source: this.source,
 					page: this.pagination.current,
 					pageSize: this.pagination.pageSize,
-					username: values.username,
+					username: this.source === 'user' ? undefined : values.username,
+					customerId: this.source === 'user' ? values.customerId : undefined,
+					nickname: this.source === 'user' ? values.nickname : undefined,
 					action: values.action
 				}
 				if (this.dates.length === 2) {

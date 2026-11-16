@@ -8,7 +8,7 @@
 						<a-select-option v-for="c in courses" :key="c.id" :value="c.id">{{ c.title }}</a-select-option>
 					</a-select>
 				</a-form-item>
-				<a-form-item><a-input v-model="keyword" placeholder="请输入章节名称" size="small" style="width: 160px" /></a-form-item>
+				<a-form-item><a-input v-model="chapterName" placeholder="请输入章节名称" size="small" style="width: 160px" /></a-form-item>
 				<a-form-item>
 					<a-button type="primary" size="small" @click="pagination.current = 1">查询</a-button>
 					<a-button style="margin-left: 8px" size="small" @click="reset">重置</a-button>
@@ -74,13 +74,13 @@ export default {
 				{ title: '状态', key: 'status', width: 80, scopedSlots: { customRender: 'status' } },
 				{ title: '操作', key: 'action', align: 'right', width: 150, scopedSlots: { customRender: 'action' } }
 			],
-			courses: [], list: [], courseId: undefined, keyword: '', loading: false, pagination: newPagination(),
+			courses: [], list: [], courseId: undefined, chapterName: '', loading: false, pagination: newPagination(),
 			visible: false, saving: false, form: blank()
 		};
 	},
 	computed: {
 		rows() {
-			const k = this.keyword.trim();
+			const k = this.chapterName.trim();
 			return this.list.filter((c) => (!this.courseId || c.courseId === this.courseId) && (!k || c.title.includes(k)));
 		}
 	},
@@ -92,7 +92,7 @@ export default {
 		},
 		can,
 		handleTableChange(p) { applyTableChange(this.pagination, p); },
-		reset() { this.courseId = undefined; this.keyword = ''; },
+		reset() { this.courseId = undefined; this.chapterName = ''; },
 		async load() {
 			this.loading = true;
 			try {

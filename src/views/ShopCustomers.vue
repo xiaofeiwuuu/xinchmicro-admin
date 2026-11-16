@@ -366,16 +366,16 @@ export default {
 		},
 		money(v) { return '¥' + Number(v || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
 		goGoodsOrders(r) {
-			this.$router.push({ path: '/shop/orders', query: { customerId: String(r.id), name: r.nickname || '' } })
+			this.$router.push({ path: '/shop/orders', query: { customerId: String(r.id) } })
 		},
 		goVideoOrders(r) {
-			this.$router.push({ path: '/video-orders', query: { keyword: '#' + r.id } })
+			this.$router.push({ path: '/video-orders', query: { customerId: String(r.id) } })
 		},
 		viewVideoOrders() {
-			this.$router.push({ path: '/video-orders', query: { keyword: '#' + this.detail.id } })
+			this.$router.push({ path: '/video-orders', query: { customerId: String(this.detail.id) } })
 		},
 		viewOrders() {
-			this.$router.push({ path: '/shop/orders', query: { customerId: String(this.detail.id), name: this.detail.nickname || '' } })
+			this.$router.push({ path: '/shop/orders', query: { customerId: String(this.detail.id) } })
 		},
 		// 设为会员 / 取消会员：弹出确认框（不用气泡），会改变这个客户以后买东西的价格，要说清楚影响
 		confirmMember(record) {

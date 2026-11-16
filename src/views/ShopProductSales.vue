@@ -4,7 +4,7 @@
 		<a-card :bordered="false" class="mb-24 plain-card">
 			<div class="ps-head">
 				<date-range-quick v-model="dates" :quicks="QUICK" :allowClear="false" :pickerWidth="260" @change="load" />
-				<a-input v-model="keyword" placeholder="产品名称" style="width: 160px; margin-left: 12px;" allowClear @pressEnter="onSearch" />
+				<a-input v-model="productName" placeholder="产品名称" style="width: 160px; margin-left: 12px;" allowClear @pressEnter="onSearch" />
 				<a-button type="primary" style="margin-left: 8px;" @click="onSearch"><a-icon type="search" /> 搜索</a-button>
 				<a-button :loading="exporting" style="margin-left: auto;" @click="exportCsv">导出（CSV）</a-button>
 			</div>
@@ -60,7 +60,7 @@ export default {
 		return {
 			QUICK: RECENT_QUICKS,
 			dates: [moment().startOf('day').subtract(29, 'day'), moment().startOf('day')], // 默认近 30 天
-			keyword: '', // 点「搜索」才生效的关键词
+			productName: '', // 点「搜索」才生效的产品名称
 			applied: '',
 			excludeRefund: false,
 			loading: false,
@@ -115,7 +115,7 @@ export default {
 			}
 		},
 		onSearch() {
-			this.applied = this.keyword
+			this.applied = this.productName
 			this.pagination.current = 1
 		},
 		// 表头点排序：antd 的排序是「从大到小 → 从小到大 → 取消」三步循环。这里不要「取消」：点到取消那一步时，改成回到「从大到小」，

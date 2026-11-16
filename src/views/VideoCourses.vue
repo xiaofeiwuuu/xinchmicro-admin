@@ -3,10 +3,10 @@
 	<div>
 		<div style="margin-bottom: 8px;">
 			<a-form layout="inline">
-				<a-form-item><a-input v-model="keyword" placeholder="请输入课程名称" size="small" style="width: 160px" /></a-form-item>
+				<a-form-item><a-input v-model="courseName" placeholder="请输入课程名称" size="small" style="width: 160px" /></a-form-item>
 				<a-form-item>
 					<a-button type="primary" size="small" @click="pagination.current = 1">查询</a-button>
-					<a-button style="margin-left: 8px" size="small" @click="keyword = ''">重置</a-button>
+					<a-button style="margin-left: 8px" size="small" @click="courseName = ''">重置</a-button>
 				</a-form-item>
 			</a-form>
 		</div>
@@ -66,13 +66,13 @@ export default {
 				{ title: '状态', key: 'status', width: 80, scopedSlots: { customRender: 'status' } },
 				{ title: '操作', key: 'action', align: 'right', width: 150, scopedSlots: { customRender: 'action' } }
 			],
-			list: [], keyword: '', loading: false, pagination: newPagination(),
+			list: [], courseName: '', loading: false, pagination: newPagination(),
 			visible: false, saving: false, form: blank()
 		};
 	},
 	computed: {
 		rows() {
-			const k = this.keyword.trim();
+			const k = this.courseName.trim();
 			return k ? this.list.filter((c) => c.title.includes(k)) : this.list;
 		}
 	},

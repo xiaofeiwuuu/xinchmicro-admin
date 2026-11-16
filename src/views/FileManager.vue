@@ -13,7 +13,7 @@
         <a-radio-button value="unused">未使用</a-radio-button>
         <a-radio-button value="used">使用中</a-radio-button>
       </a-radio-group>
-      <a-input-search v-model="keyword" placeholder="搜索文件名" allow-clear style="width: 160px;" @search="onFilterChange" />
+      <a-input-search v-model="fileName" placeholder="搜索文件名" allow-clear style="width: 160px;" @search="onFilterChange" />
       <a-button :loading="importing" @click="$refs.importInput.click()">导入历史文件</a-button>
       <input ref="importInput" type="file" accept=".html,.htm,.csv,.txt" style="display: none;" @change="onImportFile" />
       <a-button type="danger" ghost :disabled="!selectedRowKeys.length || deleting" :loading="deleting" @click="confirmDelete(selectedRowKeys)">
@@ -74,7 +74,7 @@ export default {
   data() {
     return {
       status: 'all',
-      keyword: '',
+      fileName: '',
       loading: false,
       importing: false,
       deleting: false,
@@ -119,7 +119,7 @@ export default {
       try {
         const res = await getUploadedFiles({
           status: this.status,
-          keyword: this.keyword || '',
+          name: this.fileName || '',
           page: this.pagination.current,
           pageSize: this.pagination.pageSize
         });

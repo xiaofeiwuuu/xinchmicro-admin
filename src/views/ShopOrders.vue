@@ -2,9 +2,12 @@
 	<div>
 		<a-card :bordered="false" class="mb-24 plain-card">
 			<a-input v-model="filters.orderNo" placeholder="订单号" style="width: 160px; margin-right: 12px;" allowClear @pressEnter="handleSearch" />
-			<!-- 客户：搜昵称/手机号。从数据统计、客户管理跳过来时按客户筛选，客户名直接显示在框里；点清除或改字就取消按客户筛选 -->
-			<a-input :value="customerId ? customerLabel : filters.customer" placeholder="客户昵称 / 手机号" style="width: 160px; margin-right: 12px;" allowClear @change="onCustomerInput" @pressEnter="handleSearch" />
-			<a-input v-model="filters.receiver" placeholder="收货人 / 电话" style="width: 160px; margin-right: 12px;" allowClear @pressEnter="handleSearch" />
+			<!-- 搜索条件每个字段一个输入框，不合并 -->
+			<a-input v-model="customerId" placeholder="客户编号" style="width: 160px; margin-right: 12px;" allowClear @pressEnter="handleSearch" />
+			<a-input v-model="filters.customerNickname" placeholder="客户昵称" style="width: 160px; margin-right: 12px;" allowClear @pressEnter="handleSearch" />
+			<a-input v-model="filters.customerPhone" placeholder="客户手机号" style="width: 160px; margin-right: 12px;" allowClear @pressEnter="handleSearch" />
+			<a-input v-model="filters.consignee" placeholder="收货人" style="width: 160px; margin-right: 12px;" allowClear @pressEnter="handleSearch" />
+			<a-input v-model="filters.consigneePhone" placeholder="收货电话" style="width: 160px; margin-right: 12px;" allowClear @pressEnter="handleSearch" />
 			<!-- 下单日期段（北京时间，含首尾）：公共组件，日期选择在前，快捷按钮在后 -->
 			<date-range-quick v-model="dates" :pickerWidth="250" :placeholder="['下单开始日期', '下单结束日期']" @change="handleSearch" />
 			<a-select v-model="filters.status" placeholder="订单状态" style="width: 160px; margin-right: 12px;" allowClear @change="handleSearch">
@@ -476,13 +479,12 @@ export default {
 			STEP_STATE: { done: '已完成', current: '进行中', todo: '未开始', bad: '' },
 			dates: [],
 			ORDER_STATUS, REFUND_STATE, INVOICE_STATUS, INVOICE_TYPE, PAID_BY, LOG_ACTION, ACTOR, ACTIONS, CARRIERS, OTHER_CARRIER, CANCEL_QUICK, AFTER_SALE_TYPE, AFTER_SALE_STATUS, AFTER_SALE_REFUND_STATE,
-			filters: { orderNo: '', customer: '', receiver: '', status: this.$route.query.status || undefined, invoice: undefined, todo: undefined },
+			filters: { orderNo: '', customerNickname: '', customerPhone: '', consignee: '', consigneePhone: '', status: this.$route.query.status || undefined, invoice: undefined, todo: undefined },
 			// 从右上角通知点进来：要让这一单的整行闪几下（订单号）；flashNo 是正在闪的那一行
 			wantFlash: this.$route.query.highlight || '',
 			flashNo: '',
-			// 从「客户管理 → 查看订单」进来时按这个客户筛选
+			// 客户编号：可以自己填，也可以从「客户管理 → 查看订单」带过来
 			customerId: this.$route.query.customerId || '',
-			customerName: this.$route.query.name || '',
 			loading: false,
 			orders: [],
 			pagination: newPagination(),
@@ -506,12 +508,6 @@ export default {
 		}
 	},
 	computed: {
-		// 按客户筛选的标签文字：优先用地址里带的名字，没有就取列表里这个客户的昵称/手机号，都没有才显示编号
-		customerLabel() {
-			if (this.customerName) return this.customerName
-			const c = this.orders[0] && this.orders[0].customer
-			return (c && (c.nickname || c.phone)) || '#' + this.customerId
-		},
 		// 发货运单号的可疑之处（只提醒，不拦截：特殊单号、合并发货都是正常情况）
 		expressHints() {
 			const a = this.action
@@ -590,24 +586,21 @@ export default {
 			if (q.status && (q.status !== old.status || q.n !== old.n)) {
 				// 汇总通知（N 个订单超时没发货）：按状态筛
 				this.dates = []
-				this.filters = { orderNo: '', customer: '', receiver: '', status: q.status, invoice: undefined, todo: undefined }
+				this.filters = { orderNo: '', customerNickname: '', customerPhone: '', consignee: '', consigneePhone: '', status: q.status, invoice: undefined, todo: undefined }
 				this.customerId = ''
-				this.customerName = ''
 				return this.handleSearch()
 			}
 			if (q.highlight) {
 				// 通知：回到完整的订单列表（清掉筛选），找到这一单让它闪
 				this.wantFlash = q.highlight
 				this.dates = []
-				this.filters = { orderNo: '', customer: '', receiver: '', status: undefined, invoice: undefined, todo: undefined }
+				this.filters = { orderNo: '', customerNickname: '', customerPhone: '', consignee: '', consigneePhone: '', status: undefined, invoice: undefined, todo: undefined }
 				this.customerId = ''
-				this.customerName = ''
 				return this.handleSearch()
 			}
 			if (old.highlight && !q.highlight) return // 闪完后我们自己把地址里的 highlight 清掉了，不用重新查
 			if (q.customerId === old.customerId) return
 			this.customerId = q.customerId || ''
-			this.customerName = q.name || ''
 			this.handleSearch()
 		}
 	},
@@ -680,17 +673,19 @@ export default {
 		// ---- 导出、批量发货、打印发货单 ----
 		queryParams() {
 			const f = this.filters
-			return { customerId: this.customerId || undefined, orderNo: f.orderNo.trim(), customer: f.customer.trim(), receiver: f.receiver.trim(), from: this.dates.length === 2 ? this.dates[0].format('YYYY-MM-DD') : undefined, to: this.dates.length === 2 ? this.dates[1].format('YYYY-MM-DD') : undefined, status: f.status, invoice: f.invoice, refundPending: f.todo === 'refund' ? 'true' : undefined, afterSales: f.todo === 'afterSales' ? 'pending' : undefined, cancelRequest: f.todo === 'cancelRequest' ? 'pending' : undefined }
+			return { customerId: String(this.customerId || '').trim() || undefined, orderNo: f.orderNo.trim(), customerNickname: f.customerNickname.trim(), customerPhone: f.customerPhone.trim(), consignee: f.consignee.trim(), consigneePhone: f.consigneePhone.trim(), from: this.dates.length === 2 ? this.dates[0].format('YYYY-MM-DD') : undefined, to: this.dates.length === 2 ? this.dates[1].format('YYYY-MM-DD') : undefined, status: f.status, invoice: f.invoice, refundPending: f.todo === 'refund' ? 'true' : undefined, afterSales: f.todo === 'afterSales' ? 'pending' : undefined, cancelRequest: f.todo === 'cancelRequest' ? 'pending' : undefined }
 		},
 		// 导出当前筛选条件下的全部订单（最多 5000 单）。分页取，不一次拉太多
 		// 当前搜索条件的文字说明（导出前的确认里用）
 		filterSummary() {
 			const f = this.filters
 			const parts = []
-			if (this.customerId) parts.push('客户：' + this.customerLabel)
+			if (String(this.customerId || '').trim()) parts.push('客户编号：' + String(this.customerId).trim())
 			if (f.orderNo.trim()) parts.push('订单号：' + f.orderNo.trim())
-			if (f.customer.trim()) parts.push('客户：' + f.customer.trim())
-			if (f.receiver.trim()) parts.push('收货人/电话：' + f.receiver.trim())
+			if (f.customerNickname.trim()) parts.push('客户昵称：' + f.customerNickname.trim())
+			if (f.customerPhone.trim()) parts.push('客户手机号：' + f.customerPhone.trim())
+			if (f.consignee.trim()) parts.push('收货人：' + f.consignee.trim())
+			if (f.consigneePhone.trim()) parts.push('收货电话：' + f.consigneePhone.trim())
 			if (this.dates.length === 2) parts.push('下单日期：' + this.dates[0].format('YYYY-MM-DD') + ' 至 ' + this.dates[1].format('YYYY-MM-DD'))
 			if (f.status) parts.push('订单状态：' + ORDER_STATUS[f.status].text)
 			if (f.invoice) parts.push('开票状态：' + INVOICE_STATUS[f.invoice].text)
@@ -922,23 +917,10 @@ export default {
 		// 重置：清空关键词、状态、开票状态、两个开关和「按客户筛选」，回到第一页；地址栏里带的筛选条件也一起去掉
 		handleReset() {
 			this.dates = []
-			this.filters = { orderNo: '', customer: '', receiver: '', status: undefined, invoice: undefined, todo: undefined }
+			this.filters = { orderNo: '', customerNickname: '', customerPhone: '', consignee: '', consigneePhone: '', status: undefined, invoice: undefined, todo: undefined }
 			this.customerId = ''
-			this.customerName = ''
 			if (Object.keys(this.$route.query).length) this.$router.replace({ path: '/shop/orders' }).catch(() => {})
 			this.handleSearch()
-		},
-		// 客户框里输入：正在按客户筛选时，清空或改字都先取消按客户筛选，再当作普通搜索词
-		onCustomerInput(e) {
-			const v = e.target.value
-			if (this.customerId) {
-				this.customerId = ''
-				this.customerName = ''
-				if (Object.keys(this.$route.query).length) this.$router.replace({ path: '/shop/orders' }).catch(() => {})
-				this.filters.customer = ''
-				if (!v) return this.handleSearch()
-			}
-			this.filters.customer = v
 		},
 		handleTableChange(p) {
 			applyTableChange(this.pagination, p)

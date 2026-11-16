@@ -14,6 +14,9 @@
 					<a-button type="primary" size="small" @click="search">查询</a-button>
 					<a-button style="margin-left: 8px" size="small" @click="reset">重置</a-button>
 				</a-form-item>
+				<a-form-item>
+					<a-button size="small" icon="download" :loading="exporting" @click="exportOrders">导出订单</a-button>
+				</a-form-item>
 				<!-- 手动开通/赠送：付款异常补开通、送客户、内部测试。不是购买，不产生订单、不算成交 -->
 				<a-form-item v-can="'video.grant'">
 					<a-button size="small" icon="plus" @click="openGrant">手动开通 / 赠送</a-button>
@@ -115,7 +118,8 @@ import DateRangeQuick from '@/components/DateRangeQuick.vue';
 import { newPagination, applyTableChange } from '@/utils/pagination';
 import { notifyError } from '@/utils/notify';
 import { copyToClipboard } from '@/utils/copy';
-import { flatten } from '@/utils/video';
+import { flatten, videoOrdersCsv } from '@/utils/video';
+import { downloadText } from '@/utils/orderTools';
 import { getVideoOrders, getVideoTree, getVideoGrants, createVideoGrant, revokeVideoGrant, searchGrantCustomers } from '@/api';
 
 const STATUSES = [
@@ -132,7 +136,7 @@ export default {
 			STATUSES,
 			keyword: '', status: undefined, dates: [],
 			applied: { keyword: '', status: undefined, dates: [] },
-			detailVisible: false, detail: null,
+			detailVisible: false, detail: null, exporting: false,
 			// 手动开通
 			G_REASONS: ['付款异常补开通', '赠送客户', '内部测试', '会员福利'],
 			gVisible: false, gSaving: false, gForm: { customerId: undefined, videoIds: [], reason: '' }, gCustomers: [], gSearched: false, gTimer: null, gCourses: [], gVideos: [],
@@ -225,6 +229,42 @@ export default {
 				okText: '撤销', okType: 'danger', cancelText: '取消',
 				onOk: async () => { try { await revokeVideoGrant(r.id); this.$message.success('已撤销'); await this.loadRecords(this.rPage.current); } catch (e) { notifyError(this, e, '撤销失败'); } }
 			});
+		},
+		// 导出：按当前搜索条件分页取全部（每页 100，最多 5000 单），CSV 带 BOM，Excel 直接打开
+		exportOrders() {
+			const a = this.applied; const parts = [];
+			if (a.keyword) parts.push(`关键词「${a.keyword}」`);
+			if (a.status) parts.push(`状态：${(STATUSES.find((x) => x.value === a.status) || {}).text || a.status}`);
+			if (a.dates && a.dates[0]) parts.push(`下单日期：${a.dates[0].format('YYYY-MM-DD')} 到 ${a.dates[1].format('YYYY-MM-DD')}`);
+			const h = this.$createElement;
+			this.$confirm({
+				title: '导出视频订单', width: 420, okText: '确认导出', cancelText: '取消',
+				content: h('div', [
+					h('div', ['将导出', h('b', ' 当前搜索结果 '), `共 ${this.pagination.total} 单（最多 5000 单）。`]),
+					h('div', { style: 'margin-top: 8px; color: #8c8c8c;' }, parts.length ? '搜索条件：' + parts.join('；') : '当前没有设置搜索条件，会导出全部视频订单。')
+				]),
+				onOk: () => this.doExport()
+			});
+		},
+		async doExport() {
+			const MAX = 5000; const a = this.applied;
+			this.exporting = true;
+			try {
+				const all = [];
+				for (let page = 1; all.length < MAX; page++) {
+					const data = await getVideoOrders({
+						keyword: a.keyword || undefined, status: a.status,
+						from: a.dates[0] ? a.dates[0].format('YYYY-MM-DD') : undefined, to: a.dates[1] ? a.dates[1].format('YYYY-MM-DD') : undefined,
+						page, pageSize: 100
+					});
+					all.push(...data.list);
+					if (page * 100 >= data.total || !data.list.length) break;
+				}
+				if (!all.length) return this.$message.warning('当前条件下没有订单');
+				const statusText = Object.fromEntries(STATUSES.map((x) => [x.value, x.text]));
+				downloadText(videoOrdersCsv(all.slice(0, MAX), statusText), `视频订单导出-${new Date().toISOString().slice(0, 10)}.csv`);
+				this.$message.success(`已导出 ${Math.min(all.length, MAX)} 单${all.length > MAX ? `（超过 ${MAX} 单，请缩小筛选范围分批导出）` : ''}`);
+			} catch (e) { notifyError(this, e, '导出失败'); } finally { this.exporting = false; }
 		},
 		openDetail(r) {
 			this.detail = r;

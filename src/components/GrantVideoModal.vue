@@ -1,4 +1,4 @@
-<!-- 给某个客户手动开通 / 赠送视频（客户管理列表每一行「更多」里的「赠送视频」）。不是购买：不产生订单、不算成交。
+<!-- 给某个客户手动开通 / 赠送视频（客户管理列表每一行「更多」里的「赠送视频」）。
      用法：<grant-video-modal v-model="visible" :customer="{ id, nickname, phone }" @done="..." /> -->
 <template>
 	<a-modal :title="'赠送视频' + (customer ? '：' + (customer.nickname || '客户') + '（#' + customer.id + '）' : '')" :visible="value" :width="620" :maskClosable="false" okText="开通" :confirmLoading="saving" @ok="submit" @cancel="close">
@@ -16,11 +16,10 @@
 				</div>
 			</a-form-item>
 			<a-form-item required label="原因">
-				<a-input v-model="form.reason" :maxLength="100" placeholder="必填，会记下来，之后查记录能看到" />
+				<a-input v-model="form.reason" :maxLength="100" placeholder="请填写原因" />
 				<div class="g-quick"><a v-for="r in REASONS" :key="r" @click="form.reason = r">{{ r }}</a></div>
 			</a-form-item>
 		</a-form>
-		<div class="g-tip">这不是购买：不产生订单、不收费、不算成交和收入。客户下次打开小程序，这些视频就是「已购买」，能完整观看；买过的、已经开通的会自动跳过。要收回可以在「视频订单」页的「开通记录」里撤销。</div>
 	</a-modal>
 </template>
 
@@ -77,5 +76,4 @@ export default {
 <style scoped>
 .g-quick { margin-top: 6px; color: #8c8c8c; font-size: 12px; }
 .g-quick > a { margin-right: 12px; }
-.g-tip { margin-top: 4px; padding: 8px 12px; background: #f4f8ff; border-radius: 6px; color: #595959; font-size: 12px; line-height: 1.7; }
 </style>

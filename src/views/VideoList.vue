@@ -82,8 +82,7 @@
 							<div v-if="fileName" class="fname">{{ fileName }}</div>
 							<div v-if="uploading || percent > 0" class="bar"><div class="fill" :style="{ width: percent + '%' }"></div></div>
 							<div v-if="uploading" class="hint2 nl">上传中 {{ percent }}%　{{ speedText }}</div>
-							<div v-else-if="form.vodFileId" class="hint2 nl ok">已上传，点「保存」后开始转码{{ form.replaceFile ? '（会先下架，转码完成后再上架）' : '' }}</div>
-							<div v-else-if="form.replaceFile" class="hint2 nl">原来的文件在云点播里已经没有了，重新选一个视频文件替换它；标题、价格、购买记录都会保留。</div>
+							<div v-else-if="form.vodFileId" class="hint2 nl ok">已上传，点「保存」后开始转码</div>
 						</a-form-item>
 						<a-form-item label="所属课程" required>
 							<a-select v-model="form.courseId" :disabled="!!form.id" placeholder="请选择课程" @change="form.chapterId = undefined">
@@ -130,7 +129,7 @@
 			<a-spin :spinning="vfLoading">
 				<div v-if="vf">
 					<div class="vf-sum">
-						点播里共 <b>{{ vf.vodTotal }}</b> 个文件，占 {{ sizeText(vf.totalSize) }}。<span v-if="vf.truncated" class="vf-warn">文件太多，只统计了最新的 {{ vf.listed }} 个，没统计到的不会被删。</span>
+						点播里共 <b>{{ vf.vodTotal }}</b> 个文件，占 {{ sizeText(vf.totalSize) }}。<span v-if="vf.truncated" class="vf-warn">（只统计了最新的 {{ vf.listed }} 个）</span>
 					</div>
 					<a-radio-group v-model="vfView" button-style="solid" size="small" class="vf-tabs">
 						<a-radio-button value="orphan">孤儿 {{ vf.orphanCount }}</a-radio-button>
@@ -138,7 +137,6 @@
 						<a-radio-button value="used">使用中 {{ vf.usedCount }}</a-radio-button>
 						<a-radio-button value="missing">视频找不到文件 {{ vf.missingCount }}</a-radio-button>
 					</a-radio-group>
-					<div class="vf-note">{{ vfHelp }}</div>
 					<a-table size="small" :rowKey="vfView === 'missing' ? 'videoId' : 'fileId'" :columns="vfCols" :data-source="vfRows" :pagination="false" :scroll="{ y: 300 }" :row-selection="vfView === 'orphan' ? { selectedRowKeys: vfSelected, onChange: (k) => (vfSelected = k) } : null" :locale="{ emptyText: vfEmpty }">
 						<template slot="fid" slot-scope="text"><span class="copy-cell" title="点击复制" @click="copyName(text)">{{ text }}</span></template>
 						<template slot="size" slot-scope="text">{{ sizeText(text) }}</template>
@@ -161,11 +159,10 @@
 		<!-- 购买资源包的步骤图解：图片放在 public/guide/（vod-buy-1.webp、vod-buy-2.webp，换图直接覆盖同名文件），打开时才加载；点图放大（新标签页） -->
 		<a-modal title="购买云点播资源包" :visible="vgVisible" :width="900" :footer="null" @cancel="vgVisible = false">
 			<template v-if="vgVisible">
-				<div class="vg-step">第一步：在腾讯云控制台搜索「云点播」，进入后点左侧「资源包管理」，这里能看到存储包、流量包、极速高清包等的剩余量；要买就点下面的「购买资源包」。</div>
+				<div class="vg-step">① 进入资源包管理</div>
 				<a :href="guideImg(1)" target="_blank" rel="noopener noreferrer"><img :src="guideImg(1)" class="vg-img" alt="进入资源包管理" /></a>
-				<div class="vg-step">第二步：在购买页选资源类型（流量资源包、存储资源包、媒体处理时长包，转码用的是「媒体处理时长包」），再选有效期和规格，勾选协议后点「立即购买」。</div>
+				<div class="vg-step">② 选择资源包并购买</div>
 				<a :href="guideImg(2)" target="_blank" rel="noopener noreferrer"><img :src="guideImg(2)" class="vg-img" alt="选择资源包" /></a>
-				<div class="vg-tip">购买页上的提示：资源包满 5 天且没用过可以无理由退款，一旦使用就不能退；当天新买的资源包，抵扣不了当天结算的前一天的用量费用。</div>
 			</template>
 		</a-modal>
 
@@ -281,15 +278,6 @@ export default {
 			const v = this.vf || {};
 			return ({ orphan: v.orphans, recent: v.recent, used: v.used, missing: v.missing }[this.vfView]) || [];
 		},
-		vfHelp() {
-			const h = this.vf ? this.vf.minAgeHours : 24;
-			return {
-				orphan: '点播里有、但没有任何视频在用的文件，可以清理。如果这个点播应用还被别的业务共用，里面可能有别人的视频，删之前请认真核对文件名。删除后不能恢复。',
-				recent: `上传还不到 ${h} 小时的文件，可能刚传完、正在填表单还没点「保存」，所以先不算孤儿、不能删。满 ${h} 小时还没有视频用它，就会出现在「孤儿」里，到时可以清理。`,
-				used: '正在被视频使用的文件，不能删。',
-				missing: '这些视频记录指向的点播文件不存在，所以播不出来。可以点「重新上传」换成新视频文件（标题、价格、购买记录都保留），或者「删除记录」（已经有人购买过的不能删）。'
-			}[this.vfView];
-		},
 		vfEmpty() { return { orphan: '没有孤儿文件，不用清理', recent: '没有刚上传的文件', used: '还没有视频在用点播文件', missing: '所有视频记录都能在点播里找到文件' }[this.vfView]; },
 		// 详情顶部的状态标签：颜色 + 文字
 		detailTag() {
@@ -386,7 +374,7 @@ export default {
 			const n = this.vfSelected.length;
 			this.$confirm({
 				title: `确定从云点播删除这 ${n} 个文件吗？`,
-				content: `删除后不能恢复。服务端会再核对一遍，正在被视频使用的、上传不到 ${this.vf ? this.vf.minAgeHours : 1} 小时的会自动跳过。`,
+				content: '删除后不能恢复。',
 				okText: '删除', okType: 'danger', cancelText: '取消',
 				onOk: async () => {
 					this.vfDeleting = true;
@@ -509,14 +497,12 @@ export default {
 <style scoped>
 .vf-sum { line-height: 1.8; }
 .vf-warn { color: #fa8c16; }
-.vf-note { margin: 8px 0; color: #8c8c8c; font-size: 12px; line-height: 1.6; }
 .vf-tabs { margin: 12px 0 4px; }
 .vf-links { margin-bottom: 14px; padding: 8px 12px; background: #f4f8ff; border-radius: 6px; color: #595959; }
 .vf-links a { margin-right: 18px; }
 .vf-links .anticon { margin-left: 4px; font-size: 12px; }
 .vg-step { margin: 4px 0 10px; line-height: 1.7; }
 .vg-img { display: block; width: 100%; margin-bottom: 18px; border: 1px solid #ebeef5; border-radius: 8px; cursor: zoom-in; }
-.vg-tip { color: #8c8c8c; font-size: 12px; line-height: 1.7; }
 .vf-empty { padding: 28px 0; text-align: center; color: #8c8c8c; }
 .vf-foot { margin-top: 14px; text-align: right; }
 .act-danger { color: #cf1322; }

@@ -259,7 +259,7 @@ export default {
 			const h = this.vf ? this.vf.minAgeHours : 24;
 			return {
 				orphan: '点播里有、但没有任何视频在用的文件，可以清理。如果这个点播应用还被别的业务共用，里面可能有别人的视频，删之前请认真核对文件名。删除后不能恢复。',
-				recent: `上传还不到 ${h} 小时的文件，可能刚传完、还没点「保存」，所以不算孤儿，也不能删。`,
+				recent: `上传还不到 ${h} 小时的文件，可能刚传完、正在填表单还没点「保存」，所以先不算孤儿、不能删。满 ${h} 小时还没有视频用它，就会出现在「孤儿」里，到时可以清理。`,
 				used: '正在被视频使用的文件，不能删。',
 				missing: '这些视频记录指向的点播文件不存在，所以播不出来。要么重新上传视频，要么在视频列表里把这条记录删掉（如果是测试数据）。'
 			}[this.vfView];
@@ -343,7 +343,7 @@ export default {
 			const n = this.vfSelected.length;
 			this.$confirm({
 				title: `确定从云点播删除这 ${n} 个文件吗？`,
-				content: '删除后不能恢复。服务端会再核对一遍，正在被视频使用的、上传不到 24 小时的会自动跳过。',
+				content: `删除后不能恢复。服务端会再核对一遍，正在被视频使用的、上传不到 ${this.vf ? this.vf.minAgeHours : 1} 小时的会自动跳过。`,
 				okText: '删除', okType: 'danger', cancelText: '取消',
 				onOk: async () => {
 					this.vfDeleting = true;

@@ -15,6 +15,43 @@
 
 		<!-- 侧边栏导航菜单 -->
 		<a-menu theme="light" mode="inline">
+			<a-menu-item :class="{ folded: !groupOpen('ops') }" class="menu-item-header" disabled @click.native="toggleGroup('ops')" v-if="can('customer.view') || can('stats.view')"><span class="mh-text">客户与统计</span><a-icon type="down" class="mh-arrow" /></a-menu-item>
+			<a-menu-item v-show="groupOpen('ops')" v-if="can('customer.view')">
+				<a-tooltip placement="right" :title="mini ? '客户管理' : ''">
+					<router-link to="/shop/customers">
+					<span class="icon">
+						<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+							<path d="M10 9a3 3 0 100-6 3 3 0 000 6zM6.5 10C5.67 10 5 10.67 5 11.5v1a3 3 0 003 3h4a3 3 0 003-3v-1c0-.83-.67-1.5-1.5-1.5h-7z" fill="#111827"/>
+						</svg>
+					</span>
+					<span class="label">客户管理</span>
+				</router-link>
+				</a-tooltip>
+			</a-menu-item>
+			<a-menu-item v-show="groupOpen('ops')" v-if="can('stats.view')">
+				<a-tooltip placement="right" :title="mini ? '数据统计' : ''">
+					<router-link to="/shop/stats">
+					<span class="icon">
+						<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+							<path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" fill="#111827"/>
+						</svg>
+					</span>
+					<span class="label">数据统计</span>
+				</router-link>
+				</a-tooltip>
+			</a-menu-item>
+			<a-menu-item v-show="groupOpen('ops')" v-if="can('stats.view')">
+				<a-tooltip placement="right" :title="mini ? '产品销量' : ''">
+					<router-link to="/shop/product-sales">
+					<span class="icon">
+						<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+							<path d="M3 17V8M8 17V4M13 17V10M18 17H2" stroke="#111827" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+						</svg>
+					</span>
+					<span class="label">产品销量</span>
+				</router-link>
+				</a-tooltip>
+			</a-menu-item>
 			<a-menu-item :class="{ folded: !groupOpen('product') }" class="menu-item-header" disabled @click.native="toggleGroup('product')" v-if="can('category.view') || can('catalog.view') || can('product.view') || can('manual.view')"><span class="mh-text">产品</span><a-icon type="down" class="mh-arrow" /></a-menu-item>
 			<a-menu-item v-show="groupOpen('product')" v-if="can('category.view')">
 				<a-tooltip placement="right" :title="mini ? '产品分类' : ''">
@@ -143,43 +180,6 @@
 						<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M5 2.5H15A1.5 1.5 0 0 1 16.5 4V17L14.5 15.8L12.5 17L10.5 15.8L8.5 17L6.5 15.8L3.5 17V4A1.5 1.5 0 0 1 5 2.5ZM6.5 6H13.5V7.4H6.5ZM6.5 8.7H13.5V10.1H6.5ZM6.5 11.4H10.5V12.8H6.5Z" fill="#111827"/></svg>
 					</span>
 					<span class="label">视频订单</span>
-				</router-link>
-				</a-tooltip>
-			</a-menu-item>
-			<a-menu-item :class="{ folded: !groupOpen('ops') }" class="menu-item-header" disabled @click.native="toggleGroup('ops')" v-if="can('customer.view') || can('stats.view')"><span class="mh-text">客户与统计</span><a-icon type="down" class="mh-arrow" /></a-menu-item>
-			<a-menu-item v-show="groupOpen('ops')" v-if="can('customer.view')">
-				<a-tooltip placement="right" :title="mini ? '客户管理' : ''">
-					<router-link to="/shop/customers">
-					<span class="icon">
-						<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-							<path d="M10 9a3 3 0 100-6 3 3 0 000 6zM6.5 10C5.67 10 5 10.67 5 11.5v1a3 3 0 003 3h4a3 3 0 003-3v-1c0-.83-.67-1.5-1.5-1.5h-7z" fill="#111827"/>
-						</svg>
-					</span>
-					<span class="label">客户管理</span>
-				</router-link>
-				</a-tooltip>
-			</a-menu-item>
-			<a-menu-item v-show="groupOpen('ops')" v-if="can('stats.view')">
-				<a-tooltip placement="right" :title="mini ? '数据统计' : ''">
-					<router-link to="/shop/stats">
-					<span class="icon">
-						<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-							<path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" fill="#111827"/>
-						</svg>
-					</span>
-					<span class="label">数据统计</span>
-				</router-link>
-				</a-tooltip>
-			</a-menu-item>
-			<a-menu-item v-show="groupOpen('ops')" v-if="can('stats.view')">
-				<a-tooltip placement="right" :title="mini ? '产品销量' : ''">
-					<router-link to="/shop/product-sales">
-					<span class="icon">
-						<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-							<path d="M3 17V8M8 17V4M13 17V10M18 17H2" stroke="#111827" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-						</svg>
-					</span>
-					<span class="label">产品销量</span>
 				</router-link>
 				</a-tooltip>
 			</a-menu-item>

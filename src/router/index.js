@@ -344,9 +344,10 @@ const router = new VueRouter({
 // 添加全局路由守卫
 // 有权限的第一个页面（菜单顺序）。子账号没有权限的页面会被送到这里
 const PAGE_ORDER = [
+	['/shop/customers', 'customer.view'], ['/shop/stats', 'stats.view'], ['/shop/product-sales', 'stats.view'],
 	['/categories', 'category.view'], ['/catalogs', 'catalog.view'], ['/products', 'product.view'], ['/manuals', 'manual.view'],
-	['/shop/orders', 'order.view'], ['/shop/customers', 'customer.view'], ['/shop/products', 'price.view'],
-	['/shop/stats', 'stats.view'], ['/shop/product-sales', 'stats.view'], ['/shop/bills', 'bills.view'], ['/video-courses', 'video.view'], ['/video-orders', 'video.orders'],
+	['/shop/bills', 'bills.view'], ['/shop/orders', 'order.view'], ['/shop/products', 'price.view'],
+	['/video-courses', 'video.view'], ['/video-orders', 'video.orders'],
 	['/company', 'company.view'], ['/carousels', 'carousel.view'], ['/announcements', 'announcement.view'], ['/legal', 'legal.view']
 ];
 function firstAllowedPath() {

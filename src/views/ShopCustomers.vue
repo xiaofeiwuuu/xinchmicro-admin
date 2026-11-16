@@ -112,6 +112,13 @@
 							<div class="cd-num"><div class="n">¥{{ Number(detail.stats.paidAmount).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</div><div class="l">累计付款（已扣退款）</div></div>
 							<div class="cd-num"><div class="n">¥{{ Number(detail.stats.refundedAmount || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</div><div class="l">累计退款</div></div>
 						</div>
+						<!-- 教学视频：订单数点一下跳到「视频订单」页，只看这个客户；金额较敏感，没有「查看视频订单」权限的账号服务端不返回 -->
+						<div v-if="detail.videoStats" class="cd-nums cd-nums-video">
+							<div class="cd-num cd-num-link" title="点击查看这个客户的视频订单" @click="viewVideoOrders"><div class="n">{{ detail.videoStats.orderCount }}</div><div class="l">视频订单数（点击查看）</div></div>
+							<div class="cd-num"><div class="n">{{ detail.videoStats.paidCount }}</div><div class="l">已付款视频订单（不含退款）</div></div>
+							<div class="cd-num"><div class="n">¥{{ Number(detail.videoStats.paidAmount).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</div><div class="l">视频累计付款（已扣退款）</div></div>
+							<div class="cd-num"><div class="n">{{ detail.videoStats.grantCount }}</div><div class="l">手动开通的视频</div></div>
+						</div>
 					</div>
 
 					<div class="cd-card">
@@ -318,6 +325,9 @@ export default {
 				this.remarkSaving = false
 			}
 		},
+		viewVideoOrders() {
+			this.$router.push({ path: '/video-orders', query: { keyword: '#' + this.detail.id } })
+		},
 		viewOrders() {
 			this.$router.push({ path: '/shop/orders', query: { customerId: String(this.detail.id), name: this.detail.nickname || '' } })
 		},
@@ -393,6 +403,7 @@ export default {
 .cd-line { line-height: 22px; font-size: 13px; color: #262626; }
 .cd-line .k { display: inline-block; min-width: 56px; margin-right: 8px; color: #8c8c8c; }
 .cd-nums { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 14px; padding-top: 14px; border-top: 1px solid #f0f0f0; }
+.cd-nums-video { margin-top: 0; border-top: 1px dashed #f0f0f0; }
 .cd-num { text-align: center; }
 .cd-num-link { cursor: pointer; }
 .cd-num-link:hover .n, .cd-num-link:hover .l { color: #1890ff; }

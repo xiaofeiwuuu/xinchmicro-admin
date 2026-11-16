@@ -96,7 +96,14 @@ export default {
 			]
 		};
 	},
+	watch: {
+		// 在这个页面上点了通知铃铛里的视频订单：按订单号搜出这一单
+		'$route.query.keyword'(v) { if (v) { this.keyword = String(v); this.search(); } }
+	},
 	mounted() {
+		// 从通知铃铛点进来：带着订单号，直接只看这一单
+		const k = this.$route && this.$route.query && this.$route.query.keyword;
+		if (k) { this.keyword = String(k); this.applied = { ...this.applied, keyword: this.keyword }; }
 		this.load();
 	},
 	methods: {

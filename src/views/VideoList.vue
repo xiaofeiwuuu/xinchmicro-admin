@@ -119,6 +119,13 @@
 		</a-modal>
 		<!-- 云点播文件：统计 + 孤儿文件清理（仅主账号）。每一类都列出来，看得出是哪个文件、哪个视频；删除不可恢复，所以只能在「孤儿」里逐个勾选，没有「全部删除」 -->
 		<a-modal title="云点播文件" :visible="vfVisible" :width="860" :footer="null" @cancel="vfVisible = false">
+			<!-- 腾讯云快捷链接：不用自己去找入口（链接取自购买步骤截图里的地址）。购买步骤图解在下面那个弹窗 -->
+			<div class="vf-links">
+				腾讯云：
+				<a href="https://console.cloud.tencent.com/vod/assets" target="_blank" rel="noopener noreferrer">资源包管理（看剩余量）<a-icon type="link" /></a>
+				<a href="https://buy.cloud.tencent.com/vod" target="_blank" rel="noopener noreferrer">购买资源包<a-icon type="link" /></a>
+				<a @click="vgVisible = true">购买步骤图解</a>
+			</div>
 			<a-spin :spinning="vfLoading">
 				<div v-if="vf">
 					<div class="vf-sum">
@@ -143,6 +150,17 @@
 					</div>
 				</div>
 			</a-spin>
+		</a-modal>
+
+		<!-- 购买资源包的步骤图解：图片放在 public/guide/（vod-buy-1.webp、vod-buy-2.webp，换图直接覆盖同名文件），打开时才加载；点图放大（新标签页） -->
+		<a-modal title="购买云点播资源包" :visible="vgVisible" :width="900" :footer="null" @cancel="vgVisible = false">
+			<template v-if="vgVisible">
+				<div class="vg-step">第一步：在腾讯云控制台搜索「云点播」，进入后点左侧「资源包管理」，这里能看到存储包、流量包、极速高清包等的剩余量；要买就点下面的「购买资源包」。</div>
+				<a :href="guideImg(1)" target="_blank" rel="noopener noreferrer"><img :src="guideImg(1)" class="vg-img" alt="进入资源包管理" /></a>
+				<div class="vg-step">第二步：在购买页选资源类型（流量资源包、存储资源包、媒体处理时长包，转码用的是「媒体处理时长包」），再选有效期和规格，勾选协议后点「立即购买」。</div>
+				<a :href="guideImg(2)" target="_blank" rel="noopener noreferrer"><img :src="guideImg(2)" class="vg-img" alt="选择资源包" /></a>
+				<div class="vg-tip">购买页上的提示：资源包满 5 天且没用过可以无理由退款，一旦使用就不能退；当天新买的资源包，抵扣不了当天结算的前一天的用量费用。</div>
+			</template>
 		</a-modal>
 
 		<!-- 详情：课程、章节、简介、价格、数据这些放在这里，列表里只留最常看的。封面和信息放在同一张卡片里：上面是封面 + 标题 + 课程章节 + 状态，下面是其余信息；没有按钮，右上角叉关闭 -->
@@ -205,6 +223,7 @@ export default {
 			sortOrder: '', // descend 从高到低 / ascend 从低到高
 			isMain: isMainUser(),
 			vfVisible: false, vfLoading: false, vfDeleting: false, vf: null, vfSelected: [], // 云点播文件弹窗
+			vgVisible: false, // 购买资源包步骤图解弹窗
 			vfView: 'orphan', // 弹窗里当前看哪一类：orphan 孤儿 / recent 刚上传 / used 使用中 / missing 视频找不到文件
 			detailVisible: false, // 详情弹窗
 			detail: null,
@@ -327,6 +346,7 @@ export default {
 			else if (key === 'refresh') this.refresh(v);
 			else if (key === 'delete') this.remove(v);
 		},
+		guideImg(n) { return `${process.env.BASE_URL}guide/vod-buy-${n}.webp`; },
 		sizeText(n) { return formatSize(Number(n) || 0); },
 		timeText(t) { const d = new Date(t); return Number.isNaN(d.getTime()) ? '-' : d.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false }); },
 		openVodFiles() { this.vfVisible = true; this.vf = null; this.vfSelected = []; this.loadVodFiles(); },
@@ -462,6 +482,12 @@ export default {
 .vf-warn { color: #fa8c16; }
 .vf-note { margin: 8px 0; color: #8c8c8c; font-size: 12px; line-height: 1.6; }
 .vf-tabs { margin: 12px 0 4px; }
+.vf-links { margin-bottom: 14px; padding: 8px 12px; background: #f4f8ff; border-radius: 6px; color: #595959; }
+.vf-links a { margin-right: 18px; }
+.vf-links .anticon { margin-left: 4px; font-size: 12px; }
+.vg-step { margin: 4px 0 10px; line-height: 1.7; }
+.vg-img { display: block; width: 100%; margin-bottom: 18px; border: 1px solid #ebeef5; border-radius: 8px; cursor: zoom-in; }
+.vg-tip { color: #8c8c8c; font-size: 12px; line-height: 1.7; }
 .vf-empty { padding: 28px 0; text-align: center; color: #8c8c8c; }
 .vf-foot { margin-top: 14px; text-align: right; }
 .act-danger { color: #cf1322; }

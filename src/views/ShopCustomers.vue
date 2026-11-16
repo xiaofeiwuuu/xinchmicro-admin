@@ -64,6 +64,9 @@
 			</a-table>
 		</a-card>
 
+		<!-- 赠送视频：对这个客户手动开通视频（不是购买，不算成交） -->
+		<grant-video-modal v-model="grantVisible" :customer="grantTarget" />
+
 		<!-- 修改备注：详情只看不改，备注在列表里改 -->
 		<a-modal v-model="remarkVisible" :title="'客户备注' + (remarkTarget ? '：' + (remarkTarget.nickname || '#' + remarkTarget.id) : '')" :width="520" okText="保存" :confirmLoading="remarkSaving" :destroyOnClose="true" @ok="saveRemark">
 			<a-textarea v-model="remarkDraft" :rows="4" maxLength="500" placeholder="记录这个客户是谁、公司、采购习惯、联系情况等" />
@@ -147,6 +150,7 @@
 
 <script>
 import IconEdit from '@/components/IconEdit.vue';
+import GrantVideoModal from '@/components/GrantVideoModal.vue';
 import { notifyError } from '@/utils/notify'
 import { copyToClipboard } from '@/utils/copy'
 import { getShopCustomers, getShopCustomer, setShopCustomerStatus, setShopCustomerRemark, setShopCustomerMember } from '@/api'
@@ -157,7 +161,7 @@ import { newPagination, applyTableChange } from '@/utils/pagination'
 
 export default {
 	mixins: [fixedListLayout],
-	components: { IconEdit },
+	components: { IconEdit, GrantVideoModal },
 	data() {
 		return {
 			FOLD: 2, // 收货地址、发票抬头默认只显示前 2 个，其余收起
@@ -173,6 +177,7 @@ export default {
 			main: can('customer.member'), // 能不能设会员（会改变客户的价格）
 			// 小程序一打开就自动登录，每个访客都有一条记录；默认只看有过动作的（填了资料、绑了手机、存了地址、下过单、被备注过）
 			scope: 'engaged',
+			grantVisible: false, grantTarget: null, // 赠送视频
 			remarkVisible: false,
 			remarkTarget: null,
 			remarkDraft: '',
@@ -223,12 +228,14 @@ export default {
 		moreItems(record) {
 			const items = [];
 			if (can('customer.edit')) items.push({ key: 'remark', label: '备注' });
+			if (record.status !== 'deleted' && can('video.grant')) items.push({ key: 'grant', label: '赠送视频' }); // 不是购买，不算成交；已注销的客户不能开
 			if (this.main) items.push({ key: 'member', label: record.isMember ? '取消会员' : '设为会员' });
 			if (record.status !== 'deleted' && can('customer.edit')) items.push({ key: 'toggle', label: record.status === 'active' ? '拉黑' : '恢复', danger: record.status === 'active' });
 			return items;
 		},
 		onMore(record, key) {
 			if (key === 'remark') this.openRemark(record);
+			else if (key === 'grant') { this.grantTarget = { id: record.id, nickname: record.nickname, phone: record.phone }; this.grantVisible = true; }
 			else if (key === 'member') this.confirmMember(record);
 			else if (key === 'toggle') this.confirmToggle(record);
 		},

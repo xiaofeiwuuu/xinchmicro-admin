@@ -491,7 +491,6 @@ export const getVideoOrders = (query) => fetchWrapper.get(`${API_BASE_URL}/api/a
 export const getVideoGrants = (query) => fetchWrapper.get(`${API_BASE_URL}/api/admin/video/grants${qs(query)}`);
 export const createVideoGrant = (data) => fetchWrapper.post(`${API_BASE_URL}/api/admin/video/grants`, data);
 export const revokeVideoGrant = (id) => fetchWrapper.post(`${API_BASE_URL}/api/admin/video/grants/${id}/revoke`, {});
-export const searchGrantCustomers = (keyword) => fetchWrapper.get(`${API_BASE_URL}/api/admin/video/grant-customers?keyword=${encodeURIComponent(keyword)}`);
 export const getVodUploadSignature = () => fetchWrapper.post(`${API_BASE_URL}/api/admin/vod/upload-signature`, {}, { returnFullResponse: true });
 export const getVodPlaySignature = (fileId) => fetchWrapper.get(`${API_BASE_URL}/api/admin/vod/play-signature?fileId=${encodeURIComponent(fileId)}`, { returnFullResponse: true });
 export const getVodPlayUrl = (fileId) => fetchWrapper.get(`${API_BASE_URL}/api/admin/vod/play-url?renditions=1&fileId=${encodeURIComponent(fileId)}`, { returnFullResponse: true });

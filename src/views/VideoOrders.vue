@@ -17,10 +17,9 @@
 				<a-form-item>
 					<a-button size="small" icon="download" :loading="exporting" @click="exportOrders">导出订单</a-button>
 				</a-form-item>
-				<!-- 手动开通/赠送：付款异常补开通、送客户、内部测试。不是购买，不产生订单、不算成交 -->
+				<!-- 开通记录：谁被手动开通/赠送了什么视频、原因、操作人，可以撤销。开通/赠送本身在「客户管理」每一行的「更多」里 -->
 				<a-form-item v-can="'video.grant'">
-					<a-button size="small" icon="plus" @click="openGrant">手动开通 / 赠送</a-button>
-					<a-button size="small" icon="file" style="margin-left: 8px" @click="openRecords">开通记录</a-button>
+					<a-button size="small" icon="file" @click="openRecords">开通记录</a-button>
 				</a-form-item>
 			</a-form>
 		</div>
@@ -63,34 +62,6 @@
 				</div>
 			</div>
 		</a-modal>
-		<!-- 手动开通 / 赠送 -->
-		<a-modal title="手动开通 / 赠送视频" :visible="gVisible" :width="620" :maskClosable="false" okText="开通" :confirmLoading="gSaving" @ok="submitGrant" @cancel="gVisible = false">
-			<a-form layout="horizontal" :label-col="{ span: 5 }" :wrapper-col="{ span: 19 }">
-				<a-form-item required label="客户">
-					<a-select v-model="gForm.customerId" show-search :filter-option="false" :not-found-content="gSearched ? '没有找到这个客户' : '输入后搜索'" placeholder="输入客户编号、昵称或手机号搜索" @search="searchCustomers">
-						<a-select-option v-for="c in gCustomers" :key="c.id" :value="c.id">#{{ c.id }}　{{ c.nickname || '（没有昵称）' }}{{ c.phone ? '　' + c.phone : '' }}{{ c.blocked ? '　（已被拉黑）' : '' }}</a-select-option>
-					</a-select>
-				</a-form-item>
-				<a-form-item required label="视频">
-					<a-select v-model="gForm.videoIds" mode="multiple" :max-tag-count="3" placeholder="选择要开通的视频（可多选、可搜索）" option-filter-prop="label">
-						<a-select-option v-for="v in gVideos" :key="v.id" :value="v.id" :label="v.courseTitle + ' ' + v.title">{{ v.courseTitle }}　{{ v.title }}</a-select-option>
-					</a-select>
-					<div class="g-quick">
-						快速选整个课程：
-						<a-select size="small" style="width: 200px" placeholder="选课程，把它的视频都加上" :value="undefined" @change="addCourse">
-							<a-select-option v-for="c in gCourses" :key="c.id" :value="c.id">{{ c.title }}（{{ c.videoCount }} 集）</a-select-option>
-						</a-select>
-						<a v-if="gForm.videoIds.length" style="margin-left: 12px" @click="gForm.videoIds = []">清空（已选 {{ gForm.videoIds.length }} 集）</a>
-					</div>
-				</a-form-item>
-				<a-form-item required label="原因">
-					<a-input v-model="gForm.reason" :maxLength="100" placeholder="必填，会记下来，之后查记录能看到" />
-					<div class="g-quick"><a v-for="r in G_REASONS" :key="r" @click="gForm.reason = r">{{ r }}</a></div>
-				</a-form-item>
-			</a-form>
-			<div class="g-tip">这不是购买：不产生订单、不收费、不算成交和收入。客户下次打开小程序，这些视频就是「已购买」，能完整观看；买过的、已经开通的会自动跳过。要收回可以在「开通记录」里撤销。</div>
-		</a-modal>
-
 		<!-- 开通记录 -->
 		<a-modal title="开通记录" :visible="rVisible" :width="900" :footer="null" @cancel="rVisible = false">
 			<div class="r-bar">
@@ -118,9 +89,9 @@ import DateRangeQuick from '@/components/DateRangeQuick.vue';
 import { newPagination, applyTableChange } from '@/utils/pagination';
 import { notifyError } from '@/utils/notify';
 import { copyToClipboard } from '@/utils/copy';
-import { flatten, videoOrdersCsv } from '@/utils/video';
+import { videoOrdersCsv } from '@/utils/video';
 import { downloadText } from '@/utils/orderTools';
-import { getVideoOrders, getVideoTree, getVideoGrants, createVideoGrant, revokeVideoGrant, searchGrantCustomers } from '@/api';
+import { getVideoOrders, getVideoGrants, revokeVideoGrant } from '@/api';
 
 const STATUSES = [
 	{ value: 'paid', text: '已付款', color: 'green' },
@@ -137,9 +108,6 @@ export default {
 			keyword: '', status: undefined, dates: [],
 			applied: { keyword: '', status: undefined, dates: [] },
 			detailVisible: false, detail: null, exporting: false,
-			// 手动开通
-			G_REASONS: ['付款异常补开通', '赠送客户', '内部测试', '会员福利'],
-			gVisible: false, gSaving: false, gForm: { customerId: undefined, videoIds: [], reason: '' }, gCustomers: [], gSearched: false, gTimer: null, gCourses: [], gVideos: [],
 			// 开通记录
 			rVisible: false, rLoading: false, rStatus: '', rKeyword: '', rRows: [], rPage: { current: 1, pageSize: 10, total: 0, showTotal: (t) => `共 ${t} 条` },
 			rColumns: [
@@ -177,42 +145,6 @@ export default {
 	},
 	methods: {
 		timeText(t) { if (!t) return ''; const d = new Date(t); return Number.isNaN(d.getTime()) ? '' : d.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false }); },
-		// ---- 手动开通 ----
-		async openGrant() {
-			this.gForm = { customerId: undefined, videoIds: [], reason: '' };
-			this.gCustomers = []; this.gSearched = false; this.gVisible = true;
-			try { // 视频列表：用视频管理的目录树摊平（课程、视频）
-				const res = await getVideoTree();
-				if (res.code === 0) { const f = flatten(res.data); this.gCourses = f.courses; this.gVideos = f.videos; }
-			} catch (e) { notifyError(this, e, '获取视频列表失败'); }
-		},
-		searchCustomers(kw) {
-			clearTimeout(this.gTimer);
-			const k = String(kw || '').trim();
-			if (!k) { this.gCustomers = []; this.gSearched = false; return; }
-			this.gTimer = setTimeout(async () => {
-				try { this.gCustomers = await searchGrantCustomers(k); } catch (e) { notifyError(this, e, '搜索客户失败'); }
-				this.gSearched = true;
-			}, 300);
-		},
-		addCourse(courseId) {
-			const ids = this.gVideos.filter((v) => v.courseId === courseId).map((v) => v.id);
-			this.gForm.videoIds = [...new Set([...this.gForm.videoIds, ...ids])];
-		},
-		async submitGrant() {
-			const f = this.gForm;
-			if (!f.customerId) return this.$message.warning('请选择客户');
-			if (!f.videoIds.length) return this.$message.warning('请选择要开通的视频');
-			if (!f.reason.trim()) return this.$message.warning('请填写开通原因');
-			this.gSaving = true;
-			try {
-				const r = await createVideoGrant({ customerId: f.customerId, videoIds: f.videoIds, reason: f.reason.trim() });
-				const n = (r.granted || []).length; const sk = r.skipped || [];
-				if (n) this.$message.success(`已开通 ${n} 集${sk.length ? `，跳过 ${sk.length} 集（${sk[0].reason}）` : ''}`);
-				else this.$message.warning(sk.length ? `没有新开通：${sk[0].reason}` : '没有新开通的');
-				this.gVisible = false;
-			} catch (e) { notifyError(this, e, '开通失败'); } finally { this.gSaving = false; }
-		},
 		// ---- 开通记录 ----
 		openRecords() { this.rVisible = true; this.rStatus = ''; this.rKeyword = ''; this.loadRecords(1); },
 		async loadRecords(page) {
@@ -313,9 +245,6 @@ export default {
 </script>
 
 <style scoped>
-.g-quick { margin-top: 6px; color: #8c8c8c; font-size: 12px; }
-.g-quick > a { margin-right: 12px; }
-.g-tip { margin-top: 4px; padding: 8px 12px; background: #f4f8ff; border-radius: 6px; color: #595959; font-size: 12px; line-height: 1.7; }
 .r-bar { margin-bottom: 12px; }
 .dt-card { border: 1px solid #ebeef5; border-radius: 10px; overflow: hidden; }
 .dt-head { display: flex; align-items: center; padding: 18px 20px; background: linear-gradient(135deg, #f4f8ff, #fafcff); border-bottom: 1px solid #ebeef5; }

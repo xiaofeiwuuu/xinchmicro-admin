@@ -31,9 +31,17 @@
 				<router-link :to="{ path: '/shop/customers', query: { id: r.customerId } }">{{ r.customerName }}</router-link>
 			</template>
 			<template slot="amount" slot-scope="text, r">¥{{ r.amount }}</template>
-			<template slot="status" slot-scope="text"><a-tag :color="tag(text).color">{{ tag(text).text }}</a-tag></template>
+			<template slot="status" slot-scope="text, r"><a-tag :color="stateTag(r).color">{{ stateTag(r).text }}</a-tag></template>
 			<template slot="action" slot-scope="text, r">
-				<a-button type="link" size="small" @click="openDetail(r)"><a-icon type="eye" style="color: #111827" /><span class="text-dark">详情</span></a-button>
+				<div class="row-actions">
+					<a-button type="link" size="small" @click="openDetail(r)"><a-icon type="eye" style="color: #111827" /><span class="text-dark">详情</span></a-button>
+					<a-dropdown v-if="canRefund(r)" :trigger="['click']" placement="bottomRight">
+						<a-button type="link" size="small" @click.prevent><a-icon type="ellipsis" style="color: #111827" /><span class="text-dark">更多</span></a-button>
+						<a-menu slot="overlay" @click="() => openRefund(r)">
+							<a-menu-item key="refund"><span class="act-danger">退款</span></a-menu-item>
+						</a-menu>
+					</a-dropdown>
+				</div>
 			</template>
 		</a-table>
 
@@ -43,7 +51,7 @@
 				<div class="dt-head">
 					<div class="dt-amount">¥{{ detail.amount }}</div>
 					<div class="dt-main">
-						<a-tag :color="tag(detail.status).color">{{ tag(detail.status).text }}</a-tag>
+						<a-tag :color="stateTag(detail).color">{{ stateTag(detail).text }}</a-tag>
 						<a-tag v-if="detail.listPrice !== detail.amount" color="orange">会员价</a-tag>
 						<div class="dt-no"><span class="copy-cell" title="点击复制" @click="copy(detail.orderNo)">{{ detail.orderNo }}</span></div>
 					</div>
@@ -59,8 +67,20 @@
 					<div class="dt-k">付款时间</div><div class="dt-v">{{ detail.paidAt || '-' }}</div>
 					<div class="dt-k">微信支付单号</div><div class="dt-v"><span v-if="detail.transactionId" class="copy-cell" title="点击复制" @click="copy(detail.transactionId)">{{ detail.transactionId }}</span><span v-else class="dt-empty">没有</span></div>
 					<div class="dt-k">备注</div><div class="dt-v dt-pre"><template v-if="detail.note">{{ detail.note }}</template><span v-else class="dt-empty">没有</span></div>
+					<template v-if="detail.refundStatus">
+						<div class="dt-k">退款原因</div><div class="dt-v">{{ detail.refundReason || '-' }}</div>
+						<div class="dt-k">退款操作人</div><div class="dt-v">{{ detail.refundedByName || '-' }}</div>
+						<div class="dt-k">退款到账</div><div class="dt-v">{{ detail.refundedAt || '-' }}</div>
+					</template>
 				</div>
 			</div>
+		</a-modal>
+
+		<!-- 退款（全额，客户在小程序不能申请） -->
+		<a-modal :title="refundTarget ? '退款：' + refundTarget.customerName + '　¥' + refundTarget.amount : '退款'" :visible="refundVisible" :width="460" :maskClosable="false" okText="确认退款" :okButtonProps="{ props: { type: 'danger' } }" :confirmLoading="refunding" @ok="submitRefund" @cancel="refundVisible = false">
+			<a-form-item label="退款原因" required :label-col="{ span: 5 }" :wrapper-col="{ span: 19 }" style="margin-bottom: 0">
+				<a-input v-model="refundReason" :maxLength="80" placeholder="请填写原因" />
+			</a-form-item>
 		</a-modal>
 		<!-- 开通记录 -->
 		<a-modal title="开通记录" :visible="rVisible" :width="900" :footer="null" @cancel="rVisible = false">
@@ -91,7 +111,8 @@ import { notifyError } from '@/utils/notify';
 import { copyToClipboard } from '@/utils/copy';
 import { videoOrdersCsv } from '@/utils/video';
 import { downloadText } from '@/utils/orderTools';
-import { getVideoOrders, getVideoGrants, revokeVideoGrant } from '@/api';
+import { can } from '@/utils/auth';
+import { getVideoOrders, getVideoGrants, revokeVideoGrant, refundVideoOrder } from '@/api';
 
 const STATUSES = [
 	{ value: 'paid', text: '已付款', color: 'green' },
@@ -108,6 +129,7 @@ export default {
 			keyword: '', status: undefined, dates: [],
 			applied: { keyword: '', status: undefined, dates: [] },
 			detailVisible: false, detail: null, exporting: false,
+			refundVisible: false, refundTarget: null, refundReason: '', refunding: false,
 			// 开通记录
 			rVisible: false, rLoading: false, rStatus: '', rKeyword: '', rRows: [], rPage: { current: 1, pageSize: 10, total: 0, showTotal: (t) => `共 ${t} 条` },
 			rColumns: [
@@ -119,7 +141,7 @@ export default {
 				{ title: '操作', key: 'act', width: 70, align: 'right', scopedSlots: { customRender: 'act' } }
 			],
 			rows: [], loading: false, // 已付款几单、合计多少放在分页那一行（只统计已付款的，按关键词和日期筛选，不受「订单状态」和分页影响）
-			pagination: newPagination({ showTotal: (t) => `共 ${t} 条　已付款 ${this.summary.paidCount} 单，合计 ¥${this.summary.paidAmount}` }),
+			pagination: newPagination({ showTotal: (t) => `共 ${t} 条　已付款 ${this.summary.paidCount} 单，合计 ¥${this.summary.paidAmount}${this.summary.refundedCount ? `，已退款 ${this.summary.refundedCount} 单 ¥${this.summary.refundedAmount}` : ''}` }),
 			summary: { paidCount: 0, paidAmount: 0 },
 			// 列表只放必要的：订单号、视频、客户、实付、状态、下单时间；其余在「详情」里。状态、操作窄，其余平分
 			columns: [
@@ -129,7 +151,7 @@ export default {
 				{ title: '实付', key: 'amount', scopedSlots: { customRender: 'amount' } },
 				{ title: '状态', dataIndex: 'status', key: 'status', width: 90, scopedSlots: { customRender: 'status' } },
 				{ title: '下单时间', dataIndex: 'createdAt', key: 'createdAt' },
-				{ title: '操作', key: 'action', align: 'right', width: 100, scopedSlots: { customRender: 'action' } }
+				{ title: '操作', key: 'action', align: 'right', width: 170, scopedSlots: { customRender: 'action' } }
 			]
 		};
 	},
@@ -202,6 +224,23 @@ export default {
 			this.detail = r;
 			this.detailVisible = true;
 		},
+		// 列表和详情里的状态：有退款状态就显示退款状态（订单本身仍是已付款）
+		stateTag(r) {
+			const m = { success: { text: '已退款', color: 'red' }, processing: { text: '退款中', color: 'blue' }, failed: { text: '退款失败', color: 'orange' } }[r.refundStatus];
+			return m || this.tag(r.status);
+		},
+		canRefund(r) { return can('video.refund') && r.status === 'paid' && r.refundStatus !== 'processing' && r.refundStatus !== 'success'; },
+		openRefund(r) { this.refundTarget = r; this.refundReason = ''; this.refundVisible = true; },
+		async submitRefund() {
+			if (!this.refundReason.trim()) return this.$message.warning('请填写退款原因');
+			this.refunding = true;
+			try {
+				await refundVideoOrder(this.refundTarget.id, this.refundReason.trim());
+				this.$message.success('已申请退款');
+				this.refundVisible = false;
+				await this.load();
+			} catch (e) { notifyError(this, e, '退款失败'); } finally { this.refunding = false; }
+		},
 		tag(s) {
 			return STATUSES.find((x) => x.value === s) || { text: s, color: undefined };
 		},
@@ -246,6 +285,7 @@ export default {
 
 <style scoped>
 .r-bar { margin-bottom: 12px; }
+.act-danger { color: #cf1322; }
 .dt-card { border: 1px solid #ebeef5; border-radius: 10px; overflow: hidden; }
 .dt-head { display: flex; align-items: center; padding: 18px 20px; background: linear-gradient(135deg, #f4f8ff, #fafcff); border-bottom: 1px solid #ebeef5; }
 .dt-amount { font-size: 30px; font-weight: 700; color: #111827; line-height: 1; min-width: 120px; }

@@ -488,6 +488,8 @@ export const getShopOrderLogistics = (id) => fetchWrapper.get(`${API_BASE_URL}/a
 // 视频订单（谁买了哪个视频）：query 有 keyword、status、from、to、page、pageSize；返回 { total, list, summary }
 export const getVideoOrders = (query) => fetchWrapper.get(`${API_BASE_URL}/api/admin/video/orders${qs(query)}`);
 // 手动开通/赠送视频（付款异常补开通、送客户、内部测试；不是购买，不算成交）
+// 视频订单退款（后台发起，全额；客户在小程序不能申请）
+export const refundVideoOrder = (id, reason) => fetchWrapper.post(`${API_BASE_URL}/api/admin/video/orders/${id}/refund`, { reason });
 export const getVideoGrants = (query) => fetchWrapper.get(`${API_BASE_URL}/api/admin/video/grants${qs(query)}`);
 export const createVideoGrant = (data) => fetchWrapper.post(`${API_BASE_URL}/api/admin/video/grants`, data);
 export const revokeVideoGrant = (id) => fetchWrapper.post(`${API_BASE_URL}/api/admin/video/grants/${id}/revoke`, {});

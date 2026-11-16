@@ -26,11 +26,12 @@ export function flatten(tree) {
 
 // 视频订单导出（CSV，Excel 能直接打开）。手机号是接口给的打码后的（后台任何地方都看不到完整手机号）。
 // 客户昵称、视频标题、备注是别人填的文字：以 = + - @ 开头的在 Excel 里会被当成公式执行，前面补一个单引号挡住
-export const VIDEO_ORDER_HEADERS = ['订单号', '下单时间', '付款时间', '订单状态', '客户', '客户手机', '视频', '所属课程', '原价（元）', '实付（元）', '会员价优惠（元）', '微信支付单号', '备注'];
+export const VIDEO_ORDER_HEADERS = ['订单号', '下单时间', '付款时间', '订单状态', '客户', '客户手机', '视频', '所属课程', '原价（元）', '实付（元）', '会员价优惠（元）', '微信支付单号', '备注', '退款状态', '退款到账时间', '退款原因'];
 const safeText = (v) => { const t = v === null || v === undefined ? '' : String(v); return /^[=+\-@\t\r]/.test(t) ? `'${t}` : t; };
 export function videoOrderRow(o, statusText = {}) {
 	const list = Number(o.listPrice); const pay = Number(o.amount);
 	return [o.orderNo, o.createdAt || '', o.paidAt || '', statusText[o.status] || o.status, safeText(o.customerName), o.customerPhone || '', safeText(o.title), safeText(o.courseTitle), o.listPrice, o.amount,
-		list > pay ? (list - pay).toFixed(2).replace(/\.00$/, '') : '', o.transactionId || '', safeText(o.note)];
+		list > pay ? (list - pay).toFixed(2).replace(/\.00$/, '') : '', o.transactionId || '', safeText(o.note),
+		{ success: '已退款', processing: '退款中', failed: '退款失败' }[o.refundStatus] || '', o.refundedAt || '', safeText(o.refundReason)];
 }
 export const videoOrdersCsv = (orders, statusText) => toCsv([VIDEO_ORDER_HEADERS, ...orders.map((o) => videoOrderRow(o, statusText))]);

@@ -180,7 +180,7 @@ export default {
 			this.open = false
 			// 库存通知跳到价格库存页并搜这个产品；其它的跳到订单管理并让这一单闪
 			// 「N 个订单超过 24 小时没发货」这种汇总通知没有具体订单：跳到订单管理，只看待发货的
-			const to = n.type === 'video_paid'
+			const to = n.type === 'video_paid' || n.type === 'video_refund_failed'
 				? { path: '/video-orders', query: { keyword: n.orderNo, n: String(n.id) } } // 视频订单：跳到视频订单页并按订单号搜出这一单
 				: n.type === 'bill_diff'
 				? { path: '/shop/bills', query: { date: n.keyword, n: String(n.id) } }
@@ -218,7 +218,7 @@ export default {
 .bell-dot.t-order_paid, .bell-dot.t-video_paid { background: #52c41a; }
 .bell-dot.t-invoice_requested, .bell-dot.t-after_sales_requested, .bell-dot.t-after_sales_returning { background: #fa8c16; }
 .bell-dot.t-low_stock { background: #fa8c16; }
-.bell-dot.t-refund_needed, .bell-dot.t-cancel_requested, .bell-dot.t-refund_failed, .bell-dot.t-out_of_stock, .bell-dot.t-pay_callback_failed, .bell-dot.t-logistics_failed, .bell-dot.t-login_locked, .bell-dot.t-ship_overdue { background: #f5222d; }
+.bell-dot.t-refund_needed, .bell-dot.t-video_refund_failed, .bell-dot.t-cancel_requested, .bell-dot.t-refund_failed, .bell-dot.t-out_of_stock, .bell-dot.t-pay_callback_failed, .bell-dot.t-logistics_failed, .bell-dot.t-login_locked, .bell-dot.t-ship_overdue { background: #f5222d; }
 .bell-main { flex: 1; min-width: 0; }
 .bell-title { color: #262626; font-weight: 500; line-height: 22px; word-break: break-all; }
 .bell-content { color: #8c8c8c; font-size: 12px; line-height: 18px; margin-top: 2px; word-break: break-all; }

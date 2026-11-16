@@ -106,18 +106,36 @@
 							<div v-else class="cd-empty">没有备注</div>
 						</div>
 						</div>
-						<div class="cd-nums">
-							<div class="cd-num cd-num-link" title="点击查看这个客户的订单" @click="viewOrders"><div class="n">{{ detail.stats.orderCount }}</div><div class="l">订单数（点击查看订单）</div></div>
-							<div class="cd-num"><div class="n">{{ detail.stats.paidCount }}</div><div class="l">已付款订单（不含已全额退款）</div></div>
-							<div class="cd-num"><div class="n">¥{{ Number(detail.stats.paidAmount).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</div><div class="l">累计付款（已扣退款）</div></div>
-							<div class="cd-num"><div class="n">¥{{ Number(detail.stats.refundedAmount || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</div><div class="l">累计退款</div></div>
-						</div>
-						<!-- 教学视频：订单数点一下跳到「视频订单」页，只看这个客户；金额较敏感，没有「查看视频订单」权限的账号服务端不返回 -->
-						<div v-if="detail.videoStats" class="cd-nums cd-nums-video">
-							<div class="cd-num cd-num-link" title="点击查看这个客户的视频订单" @click="viewVideoOrders"><div class="n">{{ detail.videoStats.orderCount }}</div><div class="l">视频订单数（点击查看）</div></div>
-							<div class="cd-num"><div class="n">{{ detail.videoStats.paidCount }}</div><div class="l">已付款视频订单（不含退款）</div></div>
-							<div class="cd-num"><div class="n">¥{{ Number(detail.videoStats.paidAmount).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</div><div class="l">视频累计付款（已扣退款）</div></div>
-							<div class="cd-num"><div class="n">{{ detail.videoStats.grantCount }}</div><div class="l">手动开通的视频</div></div>
+						<!-- 订单汇总：商品、视频各一行，下面是合计。点订单数跳到对应的订单页，只看这个客户。视频金额较敏感，没有「查看视频订单」权限的账号服务端不返回，那时只有商品一行 -->
+						<div class="cs">
+							<div class="cs-row cs-head">
+								<span></span>
+								<span class="cs-v">订单数</span>
+								<span class="cs-v" title="不含已全额退款的订单">已付款订单</span>
+								<span class="cs-v" title="已扣除退款">累计付款</span>
+								<span class="cs-v">累计退款</span>
+							</div>
+							<div class="cs-row">
+								<span class="cs-k"><i class="cs-dot goods"></i>商品</span>
+								<span class="cs-v cs-link" title="点击查看这个客户的商品订单" @click="viewOrders">{{ detail.stats.orderCount }}</span>
+								<span class="cs-v">{{ detail.stats.paidCount }}</span>
+								<span class="cs-v">{{ money(detail.stats.paidAmount) }}</span>
+								<span :class="['cs-v', { 'cs-refund': Number(detail.stats.refundedAmount) > 0 }]">{{ money(detail.stats.refundedAmount) }}</span>
+							</div>
+							<div v-if="detail.videoStats" class="cs-row">
+								<span class="cs-k"><i class="cs-dot video"></i>视频<span v-if="detail.videoStats.grantCount" class="cs-sub">另有开通 {{ detail.videoStats.grantCount }} 集</span></span>
+								<span class="cs-v cs-link" title="点击查看这个客户的视频订单" @click="viewVideoOrders">{{ detail.videoStats.orderCount }}</span>
+								<span class="cs-v">{{ detail.videoStats.paidCount }}</span>
+								<span class="cs-v">{{ money(detail.videoStats.paidAmount) }}</span>
+								<span :class="['cs-v', { 'cs-refund': Number(detail.videoStats.refundedAmount) > 0 }]">{{ money(detail.videoStats.refundedAmount) }}</span>
+							</div>
+							<div v-if="detail.videoStats" class="cs-row cs-total">
+								<span class="cs-k">合计</span>
+								<span class="cs-v">{{ totals.orderCount }}</span>
+								<span class="cs-v">{{ totals.paidCount }}</span>
+								<span class="cs-v">{{ money(totals.paidAmount) }}</span>
+								<span :class="['cs-v', { 'cs-refund': totals.refundedAmount > 0 }]">{{ money(totals.refundedAmount) }}</span>
+							</div>
 						</div>
 					</div>
 
@@ -217,6 +235,17 @@ export default {
 		this.fetch()
 	},
 	computed: {
+		// 商品 + 视频的合计（金额按分相加，避免小数误差）
+		totals() {
+			const d = this.detail; const g = (d && d.stats) || {}; const v = (d && d.videoStats) || {};
+			const fen = (x) => Math.round(Number(x || 0) * 100);
+			return {
+				orderCount: (g.orderCount || 0) + (v.orderCount || 0),
+				paidCount: (g.paidCount || 0) + (v.paidCount || 0),
+				paidAmount: (fen(g.paidAmount) + fen(v.paidAmount)) / 100,
+				refundedAmount: (fen(g.refundedAmount) + fen(v.refundedAmount)) / 100
+			};
+		},
 		// 订单数这一列的排序状态跟着 sortOrder 走（antd 的受控排序）
 		columns() {
 			return this.baseColumns.map((c) => (c.key === 'orderCount' ? { ...c, sortOrder: this.sortOrder || false } : c))
@@ -325,6 +354,7 @@ export default {
 				this.remarkSaving = false
 			}
 		},
+		money(v) { return '¥' + Number(v || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
 		viewVideoOrders() {
 			this.$router.push({ path: '/video-orders', query: { keyword: '#' + this.detail.id } })
 		},
@@ -402,13 +432,23 @@ export default {
 .cd-tag { margin-left: 8px; vertical-align: 2px; }
 .cd-line { line-height: 22px; font-size: 13px; color: #262626; }
 .cd-line .k { display: inline-block; min-width: 56px; margin-right: 8px; color: #8c8c8c; }
-.cd-nums { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 14px; padding-top: 14px; border-top: 1px solid #f0f0f0; }
-.cd-nums-video { margin-top: 0; border-top: 1px dashed #f0f0f0; }
-.cd-num { text-align: center; }
-.cd-num-link { cursor: pointer; }
-.cd-num-link:hover .n, .cd-num-link:hover .l { color: #1890ff; }
-.cd-num .n { font-size: 24px; font-weight: 600; line-height: 34px; color: #262626; }
-.cd-num .l { font-size: 12px; color: #8c8c8c; }
+/* 订单汇总：左边是类别，右边四列数字右对齐；合计行加粗、浅蓝底 */
+.cs { margin-top: 14px; border: 1px solid #f0f0f0; border-radius: 8px; overflow: hidden; }
+.cs-row { display: grid; grid-template-columns: 150px repeat(4, 1fr); align-items: center; min-height: 42px; padding: 0 16px; border-top: 1px solid #f5f5f5; }
+.cs-row:first-child { border-top: 0; }
+.cs-head { min-height: 34px; background: #fafafa; color: #8c8c8c; font-size: 12px; }
+.cs-k { display: flex; align-items: center; color: #262626; font-weight: 500; }
+.cs-dot { display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; }
+.cs-dot.goods { background: #1890ff; }
+.cs-dot.video { background: #722ed1; }
+.cs-sub { margin-left: 8px; font-size: 12px; font-weight: 400; color: #8c8c8c; }
+.cs-v { text-align: right; font-variant-numeric: tabular-nums; font-size: 15px; color: #262626; }
+.cs-head .cs-v { font-size: 12px; color: #8c8c8c; }
+.cs-link { cursor: pointer; color: #1890ff; font-weight: 600; }
+.cs-link:hover { text-decoration: underline; }
+.cs-refund { color: #cf1322; }
+.cs-total { background: #f4f8ff; }
+.cs-total .cs-k, .cs-total .cs-v { font-weight: 600; }
 .cd-card { padding: 14px 16px 10px; margin-bottom: 14px; border: 1px solid #f0f0f0; border-radius: 8px; }
 .cd-title { font-weight: 600; margin-bottom: 10px; }
 .cd-hint { margin-left: 8px; font-size: 12px; font-weight: 400; color: #8c8c8c; }

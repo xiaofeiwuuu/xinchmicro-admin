@@ -117,28 +117,29 @@
 				</a-row>
 			</a-form>
 		</a-modal>
-		<!-- 云点播文件：统计 + 孤儿文件清理（仅主账号）。删除不可恢复，所以只能逐个勾选，没有「全部删除」 -->
-		<a-modal title="云点播文件" :visible="vfVisible" :width="820" :footer="null" @cancel="vfVisible = false">
+		<!-- 云点播文件：统计 + 孤儿文件清理（仅主账号）。每一类都列出来，看得出是哪个文件、哪个视频；删除不可恢复，所以只能在「孤儿」里逐个勾选，没有「全部删除」 -->
+		<a-modal title="云点播文件" :visible="vfVisible" :width="860" :footer="null" @cancel="vfVisible = false">
 			<a-spin :spinning="vfLoading">
 				<div v-if="vf">
 					<div class="vf-sum">
-						点播里共 <b>{{ vf.vodTotal }}</b> 个文件（{{ sizeText(vf.totalSize) }}）：
-						正在用于视频 <b>{{ vf.usedCount }}</b> 个（{{ sizeText(vf.usedSize) }}），
-						孤儿文件 <b :class="{ 'vf-warn': vf.orphanCount }">{{ vf.orphanCount }}</b> 个（{{ sizeText(vf.orphanSize) }}），
-						刚上传不到 {{ vf.minAgeHours }} 小时的 {{ vf.recentCount }} 个（可能还没保存，不算孤儿）
+						点播里共 <b>{{ vf.vodTotal }}</b> 个文件，占 {{ sizeText(vf.totalSize) }}。<span v-if="vf.truncated" class="vf-warn">文件太多，只统计了最新的 {{ vf.listed }} 个，没统计到的不会被删。</span>
 					</div>
-					<div v-if="vf.truncated" class="vf-note">文件太多，只统计了最新的 {{ vf.listed }} 个，没有统计到的不会被删。</div>
-					<div v-if="vf.missingCount" class="vf-note vf-note-red">有 {{ vf.missingCount }} 条视频记录在点播里找不到文件（文件被删了或应用 ID 配错），这些视频播不出来：{{ vf.missing.join('、') }}</div>
-					<div class="vf-note">「孤儿」是指点播里有、但没有任何视频在用的文件。<b>如果这个点播应用还被别的业务共用，里面可能有别人的视频，删之前请认真核对文件名。</b>删除后不能恢复。</div>
-					<a-table v-if="vf.orphans.length" size="small" rowKey="fileId" :columns="vfColumns" :data-source="vf.orphans" :pagination="false" :scroll="{ y: 300 }" :row-selection="{ selectedRowKeys: vfSelected, onChange: (k) => (vfSelected = k) }">
+					<a-radio-group v-model="vfView" button-style="solid" size="small" class="vf-tabs">
+						<a-radio-button value="orphan">孤儿 {{ vf.orphanCount }}</a-radio-button>
+						<a-radio-button value="recent">刚上传 {{ vf.recentCount }}</a-radio-button>
+						<a-radio-button value="used">使用中 {{ vf.usedCount }}</a-radio-button>
+						<a-radio-button value="missing">视频找不到文件 {{ vf.missingCount }}</a-radio-button>
+					</a-radio-group>
+					<div class="vf-note">{{ vfHelp }}</div>
+					<a-table size="small" :rowKey="vfView === 'missing' ? 'videoId' : 'fileId'" :columns="vfCols" :data-source="vfRows" :pagination="false" :scroll="{ y: 300 }" :row-selection="vfView === 'orphan' ? { selectedRowKeys: vfSelected, onChange: (k) => (vfSelected = k) } : null" :locale="{ emptyText: vfEmpty }">
 						<template slot="fid" slot-scope="text"><span class="copy-cell" title="点击复制" @click="copyName(text)">{{ text }}</span></template>
 						<template slot="size" slot-scope="text">{{ sizeText(text) }}</template>
 						<template slot="ctime" slot-scope="text">{{ timeText(text) }}</template>
+						<template slot="vids" slot-scope="text">{{ (text || []).join('、') || '-' }}</template>
 					</a-table>
-					<div v-else class="vf-empty">没有孤儿文件，不用清理。</div>
 					<div class="vf-foot">
 						<a-button size="small" @click="loadVodFiles"><a-icon type="reload" />重新统计</a-button>
-						<a-button type="danger" size="small" :disabled="!vfSelected.length" :loading="vfDeleting" style="margin-left: 8px;" @click="confirmDeleteVodFiles">删除选中的 {{ vfSelected.length }} 个</a-button>
+						<a-button v-if="vfView === 'orphan'" type="danger" size="small" :disabled="!vfSelected.length" :loading="vfDeleting" style="margin-left: 8px;" @click="confirmDeleteVodFiles">删除选中的 {{ vfSelected.length }} 个</a-button>
 					</div>
 				</div>
 			</a-spin>
@@ -204,12 +205,7 @@ export default {
 			sortOrder: '', // descend 从高到低 / ascend 从低到高
 			isMain: isMainUser(),
 			vfVisible: false, vfLoading: false, vfDeleting: false, vf: null, vfSelected: [], // 云点播文件弹窗
-			vfColumns: [
-				{ title: '文件名', dataIndex: 'name', key: 'name', ellipsis: true },
-				{ title: '文件 ID', dataIndex: 'fileId', key: 'fileId', width: 190, scopedSlots: { customRender: 'fid' } },
-				{ title: '大小', dataIndex: 'size', key: 'size', width: 90, scopedSlots: { customRender: 'size' } },
-				{ title: '上传时间', dataIndex: 'createTime', key: 'createTime', width: 150, scopedSlots: { customRender: 'ctime' } }
-			],
+			vfView: 'orphan', // 弹窗里当前看哪一类：orphan 孤儿 / recent 刚上传 / used 使用中 / missing 视频找不到文件
 			detailVisible: false, // 详情弹窗
 			detail: null,
 			showStats: (() => { try { return localStorage.getItem('videoStatsOpen') === '1'; } catch (e) { return false; } })(), // 数据三列是否展开（记在浏览器里，默认折叠）
@@ -241,6 +237,34 @@ export default {
 			// 表头排序箭头的亮灭由 sortKey / sortOrder 决定（受控）
 			return cols.map((c) => (c.sorter ? { ...c, sortOrder: this.sortKey === c.key ? this.sortOrder : false } : c));
 		},
+		// 云点播文件弹窗：当前这一类的表格列、数据、说明、空状态
+		vfCols() {
+			const name = { title: '文件名', dataIndex: 'name', key: 'name', ellipsis: true };
+			const fid = { title: '文件 ID', dataIndex: 'fileId', key: 'fileId', width: 170, scopedSlots: { customRender: 'fid' } };
+			const size = { title: '大小', dataIndex: 'size', key: 'size', width: 80, scopedSlots: { customRender: 'size' } };
+			const ctime = { title: '上传时间', dataIndex: 'createTime', key: 'createTime', width: 150, scopedSlots: { customRender: 'ctime' } };
+			if (this.vfView === 'used') return [name, { title: '用在哪个视频', dataIndex: 'videos', key: 'videos', scopedSlots: { customRender: 'vids' } }, size, ctime];
+			if (this.vfView === 'missing') return [
+				{ title: '视频标题', dataIndex: 'title', key: 'title', ellipsis: true },
+				{ title: '所属课程', dataIndex: 'courseTitle', key: 'courseTitle', ellipsis: true },
+				{ title: '记录的点播文件 ID', dataIndex: 'vodFileId', key: 'vodFileId', width: 190, scopedSlots: { customRender: 'fid' } }
+			];
+			return [name, fid, size, ctime];
+		},
+		vfRows() {
+			const v = this.vf || {};
+			return ({ orphan: v.orphans, recent: v.recent, used: v.used, missing: v.missing }[this.vfView]) || [];
+		},
+		vfHelp() {
+			const h = this.vf ? this.vf.minAgeHours : 24;
+			return {
+				orphan: '点播里有、但没有任何视频在用的文件，可以清理。如果这个点播应用还被别的业务共用，里面可能有别人的视频，删之前请认真核对文件名。删除后不能恢复。',
+				recent: `上传还不到 ${h} 小时的文件，可能刚传完、还没点「保存」，所以不算孤儿，也不能删。`,
+				used: '正在被视频使用的文件，不能删。',
+				missing: '这些视频记录指向的点播文件不存在，所以播不出来。要么重新上传视频，要么在视频列表里把这条记录删掉（如果是测试数据）。'
+			}[this.vfView];
+		},
+		vfEmpty() { return { orphan: '没有孤儿文件，不用清理', recent: '没有刚上传的文件', used: '还没有视频在用点播文件', missing: '所有视频记录都能在点播里找到文件' }[this.vfView]; },
 		// 详情顶部的状态标签：颜色 + 文字
 		detailTag() {
 			const v = this.detail;
@@ -310,6 +334,8 @@ export default {
 			this.vfLoading = true;
 			try {
 				this.vf = await getVodFiles(); // 请求函数直接返回数据本身（已去掉 code/message 外壳）
+				// 有孤儿先看孤儿；没有孤儿但有视频找不到文件，先看这一类（这是需要处理的），否则看使用中
+				this.vfView = this.vf.orphanCount ? 'orphan' : (this.vf.missingCount ? 'missing' : 'used');
 				this.vfSelected = [];
 			} catch (e) { notifyError(this, e, '统计云点播文件'); } finally { this.vfLoading = false; }
 		},
@@ -435,7 +461,7 @@ export default {
 .vf-sum { line-height: 1.8; }
 .vf-warn { color: #fa8c16; }
 .vf-note { margin: 8px 0; color: #8c8c8c; font-size: 12px; line-height: 1.6; }
-.vf-note-red { color: #cf1322; }
+.vf-tabs { margin: 12px 0 4px; }
 .vf-empty { padding: 28px 0; text-align: center; color: #8c8c8c; }
 .vf-foot { margin-top: 14px; text-align: right; }
 .act-danger { color: #cf1322; }

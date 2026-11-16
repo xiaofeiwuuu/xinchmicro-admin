@@ -106,7 +106,7 @@
 							<a-input-number v-model="form.memberPrice" :min="0.01" :max="99999.99" :precision="2" style="width: 160px" placeholder="没有会员价" />
 						</a-form-item>
 						<a-form-item :label-col="{ span: 9 }" :wrapper-col="{ span: 15 }">
-							<span slot="label">试看（秒） <a-tooltip title="0 = 不能试看；填多少秒，没买的人就能免费看前多少秒。想让整集免费，把价格设为 0。"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
+							<span slot="label">试看（秒） <a-tooltip title="0 = 不能试看；填多少秒，没买的人就能免费看前多少秒（服务端只发这一段，最少 30 秒，这是云点播的限制）。想让整集免费，把价格设为 0。"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span>
 							<a-input-number v-model="form.trialSeconds" :min="0" :precision="0" style="width: 160px" />
 						</a-form-item>
 						<a-form-item :label-col="{ span: 9 }" :wrapper-col="{ span: 15 }"><span slot="label">排序 <a-tooltip title="数字小的在前"><a-icon type="question-circle" class="help-icon" /></a-tooltip></span><a-input-number v-model="form.sortOrder" :precision="0" style="width: 160px" /></a-form-item>
@@ -465,6 +465,7 @@ export default {
 			const f = this.form;
 			if (!f.courseId) return this.$message.warning('请选择所属课程');
 			if (!f.title.trim()) return this.$message.warning('请填写标题');
+			if (f.trialSeconds > 0 && f.trialSeconds < 30) return this.$message.warning('试看秒数要是 0（不能试看）或不少于 30 秒（云点播的限制）');
 			const body = { title: f.title, chapterId: f.chapterId || null, priceFen: toFen(f.price) || 0, memberPriceFen: toFen(f.memberPrice), trialSeconds: f.trialSeconds || 0, intro: f.intro, sortOrder: f.sortOrder || 0 };
 			// 编辑时转码没完成的视频，开关是灰的，不带上下架（保持原样）；新增时想上架的，服务端看转码完没完成
 			if ((!f.id || f.ready) && !f.replaceFile) body.onSale = !!f.onSale; // 换文件的视频要重新转码，服务端会先下架

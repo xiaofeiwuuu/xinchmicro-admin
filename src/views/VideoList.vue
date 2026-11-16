@@ -29,7 +29,11 @@
 			</a-form>
 		</div>
 		<div class="act-row">
-			<a-button v-can="'video.edit'" type="primary" icon="upload" size="small" @click="openModal()">上传视频</a-button>
+			<div>
+				<a-button v-can="'video.edit'" type="primary" icon="upload" size="small" @click="openModal()">上传视频</a-button>
+				<!-- 云点播里一共有多少文件、哪些是没人用的孤儿文件（只有主账号能看和清理） -->
+				<a-button v-if="isMain" size="small" icon="cloud" style="margin-left: 8px;" @click="openVodFiles">云点播文件</a-button>
+			</div>
 			<!-- 播放量、购买量、收藏数三列默认折叠起来，点这里展开；展开后每一列表头都能点着排序（先点是从高到低，再点从低到高，再点取消） -->
 			<a-button class="stat-toggle" size="small" style="margin-left: auto;" @click="toggleStats"><a-icon type="down" :class="{ flip: showStats }" /> {{ showStats ? '收起数据' : '展开数据' }}（播放量 · 购买量 · 收藏数）</a-button>
 		</div>
@@ -113,6 +117,33 @@
 				</a-row>
 			</a-form>
 		</a-modal>
+		<!-- 云点播文件：统计 + 孤儿文件清理（仅主账号）。删除不可恢复，所以只能逐个勾选，没有「全部删除」 -->
+		<a-modal title="云点播文件" :visible="vfVisible" :width="820" :footer="null" @cancel="vfVisible = false">
+			<a-spin :spinning="vfLoading">
+				<div v-if="vf">
+					<div class="vf-sum">
+						点播里共 <b>{{ vf.vodTotal }}</b> 个文件（{{ sizeText(vf.totalSize) }}）：
+						正在用于视频 <b>{{ vf.usedCount }}</b> 个（{{ sizeText(vf.usedSize) }}），
+						孤儿文件 <b :class="{ 'vf-warn': vf.orphanCount }">{{ vf.orphanCount }}</b> 个（{{ sizeText(vf.orphanSize) }}），
+						刚上传不到 {{ vf.minAgeHours }} 小时的 {{ vf.recentCount }} 个（可能还没保存，不算孤儿）
+					</div>
+					<div v-if="vf.truncated" class="vf-note">文件太多，只统计了最新的 {{ vf.listed }} 个，没有统计到的不会被删。</div>
+					<div v-if="vf.missingCount" class="vf-note vf-note-red">有 {{ vf.missingCount }} 条视频记录在点播里找不到文件（文件被删了或应用 ID 配错），这些视频播不出来：{{ vf.missing.join('、') }}</div>
+					<div class="vf-note">「孤儿」是指点播里有、但没有任何视频在用的文件。<b>如果这个点播应用还被别的业务共用，里面可能有别人的视频，删之前请认真核对文件名。</b>删除后不能恢复。</div>
+					<a-table v-if="vf.orphans.length" size="small" rowKey="fileId" :columns="vfColumns" :data-source="vf.orphans" :pagination="false" :scroll="{ y: 300 }" :row-selection="{ selectedRowKeys: vfSelected, onChange: (k) => (vfSelected = k) }">
+						<template slot="fid" slot-scope="text"><span class="copy-cell" title="点击复制" @click="copyName(text)">{{ text }}</span></template>
+						<template slot="size" slot-scope="text">{{ sizeText(text) }}</template>
+						<template slot="ctime" slot-scope="text">{{ timeText(text) }}</template>
+					</a-table>
+					<div v-else class="vf-empty">没有孤儿文件，不用清理。</div>
+					<div class="vf-foot">
+						<a-button size="small" @click="loadVodFiles"><a-icon type="reload" />重新统计</a-button>
+						<a-button type="danger" size="small" :disabled="!vfSelected.length" :loading="vfDeleting" style="margin-left: 8px;" @click="confirmDeleteVodFiles">删除选中的 {{ vfSelected.length }} 个</a-button>
+					</div>
+				</div>
+			</a-spin>
+		</a-modal>
+
 		<!-- 详情：课程、章节、简介、价格、数据这些放在这里，列表里只留最常看的。封面和信息放在同一张卡片里：上面是封面 + 标题 + 课程章节 + 状态，下面是其余信息；没有按钮，右上角叉关闭 -->
 		<a-modal title="视频详情" :visible="detailVisible" :width="680" :footer="null" @cancel="detailVisible = false">
 			<div v-if="detail" class="dt-card">
@@ -154,9 +185,10 @@ import fixedListLayout from '@/mixins/fixedListLayout';
 import { newPagination, applyTableChange } from '@/utils/pagination';
 import { notifyError } from '@/utils/notify';
 import { copyToClipboard } from '@/utils/copy';
-import { can } from '@/utils/auth';
+import { can, isMainUser } from '@/utils/auth';
+import { formatSize } from '@/utils/storageListing';
 import { flatten, yuan, mmss, toFen } from '@/utils/video';
-import { getVodUploadSignature, getVideoTree, saveVideoItem, deleteVideoItem, refreshVideoItem } from '@/api';
+import { getVodFiles, deleteVodFiles, getVodUploadSignature, getVideoTree, saveVideoItem, deleteVideoItem, refreshVideoItem } from '@/api';
 import IconEdit from '@/components/IconEdit.vue';
 import IconDelete from '@/components/IconDelete.vue';
 
@@ -170,6 +202,14 @@ export default {
 		return {
 			sortKey: '', // 按哪一列排序，空 = 默认顺序
 			sortOrder: '', // descend 从高到低 / ascend 从低到高
+			isMain: isMainUser(),
+			vfVisible: false, vfLoading: false, vfDeleting: false, vf: null, vfSelected: [], // 云点播文件弹窗
+			vfColumns: [
+				{ title: '文件名', dataIndex: 'name', key: 'name', ellipsis: true },
+				{ title: '文件 ID', dataIndex: 'fileId', key: 'fileId', width: 190, scopedSlots: { customRender: 'fid' } },
+				{ title: '大小', dataIndex: 'size', key: 'size', width: 90, scopedSlots: { customRender: 'size' } },
+				{ title: '上传时间', dataIndex: 'createTime', key: 'createTime', width: 150, scopedSlots: { customRender: 'ctime' } }
+			],
 			detailVisible: false, // 详情弹窗
 			detail: null,
 			showStats: (() => { try { return localStorage.getItem('videoStatsOpen') === '1'; } catch (e) { return false; } })(), // 数据三列是否展开（记在浏览器里，默认折叠）
@@ -262,6 +302,35 @@ export default {
 			if (key === 'edit') this.openModal(v);
 			else if (key === 'refresh') this.refresh(v);
 			else if (key === 'delete') this.remove(v);
+		},
+		sizeText(n) { return formatSize(Number(n) || 0); },
+		timeText(t) { const d = new Date(t); return Number.isNaN(d.getTime()) ? '-' : d.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false }); },
+		openVodFiles() { this.vfVisible = true; this.vf = null; this.vfSelected = []; this.loadVodFiles(); },
+		async loadVodFiles() {
+			this.vfLoading = true;
+			try {
+				this.vf = await getVodFiles(); // 请求函数直接返回数据本身（已去掉 code/message 外壳）
+				this.vfSelected = [];
+			} catch (e) { notifyError(this, e, '统计云点播文件'); } finally { this.vfLoading = false; }
+		},
+		confirmDeleteVodFiles() {
+			const n = this.vfSelected.length;
+			this.$confirm({
+				title: `确定从云点播删除这 ${n} 个文件吗？`,
+				content: '删除后不能恢复。服务端会再核对一遍，正在被视频使用的、上传不到 24 小时的会自动跳过。',
+				okText: '删除', okType: 'danger', cancelText: '取消',
+				onOk: async () => {
+					this.vfDeleting = true;
+					try {
+						const r = (await deleteVodFiles(this.vfSelected)) || {};
+						const parts = [`已删除 ${(r.deleted || []).length} 个`];
+						if ((r.skipped || []).length) parts.push(`跳过 ${r.skipped.length} 个（${r.skipped[0].reason}）`);
+						if ((r.failed || []).length) parts.push(`失败 ${r.failed.length} 个（${r.failed[0].reason}）`);
+						(r.failed || []).length ? this.$message.warning(parts.join('，')) : this.$message.success(parts.join('，'));
+						await this.loadVodFiles();
+					} catch (e) { notifyError(this, e, '删除云点播文件'); } finally { this.vfDeleting = false; }
+				}
+			});
 		},
 		openDetail(v) {
 			this.detail = v;
@@ -363,6 +432,12 @@ export default {
 </script>
 
 <style scoped>
+.vf-sum { line-height: 1.8; }
+.vf-warn { color: #fa8c16; }
+.vf-note { margin: 8px 0; color: #8c8c8c; font-size: 12px; line-height: 1.6; }
+.vf-note-red { color: #cf1322; }
+.vf-empty { padding: 28px 0; text-align: center; color: #8c8c8c; }
+.vf-foot { margin-top: 14px; text-align: right; }
 .act-danger { color: #cf1322; }
 .dt-card { border: 1px solid #ebeef5; border-radius: 10px; overflow: hidden; }
 .dt-head { display: flex; align-items: center; padding: 16px; background: linear-gradient(135deg, #f4f8ff, #fafcff); border-bottom: 1px solid #ebeef5; }

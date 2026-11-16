@@ -25,6 +25,7 @@ export { default as ClockCircleFill } from '@ant-design/icons/lib/fill/ClockCirc
 export { default as CloseOutline } from '@ant-design/icons/lib/outline/CloseOutline';
 export { default as CloseCircleOutline } from '@ant-design/icons/lib/outline/CloseCircleOutline';
 export { default as CloseCircleFill } from '@ant-design/icons/lib/fill/CloseCircleFill';
+export { default as CloudOutline } from '@ant-design/icons/lib/outline/CloudOutline';
 export { default as CloudUploadOutline } from '@ant-design/icons/lib/outline/CloudUploadOutline';
 export { default as ColumHeightOutline } from '@ant-design/icons/lib/outline/ColumHeightOutline';
 export { default as ColumnHeightOutline } from '@ant-design/icons/lib/outline/ColumnHeightOutline';

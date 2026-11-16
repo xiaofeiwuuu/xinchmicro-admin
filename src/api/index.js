@@ -490,6 +490,9 @@ export const getVideoOrders = (query) => fetchWrapper.get(`${API_BASE_URL}/api/a
 export const getVodUploadSignature = () => fetchWrapper.post(`${API_BASE_URL}/api/admin/vod/upload-signature`, {}, { returnFullResponse: true });
 export const getVodPlaySignature = (fileId) => fetchWrapper.get(`${API_BASE_URL}/api/admin/vod/play-signature?fileId=${encodeURIComponent(fileId)}`, { returnFullResponse: true });
 export const getVodPlayUrl = (fileId) => fetchWrapper.get(`${API_BASE_URL}/api/admin/vod/play-url?renditions=1&fileId=${encodeURIComponent(fileId)}`, { returnFullResponse: true });
+// 云点播里的文件统计和孤儿文件清理（仅主账号）：统计只读；删除只会删「点播里有、没有视频在用、上传满 24 小时」的文件
+export const getVodFiles = () => fetchWrapper.get(`${API_BASE_URL}/api/admin/vod/files`);
+export const deleteVodFiles = (fileIds) => fetchWrapper.post(`${API_BASE_URL}/api/admin/vod/files/delete`, { fileIds });
 export const getEnvCatalog = () => fetchWrapper.get(`${API_BASE_URL}/api/admin/env-catalog`);
 export const getShopOrder = (id) => fetchWrapper.get(`${API_BASE_URL}/api/admin/orders/${id}`);
 // body: { expressCompany, expressNo, photoFileID? }；发货凭证照片选填，仅后台可见

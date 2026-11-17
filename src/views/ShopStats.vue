@@ -189,7 +189,9 @@ export default {
 			this.loading = true
 			try {
 				const d = await getShopStats(this.range, { from: this.customFrom, to: this.customTo }, this.scope)
-				if (seq === this.seq) this.data = d // 连续切换范围时，只认最后一次请求的结果
+				if (seq !== this.seq) return // 连续切换范围时，只认最后一次请求的结果
+				if (!d || !d.totals || !d.previous || !Array.isArray(d.buckets)) throw new Error('统计数据格式不对，请确认服务端是最新版本后刷新重试')
+				this.data = d
 			} catch (error) {
 				if (seq === this.seq) notifyError(this, error, '获取统计数据失败')
 			} finally {
